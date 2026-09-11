@@ -1,0 +1,456 @@
+{
+  "config": {
+    "seed": 42,
+    "size": 4,
+    "durationMs": 120000,
+    "minWordLength": 3,
+    "minWords": 5,
+    "scoring": "classic",
+    "generatorVersion": 1,
+    "dictionaryVersion": "fixture-dict-small"
+  },
+  "grid": {
+    "size": 4,
+    "tiles": [
+      "c",
+      "a",
+      "s",
+      "a",
+      "r",
+      "e",
+      "t",
+      "e",
+      "p",
+      "o",
+      "r",
+      "t",
+      "a",
+      "l",
+      "e",
+      "n"
+    ]
+  },
+  "solutions": [
+    {
+      "word": "ape",
+      "path": [
+        12,
+        8,
+        5
+      ]
+    },
+    {
+      "word": "aperta",
+      "path": [
+        12,
+        8,
+        5,
+        10,
+        6,
+        1
+      ]
+    },
+    {
+      "word": "aperto",
+      "path": [
+        12,
+        8,
+        5,
+        10,
+        6,
+        9
+      ]
+    },
+    {
+      "word": "casa",
+      "path": [
+        0,
+        1,
+        2,
+        3
+      ]
+    },
+    {
+      "word": "case",
+      "path": [
+        0,
+        1,
+        2,
+        5
+      ]
+    },
+    {
+      "word": "certa",
+      "path": [
+        0,
+        5,
+        10,
+        6,
+        1
+      ]
+    },
+    {
+      "word": "certe",
+      "path": [
+        0,
+        5,
+        10,
+        6,
+        7
+      ]
+    },
+    {
+      "word": "certo",
+      "path": [
+        0,
+        5,
+        10,
+        6,
+        9
+      ]
+    },
+    {
+      "word": "cresta",
+      "path": [
+        0,
+        4,
+        5,
+        2,
+        6,
+        1
+      ]
+    },
+    {
+      "word": "creste",
+      "path": [
+        0,
+        4,
+        5,
+        2,
+        6,
+        7
+      ]
+    },
+    {
+      "word": "lente",
+      "path": [
+        13,
+        14,
+        15,
+        11,
+        7
+      ]
+    },
+    {
+      "word": "lettera",
+      "path": [
+        13,
+        14,
+        11,
+        6,
+        5,
+        4,
+        1
+      ]
+    },
+    {
+      "word": "lettere",
+      "path": [
+        13,
+        14,
+        11,
+        6,
+        5,
+        10,
+        7
+      ]
+    },
+    {
+      "word": "letto",
+      "path": [
+        13,
+        14,
+        11,
+        6,
+        9
+      ]
+    },
+    {
+      "word": "nere",
+      "path": [
+        15,
+        14,
+        10,
+        5
+      ]
+    },
+    {
+      "word": "nero",
+      "path": [
+        15,
+        14,
+        10,
+        9
+      ]
+    },
+    {
+      "word": "opera",
+      "path": [
+        9,
+        8,
+        5,
+        4,
+        1
+      ]
+    },
+    {
+      "word": "opere",
+      "path": [
+        9,
+        8,
+        5,
+        10,
+        7
+      ]
+    },
+    {
+      "word": "pera",
+      "path": [
+        8,
+        5,
+        4,
+        1
+      ]
+    },
+    {
+      "word": "pere",
+      "path": [
+        8,
+        5,
+        10,
+        7
+      ]
+    },
+    {
+      "word": "perla",
+      "path": [
+        8,
+        5,
+        10,
+        13,
+        12
+      ]
+    },
+    {
+      "word": "perle",
+      "path": [
+        8,
+        5,
+        10,
+        13,
+        14
+      ]
+    },
+    {
+      "word": "porta",
+      "path": [
+        8,
+        9,
+        10,
+        6,
+        1
+      ]
+    },
+    {
+      "word": "porte",
+      "path": [
+        8,
+        9,
+        10,
+        6,
+        5
+      ]
+    },
+    {
+      "word": "prato",
+      "path": [
+        8,
+        4,
+        1,
+        6,
+        9
+      ]
+    },
+    {
+      "word": "presto",
+      "path": [
+        8,
+        4,
+        5,
+        2,
+        6,
+        9
+      ]
+    },
+    {
+      "word": "resto",
+      "path": [
+        4,
+        5,
+        2,
+        6,
+        9
+      ]
+    },
+    {
+      "word": "rete",
+      "path": [
+        4,
+        5,
+        6,
+        7
+      ]
+    },
+    {
+      "word": "sera",
+      "path": [
+        2,
+        5,
+        4,
+        1
+      ]
+    },
+    {
+      "word": "sere",
+      "path": [
+        2,
+        5,
+        10,
+        7
+      ]
+    },
+    {
+      "word": "sette",
+      "path": [
+        2,
+        5,
+        6,
+        11,
+        7
+      ]
+    },
+    {
+      "word": "tela",
+      "path": [
+        11,
+        14,
+        13,
+        12
+      ]
+    },
+    {
+      "word": "testa",
+      "path": [
+        11,
+        7,
+        2,
+        6,
+        1
+      ]
+    },
+    {
+      "word": "teste",
+      "path": [
+        11,
+        7,
+        2,
+        6,
+        5
+      ]
+    },
+    {
+      "word": "torte",
+      "path": [
+        6,
+        9,
+        10,
+        11,
+        7
+      ]
+    }
+  ],
+  "events": [
+    {
+      "description": "parola valida",
+      "path": [
+        12,
+        8,
+        5
+      ],
+      "now": 1001000,
+      "result": {
+        "kind": "valid",
+        "word": "ape",
+        "points": 1
+      }
+    },
+    {
+      "description": "stessa parola gia trovata",
+      "path": [
+        12,
+        8,
+        5
+      ],
+      "now": 1002000,
+      "result": {
+        "kind": "already_found"
+      }
+    },
+    {
+      "description": "percorso non adiacente",
+      "path": [
+        0,
+        15
+      ],
+      "now": 1003000,
+      "result": {
+        "kind": "invalid_path"
+      }
+    },
+    {
+      "description": "percorso troppo corto",
+      "path": [
+        0,
+        1
+      ],
+      "now": 1004000,
+      "result": {
+        "kind": "too_short"
+      }
+    },
+    {
+      "description": "percorso valido ma non nel dizionario",
+      "path": [
+        0,
+        4,
+        8
+      ],
+      "now": 1005000,
+      "result": {
+        "kind": "not_in_dictionary"
+      }
+    },
+    {
+      "description": "tempo scaduto",
+      "path": [
+        12,
+        8,
+        5
+      ],
+      "now": 1120001,
+      "result": {
+        "kind": "time_over"
+      }
+    }
+  ]
+}

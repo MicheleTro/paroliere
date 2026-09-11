@@ -1,0 +1,1323 @@
+[
+  {
+    "config": {
+      "seed": 0,
+      "size": 4,
+      "durationMs": 120000,
+      "minWordLength": 3,
+      "minWords": 5,
+      "scoring": "classic",
+      "generatorVersion": 1,
+      "dictionaryVersion": "fixture-dict-small"
+    },
+    "grid": {
+      "size": 4,
+      "tiles": [
+        "i",
+        "e",
+        "a",
+        "a",
+        "n",
+        "l",
+        "r",
+        "t",
+        "n",
+        "r",
+        "i",
+        "e",
+        "m",
+        "o",
+        "s",
+        "t"
+      ]
+    },
+    "attempts": 1,
+    "solutions": [
+      {
+        "word": "arte",
+        "path": [
+          2,
+          6,
+          7,
+          11
+        ]
+      },
+      {
+        "word": "arti",
+        "path": [
+          2,
+          6,
+          7,
+          10
+        ]
+      },
+      {
+        "word": "lieta",
+        "path": [
+          5,
+          10,
+          11,
+          7,
+          2
+        ]
+      },
+      {
+        "word": "liste",
+        "path": [
+          5,
+          10,
+          14,
+          15,
+          11
+        ]
+      },
+      {
+        "word": "lite",
+        "path": [
+          5,
+          10,
+          7,
+          11
+        ]
+      },
+      {
+        "word": "nera",
+        "path": [
+          4,
+          1,
+          6,
+          2
+        ]
+      },
+      {
+        "word": "nere",
+        "path": [
+          4,
+          1,
+          6,
+          11
+        ]
+      },
+      {
+        "word": "neri",
+        "path": [
+          4,
+          1,
+          6,
+          10
+        ]
+      },
+      {
+        "word": "orsi",
+        "path": [
+          13,
+          9,
+          14,
+          10
+        ]
+      },
+      {
+        "word": "resti",
+        "path": [
+          6,
+          11,
+          14,
+          15,
+          10
+        ]
+      },
+      {
+        "word": "reti",
+        "path": [
+          6,
+          11,
+          7,
+          10
+        ]
+      },
+      {
+        "word": "riso",
+        "path": [
+          6,
+          10,
+          14,
+          13
+        ]
+      },
+      {
+        "word": "rose",
+        "path": [
+          9,
+          13,
+          14,
+          11
+        ]
+      },
+      {
+        "word": "sera",
+        "path": [
+          14,
+          11,
+          6,
+          2
+        ]
+      },
+      {
+        "word": "sere",
+        "path": [
+          14,
+          11,
+          6,
+          1
+        ]
+      },
+      {
+        "word": "tra",
+        "path": [
+          7,
+          6,
+          2
+        ]
+      },
+      {
+        "word": "treni",
+        "path": [
+          7,
+          6,
+          1,
+          4,
+          0
+        ]
+      },
+      {
+        "word": "triste",
+        "path": [
+          7,
+          6,
+          10,
+          14,
+          15,
+          11
+        ]
+      }
+    ]
+  },
+  {
+    "config": {
+      "seed": 1,
+      "size": 4,
+      "durationMs": 120000,
+      "minWordLength": 3,
+      "minWords": 5,
+      "scoring": "classic",
+      "generatorVersion": 1,
+      "dictionaryVersion": "fixture-dict-small"
+    },
+    "grid": {
+      "size": 4,
+      "tiles": [
+        "n",
+        "e",
+        "o",
+        "c",
+        "i",
+        "a",
+        "e",
+        "o",
+        "r",
+        "d",
+        "i",
+        "a",
+        "t",
+        "l",
+        "c",
+        "a"
+      ]
+    },
+    "attempts": 2,
+    "solutions": [
+      {
+        "word": "ciao",
+        "path": [
+          14,
+          10,
+          5,
+          2
+        ]
+      },
+      {
+        "word": "idea",
+        "path": [
+          4,
+          9,
+          6,
+          5
+        ]
+      },
+      {
+        "word": "idee",
+        "path": [
+          4,
+          9,
+          6,
+          1
+        ]
+      },
+      {
+        "word": "nidi",
+        "path": [
+          0,
+          4,
+          9,
+          10
+        ]
+      },
+      {
+        "word": "radio",
+        "path": [
+          8,
+          5,
+          9,
+          10,
+          7
+        ]
+      },
+      {
+        "word": "rane",
+        "path": [
+          8,
+          5,
+          0,
+          1
+        ]
+      },
+      {
+        "word": "tra",
+        "path": [
+          12,
+          8,
+          5
+        ]
+      }
+    ]
+  },
+  {
+    "config": {
+      "seed": 2,
+      "size": 4,
+      "durationMs": 120000,
+      "minWordLength": 3,
+      "minWords": 5,
+      "scoring": "classic",
+      "generatorVersion": 1,
+      "dictionaryVersion": "fixture-dict-small"
+    },
+    "grid": {
+      "size": 4,
+      "tiles": [
+        "s",
+        "i",
+        "i",
+        "l",
+        "u",
+        "r",
+        "n",
+        "o",
+        "c",
+        "e",
+        "c",
+        "a",
+        "o",
+        "p",
+        "r",
+        "a"
+      ]
+    },
+    "attempts": 1,
+    "solutions": [
+      {
+        "word": "cane",
+        "path": [
+          10,
+          11,
+          6,
+          9
+        ]
+      },
+      {
+        "word": "cani",
+        "path": [
+          10,
+          11,
+          6,
+          1
+        ]
+      },
+      {
+        "word": "cena",
+        "path": [
+          8,
+          9,
+          6,
+          11
+        ]
+      },
+      {
+        "word": "cerca",
+        "path": [
+          8,
+          9,
+          5,
+          10,
+          11
+        ]
+      },
+      {
+        "word": "cure",
+        "path": [
+          8,
+          4,
+          5,
+          9
+        ]
+      },
+      {
+        "word": "nera",
+        "path": [
+          6,
+          9,
+          14,
+          11
+        ]
+      },
+      {
+        "word": "neri",
+        "path": [
+          6,
+          9,
+          5,
+          1
+        ]
+      },
+      {
+        "word": "noce",
+        "path": [
+          6,
+          7,
+          10,
+          9
+        ]
+      },
+      {
+        "word": "opera",
+        "path": [
+          12,
+          13,
+          9,
+          14,
+          11
+        ]
+      },
+      {
+        "word": "pera",
+        "path": [
+          13,
+          9,
+          14,
+          11
+        ]
+      },
+      {
+        "word": "rane",
+        "path": [
+          14,
+          11,
+          6,
+          9
+        ]
+      }
+    ]
+  },
+  {
+    "config": {
+      "seed": 42,
+      "size": 4,
+      "durationMs": 120000,
+      "minWordLength": 3,
+      "minWords": 5,
+      "scoring": "classic",
+      "generatorVersion": 1,
+      "dictionaryVersion": "fixture-dict-small"
+    },
+    "grid": {
+      "size": 4,
+      "tiles": [
+        "t",
+        "r",
+        "e",
+        "n",
+        "p",
+        "e",
+        "r",
+        "e",
+        "i",
+        "e",
+        "a",
+        "c",
+        "l",
+        "e",
+        "a",
+        "p"
+      ]
+    },
+    "attempts": 2,
+    "solutions": [
+      {
+        "word": "carne",
+        "path": [
+          11,
+          10,
+          6,
+          3,
+          2
+        ]
+      },
+      {
+        "word": "cene",
+        "path": [
+          11,
+          7,
+          3,
+          2
+        ]
+      },
+      {
+        "word": "nera",
+        "path": [
+          3,
+          2,
+          6,
+          10
+        ]
+      },
+      {
+        "word": "nere",
+        "path": [
+          3,
+          2,
+          1,
+          5
+        ]
+      },
+      {
+        "word": "pace",
+        "path": [
+          15,
+          10,
+          11,
+          7
+        ]
+      },
+      {
+        "word": "pera",
+        "path": [
+          4,
+          5,
+          6,
+          10
+        ]
+      },
+      {
+        "word": "pere",
+        "path": [
+          4,
+          5,
+          1,
+          2
+        ]
+      },
+      {
+        "word": "pietre",
+        "path": [
+          4,
+          8,
+          5,
+          0,
+          1,
+          2
+        ]
+      },
+      {
+        "word": "terra",
+        "path": [
+          0,
+          5,
+          1,
+          6,
+          10
+        ]
+      },
+      {
+        "word": "terre",
+        "path": [
+          0,
+          5,
+          1,
+          6,
+          2
+        ]
+      }
+    ]
+  },
+  {
+    "config": {
+      "seed": 123,
+      "size": 4,
+      "durationMs": 120000,
+      "minWordLength": 3,
+      "minWords": 5,
+      "scoring": "classic",
+      "generatorVersion": 1,
+      "dictionaryVersion": "fixture-dict-small"
+    },
+    "grid": {
+      "size": 4,
+      "tiles": [
+        "c",
+        "a",
+        "n",
+        "a",
+        "o",
+        "p",
+        "u",
+        "v",
+        "c",
+        "o",
+        "r",
+        "qu",
+        "a",
+        "e",
+        "r",
+        "o"
+      ]
+    },
+    "attempts": 1,
+    "solutions": [
+      {
+        "word": "capo",
+        "path": [
+          0,
+          1,
+          5,
+          4
+        ]
+      },
+      {
+        "word": "oro",
+        "path": [
+          9,
+          10,
+          15
+        ]
+      },
+      {
+        "word": "poca",
+        "path": [
+          5,
+          4,
+          0,
+          1
+        ]
+      },
+      {
+        "word": "poco",
+        "path": [
+          5,
+          4,
+          8,
+          9
+        ]
+      },
+      {
+        "word": "pure",
+        "path": [
+          5,
+          6,
+          10,
+          13
+        ]
+      },
+      {
+        "word": "puro",
+        "path": [
+          5,
+          6,
+          10,
+          9
+        ]
+      },
+      {
+        "word": "uva",
+        "path": [
+          6,
+          7,
+          3
+        ]
+      }
+    ]
+  },
+  {
+    "config": {
+      "seed": 999,
+      "size": 4,
+      "durationMs": 120000,
+      "minWordLength": 3,
+      "minWords": 5,
+      "scoring": "classic",
+      "generatorVersion": 1,
+      "dictionaryVersion": "fixture-dict-small"
+    },
+    "grid": {
+      "size": 4,
+      "tiles": [
+        "o",
+        "l",
+        "a",
+        "e",
+        "d",
+        "r",
+        "e",
+        "r",
+        "o",
+        "i",
+        "t",
+        "e",
+        "i",
+        "g",
+        "c",
+        "n"
+      ]
+    },
+    "attempts": 2,
+    "solutions": [
+      {
+        "word": "arte",
+        "path": [
+          2,
+          5,
+          10,
+          6
+        ]
+      },
+      {
+        "word": "arti",
+        "path": [
+          2,
+          5,
+          10,
+          9
+        ]
+      },
+      {
+        "word": "centri",
+        "path": [
+          14,
+          11,
+          15,
+          10,
+          5,
+          9
+        ]
+      },
+      {
+        "word": "centro",
+        "path": [
+          14,
+          11,
+          15,
+          10,
+          5,
+          0
+        ]
+      },
+      {
+        "word": "certe",
+        "path": [
+          14,
+          11,
+          7,
+          10,
+          6
+        ]
+      },
+      {
+        "word": "certi",
+        "path": [
+          14,
+          11,
+          7,
+          10,
+          9
+        ]
+      },
+      {
+        "word": "cielo",
+        "path": [
+          14,
+          9,
+          6,
+          1,
+          0
+        ]
+      },
+      {
+        "word": "gioie",
+        "path": [
+          13,
+          12,
+          8,
+          9,
+          6
+        ]
+      },
+      {
+        "word": "loro",
+        "path": [
+          1,
+          0,
+          5,
+          8
+        ]
+      },
+      {
+        "word": "nera",
+        "path": [
+          15,
+          11,
+          7,
+          2
+        ]
+      },
+      {
+        "word": "nere",
+        "path": [
+          15,
+          11,
+          7,
+          3
+        ]
+      },
+      {
+        "word": "oro",
+        "path": [
+          0,
+          5,
+          8
+        ]
+      },
+      {
+        "word": "orti",
+        "path": [
+          0,
+          5,
+          10,
+          9
+        ]
+      },
+      {
+        "word": "raro",
+        "path": [
+          7,
+          2,
+          5,
+          0
+        ]
+      },
+      {
+        "word": "rete",
+        "path": [
+          5,
+          6,
+          10,
+          11
+        ]
+      },
+      {
+        "word": "reti",
+        "path": [
+          5,
+          6,
+          10,
+          9
+        ]
+      },
+      {
+        "word": "tela",
+        "path": [
+          10,
+          6,
+          1,
+          2
+        ]
+      },
+      {
+        "word": "tra",
+        "path": [
+          10,
+          5,
+          2
+        ]
+      }
+    ]
+  },
+  {
+    "config": {
+      "seed": 12345,
+      "size": 4,
+      "durationMs": 120000,
+      "minWordLength": 3,
+      "minWords": 5,
+      "scoring": "classic",
+      "generatorVersion": 1,
+      "dictionaryVersion": "fixture-dict-small"
+    },
+    "grid": {
+      "size": 4,
+      "tiles": [
+        "r",
+        "v",
+        "i",
+        "a",
+        "e",
+        "t",
+        "d",
+        "e",
+        "r",
+        "s",
+        "v",
+        "e",
+        "l",
+        "m",
+        "r",
+        "p"
+      ]
+    },
+    "attempts": 3,
+    "solutions": [
+      {
+        "word": "idea",
+        "path": [
+          2,
+          6,
+          7,
+          3
+        ]
+      },
+      {
+        "word": "idee",
+        "path": [
+          2,
+          6,
+          7,
+          11
+        ]
+      },
+      {
+        "word": "resti",
+        "path": [
+          0,
+          4,
+          9,
+          5,
+          2
+        ]
+      },
+      {
+        "word": "reti",
+        "path": [
+          0,
+          4,
+          5,
+          2
+        ]
+      },
+      {
+        "word": "via",
+        "path": [
+          1,
+          2,
+          3
+        ]
+      },
+      {
+        "word": "vite",
+        "path": [
+          1,
+          2,
+          5,
+          4
+        ]
+      }
+    ]
+  },
+  {
+    "config": {
+      "seed": 777777,
+      "size": 4,
+      "durationMs": 120000,
+      "minWordLength": 3,
+      "minWords": 5,
+      "scoring": "classic",
+      "generatorVersion": 1,
+      "dictionaryVersion": "fixture-dict-small"
+    },
+    "grid": {
+      "size": 4,
+      "tiles": [
+        "c",
+        "e",
+        "c",
+        "n",
+        "l",
+        "u",
+        "r",
+        "c",
+        "e",
+        "u",
+        "e",
+        "o",
+        "u",
+        "s",
+        "t",
+        "u"
+      ]
+    },
+    "attempts": 1,
+    "solutions": [
+      {
+        "word": "celeste",
+        "path": [
+          0,
+          1,
+          4,
+          8,
+          13,
+          14,
+          10
+        ]
+      },
+      {
+        "word": "cure",
+        "path": [
+          0,
+          5,
+          6,
+          1
+        ]
+      },
+      {
+        "word": "euro",
+        "path": [
+          1,
+          5,
+          6,
+          11
+        ]
+      },
+      {
+        "word": "luce",
+        "path": [
+          4,
+          5,
+          0,
+          1
+        ]
+      },
+      {
+        "word": "resto",
+        "path": [
+          6,
+          10,
+          13,
+          14,
+          11
+        ]
+      },
+      {
+        "word": "rocce",
+        "path": [
+          6,
+          11,
+          7,
+          2,
+          1
+        ]
+      },
+      {
+        "word": "sere",
+        "path": [
+          13,
+          10,
+          6,
+          1
+        ]
+      }
+    ]
+  },
+  {
+    "config": {
+      "seed": 2024,
+      "size": 4,
+      "durationMs": 120000,
+      "minWordLength": 3,
+      "minWords": 5,
+      "scoring": "classic",
+      "generatorVersion": 1,
+      "dictionaryVersion": "fixture-dict-small"
+    },
+    "grid": {
+      "size": 4,
+      "tiles": [
+        "v",
+        "a",
+        "e",
+        "r",
+        "z",
+        "m",
+        "i",
+        "m",
+        "e",
+        "o",
+        "o",
+        "l",
+        "o",
+        "s",
+        "e",
+        "t"
+      ]
+    },
+    "attempts": 2,
+    "solutions": [
+      {
+        "word": "elmi",
+        "path": [
+          14,
+          11,
+          7,
+          6
+        ]
+      },
+      {
+        "word": "elmo",
+        "path": [
+          14,
+          11,
+          7,
+          10
+        ]
+      },
+      {
+        "word": "mai",
+        "path": [
+          5,
+          1,
+          6
+        ]
+      },
+      {
+        "word": "mese",
+        "path": [
+          5,
+          8,
+          13,
+          14
+        ]
+      },
+      {
+        "word": "sole",
+        "path": [
+          13,
+          10,
+          11,
+          14
+        ]
+      },
+      {
+        "word": "soli",
+        "path": [
+          13,
+          10,
+          11,
+          6
+        ]
+      }
+    ]
+  },
+  {
+    "config": {
+      "seed": 4000000000,
+      "size": 4,
+      "durationMs": 120000,
+      "minWordLength": 3,
+      "minWords": 5,
+      "scoring": "classic",
+      "generatorVersion": 1,
+      "dictionaryVersion": "fixture-dict-small"
+    },
+    "grid": {
+      "size": 4,
+      "tiles": [
+        "t",
+        "l",
+        "t",
+        "m",
+        "a",
+        "r",
+        "e",
+        "l",
+        "c",
+        "p",
+        "s",
+        "l",
+        "s",
+        "n",
+        "d",
+        "r"
+      ]
+    },
+    "attempts": 1,
+    "solutions": [
+      {
+        "word": "alte",
+        "path": [
+          4,
+          1,
+          2,
+          6
+        ]
+      },
+      {
+        "word": "altre",
+        "path": [
+          4,
+          1,
+          0,
+          5,
+          6
+        ]
+      },
+      {
+        "word": "ape",
+        "path": [
+          4,
+          9,
+          6
+        ]
+      },
+      {
+        "word": "arte",
+        "path": [
+          4,
+          5,
+          2,
+          6
+        ]
+      },
+      {
+        "word": "carte",
+        "path": [
+          8,
+          4,
+          5,
+          2,
+          6
+        ]
+      },
+      {
+        "word": "mela",
+        "path": [
+          3,
+          6,
+          1,
+          4
+        ]
+      },
+      {
+        "word": "parte",
+        "path": [
+          9,
+          4,
+          5,
+          2,
+          6
+        ]
+      },
+      {
+        "word": "pera",
+        "path": [
+          9,
+          6,
+          5,
+          4
+        ]
+      },
+      {
+        "word": "perla",
+        "path": [
+          9,
+          6,
+          5,
+          1,
+          4
+        ]
+      },
+      {
+        "word": "scale",
+        "path": [
+          12,
+          8,
+          4,
+          1,
+          6
+        ]
+      },
+      {
+        "word": "scarpe",
+        "path": [
+          12,
+          8,
+          4,
+          5,
+          9,
+          6
+        ]
+      },
+      {
+        "word": "sera",
+        "path": [
+          10,
+          6,
+          5,
+          4
+        ]
+      },
+      {
+        "word": "tela",
+        "path": [
+          2,
+          6,
+          1,
+          4
+        ]
+      },
+      {
+        "word": "tra",
+        "path": [
+          0,
+          5,
+          4
+        ]
+      }
+    ]
+  }
+]
