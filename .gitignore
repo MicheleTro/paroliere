@@ -1,0 +1,8 @@
+node_modules/
+dist/
+*.tsbuildinfo
+.DS_Store
+
+# dizionario sorgente e generato, licenza da verificare prima di committare
+tools/dict-builder/source/
+tools/dict-builder/dist/
