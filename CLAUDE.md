@@ -3,7 +3,7 @@
 Gioco di parole stile Paroliere/Boggle, PWA Svelte + monorepo pnpm. Specifica completa: `docs/SPEC.md`.
 
 ## Passo corrente
-**Passo 3 — Partita completa** chiuso lato codice (SPEC.md §9, `apps/web`); non ancora committato. Timer reale, schermate Home/Config/Partita/Riepilogo, seed casuale, riepilogo con percorsi, vibrazione sul feedback, test per `apps/web/src/lib`, lint estesa ai `.svelte`. `pnpm typecheck && pnpm lint && pnpm test` passano. Prossimo passo: Passo 4 (PWA, persistenza reale IndexedDB, eventuale DAWG) — non anticiparlo prima di deciderlo esplicitamente.
+**Passo 4 — PWA e persistenza** chiuso lato codice (SPEC.md §9, `apps/web`). Storico partite e record personale su IndexedDB (`lib/history.ts`), `navigator.storage.persist()`, `vite-plugin-pwa` con precache dell'app shell e caching del dizionario (network-first sul manifest, cache-first sui file versionati), icona placeholder SVG. `pnpm typecheck && pnpm lint && pnpm test` passano; build PWA verificata (`pnpm build` in `apps/web`). Mancano ancora: test su device reali (Chrome Android/Safari iOS, non eseguibile da questo ambiente) e hosting con compressione brotli (nessun host scelto). Prossimo passo naturale: Passo 5 (sfide asincrone, design già in SPEC.md §9) — non avviare `apps/server` senza deciderlo esplicitamente.
 
 ## Passo 5 — Sfide asincrone (solo progettazione)
 Design in SPEC.md §9: backend Node/TS in `apps/server`, riusa `@paroliere/core`, Postgres, auth device-id + upgrade email opzionale. Non implementare finché Passo 3/4 non sono chiusi.

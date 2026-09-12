@@ -306,13 +306,13 @@ Un futuro porting, per esempio in Python, è corretto se riproduce esattamente q
 - `pnpm typecheck && pnpm lint && pnpm test` passano (verificato con run ripetuti per il flake di Vitest su Windows).
 - Le 4 schermate sono navigabili end-to-end: Home → Config → Partita (timer, drag, feedback, vibrazione) → Riepilogo (percorsi, rigioca stesso seed).
 
-### Passo 4 — PWA e persistenza
-- `vite-plugin-pwa`: precache dell'app shell. Il dizionario ha un nome versionato ed è servito cache-first; il suo `manifest.json` è controllato network-first all'avvio. Se c'è una nuova versione la si scarica in background e la si usa dalla partita successiva (RF-18).
-- IndexedDB tramite `idb`: store `games` con configurazione, parole trovate, punteggio, totali e data. I record si ricavano dallo storico.
-- `navigator.storage.persist()` per ridurre il rischio che il browser cancelli i dati.
-- Web app manifest e icone; test su Chrome Android e Safari iOS.
-- Hosting statico con compressione brotli.
-- Se le misure del Passo 1 lo richiedono, sostituzione del trie con un DAWG binario precompilato dietro la stessa interfaccia `WordIndex`.
+### Passo 4 — PWA e persistenza (chiuso lato codice, verifica manuale su device reali ancora da fare)
+- `vite-plugin-pwa` (strategia `generateSW`, `registerType: 'autoUpdate'`) precache l'app shell: build verificata (`pnpm build` in `apps/web` genera `dist/sw.js` e `dist/workbox-*.js`, 7 entry precached).
+- Runtime caching via Workbox: `/dictionary/manifest.json` è `NetworkFirst` (si riverifica una nuova versione a ogni avvio online), i file `/dictionary/*.txt` sono `CacheFirst` (nome già versionato, contenuto immutabile). Una nuova versione del dizionario si scarica quindi al prossimo avvio e viene usata dalla partita successiva (RF-18); l'aggiornamento non può interrompere una partita in corso perché il worker carica il dizionario una sola volta all'avvio, non a metà partita.
+- IndexedDB tramite `idb` (`apps/web/src/lib/history.ts`): store `games` con configurazione, parole trovate (parola, punti, percorso), punteggio, punteggio massimo, totale parole e data (`playedAt`), indice su `playedAt`. `App.svelte` salva la partita a fine round e il record personale (`getPersonalBest`) sostituisce il valore in-memory di Home.
+- `navigator.storage.persist()` richiesto all'avvio (`App.svelte`), senza bloccare l'app se il permesso viene negato.
+- Web app manifest (nome, colori, `display: standalone`) generato da `vite-plugin-pwa`; icona placeholder SVG (`public/icons/icon.svg`, con variante `maskable`) da sostituire con la grafica definitiva. **Non ancora fatto**: test reali su Chrome Android e Safari iOS (fuori portata dall'ambiente di sviluppo corrente: nessun tool di automazione browser disponibile in questa sessione, solo build/typecheck/lint/test verificati).
+- **Non fatto, rimandato**: hosting statico con compressione brotli (nessun host ancora scelto: da configurare quando si decide dove pubblicare) e sostituzione del trie con un DAWG binario (le misure del Passo 1 non lo richiedevano).
 
 ### Passo 5 — Sfide asincrone (`apps/server`)
 
