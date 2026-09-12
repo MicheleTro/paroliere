@@ -73,6 +73,8 @@
   bind:this={containerEl}
   class="grid"
   style={`--size: ${grid.size}`}
+  role="application"
+  aria-label="Griglia di gioco"
   onpointerdown={handlePointerDown}
   onpointermove={handlePointerMove}
   onpointerup={endTracking}
