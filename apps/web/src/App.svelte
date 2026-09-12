@@ -141,8 +141,12 @@
         vibrate([20, 30, 20]);
         break;
       case 'too_short':
-        showPopup({ word, tone: 'red', subtitle: 'Troppo corta' });
-        vibrate([20, 30, 20]);
+        // Un percorso di 1-2 celle è quasi sempre un tap accidentale, non un
+        // vero tentativo di parola: va ignorato senza mostrare errori.
+        if (path.length > 2) {
+          showPopup({ word, tone: 'red', subtitle: 'Troppo corta' });
+          vibrate([20, 30, 20]);
+        }
         break;
       case 'not_in_dictionary':
         showPopup({ word, tone: 'red', subtitle: 'Non valida' });
