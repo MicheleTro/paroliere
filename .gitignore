@@ -7,3 +7,4 @@ dist/
 tools/dict-builder/source/
 tools/dict-builder/dist/
 morph-it/
+apps/web/public/dictionary/
