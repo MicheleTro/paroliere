@@ -17,7 +17,7 @@ Regole di ingaggio:
 
 Web app giocabile da mobile, installabile come PWA e funzionante offline, ispirata al Paroliere: griglia 4x4 di lettere in cui si formano parole italiane collegando caselle adiacenti, a tempo.
 
-L'MVP è single player. Il progetto evolverà per incrementi verso punteggio stile Ruzzle, multiplayer locale a turni, sfide online asincrone e partite online in tempo reale. Per questo la logica di gioco vive in un modulo puro e deterministico, riutilizzabile da un futuro server il cui linguaggio non è ancora deciso (TypeScript o Python).
+L'MVP è single player. Il progetto evolverà per incrementi verso punteggio stile Ruzzle, multiplayer locale a turni, sfide online asincrone e partite online in tempo reale. Per questo la logica di gioco vive in un modulo puro e deterministico, riutilizzabile dal futuro server (§9, Passo 5): TypeScript, per riusare `packages/core` senza reimplementarlo.
 
 ## 2. Requisiti funzionali (MVP)
 
@@ -32,13 +32,13 @@ L'MVP è single player. Il progetto evolverà per incrementi verso punteggio sti
 - **RF-06** Su desktop lo stesso gesto funziona con il mouse.
 - **RF-07** Durante il gesto il percorso è evidenziato e la parola in corso è visibile.
 - **RF-08** Al rilascio la parola è validata subito, con feedback distinto per: valida, già trovata, non nel dizionario, troppo corta.
-- **RF-09** Lunghezza minima: 3 lettere.
+- **RF-09** Lunghezza minima: 3 lettere (default; configurabile dal Passo 3, vedi RF-11).
 
 ### Dizionario
 - **RF-10** Sono valide le parole italiane comprese le forme flesse (plurali, femminili, coniugazioni). Sono esclusi nomi propri, sigle e abbreviazioni. Gli accenti vengono rimossi (città → citta) e i duplicati risultanti unificati (però e pero → pero). Le forme con apostrofo o trattino sono scartate.
 
 ### Partita e punteggio
-- **RF-11** Durata 120 secondi con countdown visibile.
+- **RF-11** Durata 120 secondi con countdown visibile. **Deciso nel Passo 3**: durata (30/60/90/120/150s), lunghezza minima parola e lato griglia (4/5/6) sono configurabili in una schermata dedicata (`ConfigScreen`) prima di iniziare; 120s/3 lettere/4 lati restano i default.
 - **RF-12** Punteggio classico: 3–4 lettere = 1 punto, 5 = 2, 6 = 3, 7 = 5, 8 o più = 11.
 - **RF-13** Ogni partita è definita da una configurazione (§5.2). Nell'MVP esiste solo la regola di punteggio classica; la regola Ruzzle sarà un'aggiunta, non una modifica.
 - **RF-14** A fine partita si vedono parole trovate, punteggio, tutte le parole possibili e percentuale trovata.
@@ -51,18 +51,25 @@ L'MVP è single player. Il progetto evolverà per incrementi verso punteggio sti
 - **RF-17** L'app è installabile e, dopo il primo avvio, funziona interamente offline.
 - **RF-18** Il dizionario è versionato e si aggiorna in background quando c'è rete, senza interrompere una partita in corso.
 
+### Sfide asincrone (Passo 5, solo contesto — dettagli in §9)
+- **RF-19** Un giocatore autenticato può creare una sfida su una griglia (config + seed) e condividerne un link; chi lo apre può giocare la stessa griglia entro la scadenza della sfida.
+- **RF-20** Il punteggio di una sfida è rivalidato dal server ricostruendo griglia e soluzioni dal seed, non fidandosi del client.
+- **RF-21** Una classifica per sfida mostra partecipanti, punteggio e parole trovate in ordine di arrivo/punteggio.
+- **RF-22** L'identità minima richiesta è un profilo anonimo legato al dispositivo; collegare un'email è opzionale e permette di ritrovare le sfide da un altro dispositivo.
+- **RF-23** Lo storico locale (RF-16) si sincronizza col server quando l'utente ha un profilo e c'è rete; resta comunque utilizzabile offline senza profilo.
+
 ### Fuori perimetro MVP
 Roadmap, in quest'ordine: punteggio Ruzzle (valore delle lettere e caselle bonus), multiplayer a turni sullo stesso dispositivo, sfide online asincrone, online in tempo reale.
 
 ## 3. Decisioni già prese
 
-- Web app PWA, nessun backend nell'MVP, hosting statico.
-- Monorepo pnpm, TypeScript ovunque (il futuro server potrebbe essere Python).
+- Web app PWA, nessun backend nell'MVP (Passi 1–4), hosting statico. Il backend arriva dal Passo 5 in poi, solo per le sfide.
+- Monorepo pnpm, TypeScript ovunque, incluso il futuro server (§9, Passo 5): riusa `packages/core` invece di reimplementarlo in un altro linguaggio.
 - UI: Svelte 5 + Vite, senza SvelteKit, con `vite-plugin-pwa`.
 - Validazione interamente locale: all'avvio della partita il solver calcola tutte le parole della griglia e la validazione diventa una lookup.
 - Alfabeto: 21 lettere italiane (a b c d e f g h i l m n o p q r s t u v z). Le lettere j, k, w, x, y sono escluse sia dalla griglia sia dal dizionario.
 - Il tempo della partita scorre anche se l'app va in background: nell'MVP non esiste pausa.
-- Il futuro server rivaliderà le parole ricostruendo la griglia dal seed. Il core deve quindi essere replicabile identico in un altro linguaggio, e le fixture di §7 servono a verificarlo.
+- Il futuro server rivaliderà le parole ricostruendo la griglia dal seed. Il core deve quindi restare deterministico e privo di side-effect (§5.1); le fixture di §7 restano il contratto di riferimento anche per il server TypeScript.
 
 ## 4. Architettura
 
@@ -82,10 +89,11 @@ paroliere/
 │  └─ cli/                  ← CLI di verifica e benchmark   (Passo 1)
 ├─ fixtures/                ← casi di test JSON language-neutral (Passo 1)
 └─ apps/
-   └─ web/                  ← PWA Svelte                    (Passi 2–4)
+   ├─ web/                  ← PWA Svelte                    (Passi 2–4)
+   └─ server/                ← API sfide asincrone           (Passo 5)
 ```
 
-Flusso: `dict-builder` produce un file dizionario versionato. La web app lo scarica una volta e lo tiene in cache. Un Web Worker costruisce l'indice e usa `core` per generare e risolvere la griglia. La UI usa `core` per gestire la sessione di gioco. `tools/cli` usa `core` da Node per verifiche e benchmark, così `core` resta privo di accessi al filesystem.
+Flusso: `dict-builder` produce un file dizionario versionato. La web app lo scarica una volta e lo tiene in cache. Un Web Worker costruisce l'indice e usa `core` per generare e risolvere la griglia. La UI usa `core` per gestire la sessione di gioco. `tools/cli` usa `core` da Node per verifiche e benchmark, così `core` resta privo di accessi al filesystem. Dal Passo 5, `apps/server` usa `core` allo stesso modo di `tools/cli`: da Node, per rigenerare griglia e soluzioni dal seed e rivalidare i risultati di una sfida.
 
 ## 5. packages/core
 
@@ -101,7 +109,7 @@ type Tile = 'a' | 'b' | 'c' | /* ... */ | 'z' | 'qu'; // nessuna 'q' da sola
 
 interface GameConfig {
   seed: number;              // uint32
-  size: 4;                   // predisposto; l'MVP usa solo 4
+  size: 4 | 5 | 6;            // configurabile dal Passo 3 (ConfigScreen); l'MVP resta pensato per 4
   durationMs: number;        // 120_000
   minWordLength: number;     // 3, contato in lettere (Qu = 2)
   minWords: number;          // 50
@@ -280,14 +288,23 @@ Un futuro porting, per esempio in Python, è corretto se riproduce esattamente q
 - **Feedback**: colore del percorso in base all'esito e breve animazione; `navigator.vibrate` dove disponibile (non esiste su iOS Safari).
 - Ancora nessun timer.
 
-### Passo 3 — Partita completa
+### Passo 3 — Partita completa (chiuso)
 - **Timer** basato su timestamp: si registra `performance.now()` all'avvio e il tempo residuo si calcola ogni volta, aggiornando il display con `requestAnimationFrame` e ricalcolando a `visibilitychange`. Il tempo scorre anche in background.
 - **Schermate**:
-  - Home: nuova partita e record.
+  - Home: nuova partita e record (il record è per ora solo in memoria, si azzera al reload; la persistenza reale è Passo 4/RF-16).
+  - Config (aggiunta rispetto al piano iniziale): durata, lunghezza minima parola, lato griglia — vedi RF-11.
   - Partita: griglia, timer, parola corrente, parole trovate e punti.
   - Riepilogo: punteggio, percentuale trovata, parole trovate e mancate raggruppate per lunghezza, tocco su una parola per vederne il percorso, pulsante "Rigioca questa griglia".
 - Il seed di una nuova partita si genera con `crypto.getRandomValues`.
-- Ricaricare la pagina durante una partita la abbandona: nell'MVP non c'è ripristino.
+- Ricaricare la pagina durante una partita la abbandona: nell'MVP non c'è ripristino (nessuna persistenza esiste ancora).
+- `navigator.vibrate` sul feedback del percorso (previsto dal Passo 2): pattern breve per parola valida, pattern doppio per gli esiti negativi; nessun effetto su dispositivi senza supporto (iOS Safari).
+- Test automatici per `apps/web`: `grid-geometry.test.ts` (hit-test del cerchio del 60%) e `format.test.ts` (formattazione del countdown). Il resto della UI (worker, screens) resta verificato solo manualmente: sono wiring sottile su `@paroliere/core`, già coperto dai 71+ test del core.
+- Lint sui file `.svelte`: aggiunta la dipendenza dev `eslint-plugin-svelte` + `svelte-eslint-parser` (approvata esplicitamente, vedi §10) e rimosso `**/*.svelte` da `ignores` in `eslint.config.js`. Disattivata solo `svelte/prefer-svelte-reactivity` perché le `Map` costruite dentro funzioni derivate (es. raggruppamento parole per lunghezza in `SummaryScreen`) sono valori immutabili una volta ritornati: è Svelte a tracciare il derived, non serve `SvelteMap`.
+- `vitest.config.ts`: aggiunto `apps/**/src/**/*.test.ts` all'`include` e `fileParallelism: false`. Su Windows, con i file in parallelo su thread separati, Vite/Vitest scrivevano in concorrenza sulla stessa cache SSR in temp dir e generavano un "Unhandled Error" sporadico (a volte con perdita silenziosa di un intero file di test dalla collection, sempre con `pnpm test` fallito per l'errore non gestito). Con l'esecuzione seriale il problema non si è più presentato in run ripetuti; costo: la suite passa da ~2,5s a ~9-10s, accettabile per la dimensione attuale.
+
+### Definizione di finito (Passo 3)
+- `pnpm typecheck && pnpm lint && pnpm test` passano (verificato con run ripetuti per il flake di Vitest su Windows).
+- Le 4 schermate sono navigabili end-to-end: Home → Config → Partita (timer, drag, feedback, vibrazione) → Riepilogo (percorsi, rigioca stesso seed).
 
 ### Passo 4 — PWA e persistenza
 - `vite-plugin-pwa`: precache dell'app shell. Il dizionario ha un nome versionato ed è servito cache-first; il suo `manifest.json` è controllato network-first all'avvio. Se c'è una nuova versione la si scarica in background e la si usa dalla partita successiva (RF-18).
@@ -296,6 +313,48 @@ Un futuro porting, per esempio in Python, è corretto se riproduce esattamente q
 - Web app manifest e icone; test su Chrome Android e Safari iOS.
 - Hosting statico con compressione brotli.
 - Se le misure del Passo 1 lo richiedono, sostituzione del trie con un DAWG binario precompilato dietro la stessa interfaccia `WordIndex`.
+
+### Passo 5 — Sfide asincrone (`apps/server`)
+
+Primo passo con backend. Introduce profilo, autenticazione minima, storico centralizzato e sfide; resta fuori tutto ciò che serve solo al multiplayer in tempo reale.
+
+**Stack**: Fastify + TypeScript, Postgres, Drizzle come query builder (tipizzato, niente magic runtime, coerente con lo stile del monorepo). `apps/server` dipende da `@paroliere/core` e dal dizionario generato da `tools/dict-builder`, esattamente come `tools/cli`.
+
+**Perché non Supabase/BaaS**: valutato e scartato per ora — vendor lock-in e un adattamento di `core` per le Edge Function (Deno) non necessario quando un backend Node "sottile" costa poco in più e riusa `core` senza modifiche. Da riconsiderare se il carico operativo di gestire Postgres+hosting diventa un problema.
+
+**Perché non un server Python**: SPEC §1 lasciava aperta questa opzione; si scarta perché richiederebbe reimplementare `core` in un secondo linguaggio (raddoppio di manutenzione) senza un beneficio concreto per le sfide asincrone.
+
+#### Identità e autenticazione
+- Al primo avvio (qualsiasi Passo ≥ 5) il client genera un `deviceId` (UUID v4) e lo conserva in IndexedDB, insieme a un `deviceSecret` casuale.
+- `POST /auth/device` registra `{deviceId, deviceSecret}` la prima volta e restituisce un JWT di breve durata (access token) da rinnovare con lo stesso endpoint; non serve una vera "registrazione" per iniziare a giocare o creare sfide.
+- Collegare un'email è opzionale (RF-22): `POST /auth/link-email {email}` invia un magic link; `GET /auth/verify?token=...` associa l'email al `deviceId` corrente (o crea l'utente se non esiste) e restituisce un JWT sullo stesso utente. Nessuna password da gestire.
+- Un utente può avere più `deviceId` collegati alla stessa email: la chiave di dominio è `userId`, `deviceId` è solo il modo per ottenere un token senza email.
+
+#### Entità principali (Postgres)
+- `users (id, email nullable, display_name, created_at)`
+- `devices (id, user_id, device_id_hash, device_secret_hash, created_at)`
+- `game_configs (id, size, duration_ms, min_word_length, min_words, scoring, generator_version, dictionary_version)` — stessa forma di `GameConfig` (§5.2); una sfida referenzia una riga esistente o ne crea una nuova se la combinazione non è mai stata vista.
+- `challenges (id, creator_user_id, config_id, seed, title nullable, created_at, expires_at)`
+- `challenge_results (id, challenge_id, user_id, score, words jsonb, duration_ms, submitted_at)` — un solo risultato per `(challenge_id, user_id)`, il client può sovrascrivere solo se non ha ancora superato il tempo della sfida.
+- `games (id, user_id, config_id, seed, started_at, score, words jsonb, source: 'local' | 'challenge')` — mirror server-side dello storico locale (RF-16), popolato per sync o alla submission di una sfida.
+
+#### API (bozza, REST + JSON)
+- `POST /auth/device`, `POST /auth/link-email`, `GET /auth/verify`
+- `POST /challenges` `{configId | config, expiresAt, title?}` → genera `seed` con `crypto.randomInt` lato server (il creatore non deve giocarla per primo), crea la riga e risponde con `{id, seed, config, expiresAt}`.
+- `GET /challenges/:id` → config, seed, scadenza, classifica (`challenge_results` ordinati per punteggio).
+- `POST /challenges/:id/results` `{path: number[][]}` (i percorsi delle parole trovate, non le parole: il server le ricava) → rigenera griglia dal seed+config con `core`, rivalida ogni percorso con lo stesso solver, ricalcola punteggio, salva `challenge_results` e aggiorna `games`. Rifiuta se `now > expiresAt`.
+- `GET /users/me/history`, `POST /users/me/history/sync` `{games: [...]}` → upsert per sincronizzare le partite locali (RF-23) create offline senza profilo, quando l'utente in seguito si autentica.
+
+**Nota di sicurezza implicita in RF-20**: il client non deve mai inviare "ho fatto X punti", solo i percorsi grezzi; ogni punteggio pubblicato in una classifica è quindi calcolato server-side.
+
+#### Integrazione col client esistente
+- Le sfide sono un `GameConfig` + `seed` che arrivano dal server invece che da `crypto.getRandomValues` (Passo 3): la sessione di gioco (§5.8) resta identica, cambia solo la provenienza del seed e la destinazione del risultato (`submitPath` locale come oggi, poi un'unica `POST /challenges/:id/results` a fine partita).
+- Lo storico (IndexedDB, Passo 4) resta la fonte primaria offline; il server è un'estensione, non una sostituzione — l'app deve restare giocabile in single player senza mai autenticarsi.
+
+#### Non ancora deciso (da chiedere quando si arriva a implementare)
+- Hosting del server (Fly.io/Railway/altro) e provider email per il magic link.
+- Se `challenge_results.words` conviene denormalizzato in `games` o derivato al volo.
+- Rate limiting su `POST /challenges` e `POST /challenges/:id/results` per evitare abusi.
 
 ## 10. Convenzioni e dipendenze
 
@@ -309,3 +368,4 @@ Un futuro porting, per esempio in Python, è corretto se riproduce esattamente q
 Dipendenze ammesse:
 - **Passo 1 (solo dev)**: `typescript`, `tsx`, `vitest`, `@types/node`, `eslint`, `typescript-eslint`, `prettier`.
 - **Passi 2–4**: `svelte`, `vite`, `@sveltejs/vite-plugin-svelte`, `vite-plugin-pwa`, `idb`.
+- **Passo 3 (dev, aggiunta approvata)**: `eslint-plugin-svelte`, `svelte-eslint-parser` (lint dei file `.svelte`).
