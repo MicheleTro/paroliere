@@ -13,6 +13,7 @@
   import PlayScreen from './screens/PlayScreen.svelte';
   import SummaryScreen from './screens/SummaryScreen.svelte';
   import { randomSeed } from './lib/random-seed.js';
+  import { getPersonalBest, saveGame } from './lib/history.js';
   import type { WordPopupData } from './lib/word-popup.js';
   import type { NewGameConfig, WorkerResponse } from './worker/dictionary-worker.js';
 
@@ -101,6 +102,10 @@
     summary = summarize(session);
     record = Math.max(record, summary.score);
     screen = 'summary';
+    saveGame(session.config, summary, Date.now())
+      .then(() => getPersonalBest())
+      .then((best) => (record = best))
+      .catch(() => {});
   }
 
   function showPopup(data: WordPopupData): void {
@@ -155,6 +160,11 @@
       now = performance.now();
     }
   });
+
+  navigator.storage?.persist?.().catch(() => {});
+  getPersonalBest()
+    .then((best) => (record = best))
+    .catch(() => {});
 </script>
 
 <main>
