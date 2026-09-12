@@ -1,0 +1,181 @@
+<script lang="ts">
+  import {
+    createSession,
+    isOver,
+    submitPath,
+    summarize,
+    type GameConfig,
+    type GameSession,
+    type SessionSummary,
+  } from '@paroliere/core';
+  import HomeScreen from './screens/HomeScreen.svelte';
+  import ConfigScreen, { type GameSettings } from './screens/ConfigScreen.svelte';
+  import PlayScreen from './screens/PlayScreen.svelte';
+  import SummaryScreen from './screens/SummaryScreen.svelte';
+  import { randomSeed } from './lib/random-seed.js';
+  import type { WordPopupData } from './lib/word-popup.js';
+  import type { NewGameConfig, WorkerResponse } from './worker/dictionary-worker.js';
+
+  const POPUP_DURATION_MS = 1500;
+
+  type Screen = 'home' | 'config' | 'playing' | 'summary';
+
+  let screen: Screen = $state('home');
+  let ready = $state(false);
+  let record = $state(0);
+  let session: GameSession | undefined = $state();
+  let summary: SessionSummary | undefined = $state();
+  let now = $state(performance.now());
+  let popup: WordPopupData | null = $state(null);
+  let popupTimeout: ReturnType<typeof setTimeout> | undefined;
+
+  let dictionaryVersion = '';
+  let lastConfig: NewGameConfig | undefined;
+  let rafId: number | undefined;
+
+  const worker = new Worker(new URL('./worker/dictionary-worker.ts', import.meta.url), {
+    type: 'module',
+  });
+
+  worker.onmessage = (event: MessageEvent<WorkerResponse>) => {
+    const message = event.data;
+    if (message.type === 'ready') {
+      dictionaryVersion = message.dictionaryVersion;
+      ready = true;
+      return;
+    }
+
+    if (!lastConfig) return;
+    const config: GameConfig = { ...lastConfig, dictionaryVersion };
+    session = createSession(config, message.grid, message.solutions, performance.now());
+    screen = 'playing';
+    startTimerLoop();
+  };
+
+  function requestNewGame(config: NewGameConfig): void {
+    lastConfig = config;
+    worker.postMessage({ type: 'newGame', config });
+  }
+
+  function goToConfig(): void {
+    screen = 'config';
+  }
+
+  function startNewGame(settings: GameSettings): void {
+    requestNewGame({
+      seed: randomSeed(),
+      size: settings.size,
+      durationMs: settings.durationMs,
+      minWordLength: settings.minWordLength,
+      minWords: 50,
+      scoring: 'classic',
+      generatorVersion: 1,
+    });
+  }
+
+  function replaySameSeed(): void {
+    if (lastConfig) requestNewGame(lastConfig);
+  }
+
+  function startTimerLoop(): void {
+    stopTimerLoop();
+    const tick = (): void => {
+      now = performance.now();
+      if (session && isOver(session, now)) {
+        finishGame();
+        return;
+      }
+      rafId = requestAnimationFrame(tick);
+    };
+    rafId = requestAnimationFrame(tick);
+  }
+
+  function stopTimerLoop(): void {
+    if (rafId !== undefined) cancelAnimationFrame(rafId);
+    rafId = undefined;
+  }
+
+  function finishGame(): void {
+    stopTimerLoop();
+    if (!session) return;
+    summary = summarize(session);
+    record = Math.max(record, summary.score);
+    screen = 'summary';
+  }
+
+  function showPopup(data: WordPopupData): void {
+    if (popupTimeout) clearTimeout(popupTimeout);
+    popup = data;
+    popupTimeout = setTimeout(() => {
+      popup = null;
+    }, POPUP_DURATION_MS);
+  }
+
+  function vibrate(pattern: number | number[]): void {
+    navigator.vibrate?.(pattern);
+  }
+
+  function handleSubmit(path: number[]): void {
+    if (!session) return;
+    const word = path.map((i) => session!.grid.tiles[i]).join('');
+    const { session: nextSession, result } = submitPath(session, path, performance.now());
+    session = nextSession;
+
+    if (result.kind === 'time_over') {
+      finishGame();
+      return;
+    }
+
+    switch (result.kind) {
+      case 'valid':
+        showPopup({ word, tone: 'green' });
+        vibrate(30);
+        break;
+      case 'already_found':
+        showPopup({ word, tone: 'yellow', subtitle: 'Già trovata' });
+        vibrate([20, 30, 20]);
+        break;
+      case 'too_short':
+        showPopup({ word, tone: 'red', subtitle: 'Troppo corta' });
+        vibrate([20, 30, 20]);
+        break;
+      case 'not_in_dictionary':
+        showPopup({ word, tone: 'red', subtitle: 'Non valida' });
+        vibrate([20, 30, 20]);
+        break;
+      case 'invalid_path':
+        showPopup({ word, tone: 'red', subtitle: 'Percorso non valido' });
+        vibrate([20, 30, 20]);
+        break;
+    }
+  }
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && screen === 'playing') {
+      now = performance.now();
+    }
+  });
+</script>
+
+<main>
+  {#if screen === 'home'}
+    <HomeScreen {ready} {record} onNewGame={goToConfig} />
+  {:else if screen === 'config'}
+    <ConfigScreen onStart={startNewGame} onBack={() => (screen = 'home')} />
+  {:else if screen === 'playing' && session}
+    <PlayScreen {session} {now} {popup} onSubmit={handleSubmit} />
+  {:else if screen === 'summary' && session && summary}
+    <SummaryScreen {session} {summary} onReplaySameSeed={replaySameSeed} onNewGame={goToConfig} />
+  {/if}
+</main>
+
+<style>
+  main {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    padding: 16px;
+    font-family: system-ui, sans-serif;
+  }
+</style>
