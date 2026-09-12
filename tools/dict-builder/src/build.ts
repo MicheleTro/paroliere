@@ -10,9 +10,8 @@ export interface SourceEntry {
 
 /**
  * Parser per il formato Morph-it! (tre colonne separate da tab:
- * forma flessa, lemma, tag). Non ancora verificato contro la fonte reale
- * (fonte irraggiungibile al momento della scrittura, vedi docs/DICTIONARY.md):
- * da confermare quando il file sara disponibile.
+ * forma flessa, lemma, tag). Verificato contro morph-it_048.txt reale
+ * (vedi docs/DICTIONARY.md).
  */
 export function parseSourceLine(line: string): SourceEntry | null {
   const trimmed = line.trim();
@@ -25,10 +24,14 @@ export function parseSourceLine(line: string): SourceEntry | null {
 }
 
 /**
- * Tag da escludere (nomi propri, sigle, abbreviazioni, simboli, punteggiatura).
- * Ipotesi sul tagset Morph-it! da confermare contro la fonte reale.
+ * Tag da escludere (nomi propri, locuzioni abbreviate, simboli, punteggiatura,
+ * emoticon). Verificato contro morph-it_048.txt (readme-morph-it.txt): il tag
+ * reale per le abbreviazioni e "ABL" (non "ABR"); "PON"/"SENT" sono
+ * punteggiatura, "SMI" sono emoticon (non documentate nel readme ma presenti
+ * nel file). In pratica quasi tutte queste righe sarebbero comunque scartate
+ * dal filtro [a-z]+, ma escluderle per tag evita falsi positivi come "etc".
  */
-const EXCLUDED_TAG_SUBSTRINGS = ['NPR', 'ABR', 'SYM', 'PUN'];
+const EXCLUDED_TAG_SUBSTRINGS = ['NPR', 'ABL', 'SYM', 'PON', 'SENT', 'SMI'];
 
 export function isExcludedTag(tag: string): boolean {
   const upper = tag.toUpperCase();

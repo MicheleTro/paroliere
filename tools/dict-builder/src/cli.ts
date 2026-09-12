@@ -1,5 +1,5 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { dirname, isAbsolute, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { buildDictionary, sha256 } from './build.js';
@@ -7,6 +7,12 @@ import { computeStats } from './stats.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const overridesDir = join(__dirname, '..', 'overrides');
+
+/** pnpm --filter cambia la cwd nel package: i path relativi vanno risolti dalla cwd originale. */
+function resolveFromInvocationCwd(path: string): string {
+  if (isAbsolute(path)) return path;
+  return resolve(process.env.INIT_CWD ?? process.cwd(), path);
+}
 
 interface Args {
   source: string;
@@ -23,7 +29,7 @@ function parseArgs(argv: string[]): Args {
   if (!source) {
     throw new Error('build:dict: --source <file> e obbligatorio');
   }
-  return { source, out };
+  return { source: resolveFromInvocationCwd(source), out: resolveFromInvocationCwd(out) };
 }
 
 function readWordSet(path: string): Set<string> {
@@ -60,8 +66,8 @@ function main(): void {
     file: fileName,
     wordCount: words.length,
     sha256: sha256(content),
-    source: args.source,
-    sourceLicense: 'DA VERIFICARE — vedi docs/DICTIONARY.md',
+    source: 'Morph-it! v0.4.8 (Baroni & Zanchetta, SSLMIT Univ. Bologna)',
+    sourceLicense: 'CC BY-SA 2.0 / GNU LGPL — vedi docs/DICTIONARY.md',
     generatedAt: new Date().toISOString(),
   };
   writeFileSync(join(args.out, 'manifest.json'), JSON.stringify(manifest, null, 2) + '\n', 'utf-8');

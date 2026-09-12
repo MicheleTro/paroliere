@@ -21,11 +21,13 @@ function writeSource(lines: string[]): string {
 }
 
 describe('isExcludedTag', () => {
-  it('esclude nomi propri, sigle, abbreviazioni, simboli, punteggiatura', () => {
+  it('esclude nomi propri, locuzioni abbreviate, simboli, punteggiatura, emoticon', () => {
     expect(isExcludedTag('NPR')).toBe(true);
-    expect(isExcludedTag('ABR')).toBe(true);
+    expect(isExcludedTag('ABL')).toBe(true);
     expect(isExcludedTag('SYM')).toBe(true);
-    expect(isExcludedTag('PUN')).toBe(true);
+    expect(isExcludedTag('PON')).toBe(true);
+    expect(isExcludedTag('SENT')).toBe(true);
+    expect(isExcludedTag('SMI')).toBe(true);
     expect(isExcludedTag('NOUN-F')).toBe(false);
     expect(isExcludedTag('VER:ind+pres')).toBe(false);
   });
@@ -40,8 +42,8 @@ describe('buildDictionary', () => {
     expect(words).toEqual(['case']);
   });
 
-  it('scarta nomi propri e sigle in base al tag', () => {
-    const source = writeSource(['Roma\troma\tNPR', 'ONU\tonu\tABR', 'casa\tcasa\tNOUN-F']);
+  it('scarta nomi propri e locuzioni abbreviate in base al tag', () => {
+    const source = writeSource(['Roma\troma\tNPR', 'ecc\tecc\tABL', 'casa\tcasa\tNOUN-F']);
     const { words } = buildDictionary(source, noOverrides);
     expect(words).toEqual(['casa']);
   });
