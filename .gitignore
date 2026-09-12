@@ -3,6 +3,7 @@ dist/
 *.tsbuildinfo
 .DS_Store
 
-# dizionario sorgente e generato, licenza da verificare prima di committare
+# dizionario sorgente e generato: non committare senza decisione esplicita (CLAUDE.md §10)
 tools/dict-builder/source/
 tools/dict-builder/dist/
+morph-it/
