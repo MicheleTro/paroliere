@@ -45,25 +45,29 @@ L'MVP è single player. Il progetto evolverà per incrementi verso punteggio sti
 - **RF-15** Toccando una parola nel riepilogo, il suo percorso si illumina sulla griglia.
 
 ### Progressi
-- **RF-16** Storico partite (configurazione, parole, punteggio, data) e record personale salvati in locale.
+- **RF-16** Storico partite (configurazione, parole, punteggio, data) e record personale, legati all'account (RF-19) e disponibili anche offline come cache locale dopo il primo login.
 
-### PWA
-- **RF-17** L'app è installabile e, dopo il primo avvio, funziona interamente offline.
+### PWA e account (Passo 5, dettagli in §9)
+- **RF-17** L'app richiede un account per essere usata, anche in singolo giocatore (RF-19): dopo il primo login è installabile e funziona interamente offline finché la sessione resta valida.
 - **RF-18** Il dizionario è versionato e si aggiorna in background quando c'è rete, senza interrompere una partita in corso.
 
 ### Sfide asincrone (Passo 5, solo contesto — dettagli in §9)
-- **RF-19** Un giocatore autenticato può creare una sfida su una griglia (config + seed) e condividerne un link; chi lo apre può giocare la stessa griglia entro la scadenza della sfida.
-- **RF-20** Il punteggio di una sfida è rivalidato dal server ricostruendo griglia e soluzioni dal seed, non fidandosi del client.
-- **RF-21** Una classifica per sfida mostra partecipanti, punteggio e parole trovate in ordine di arrivo/punteggio.
-- **RF-22** L'identità minima richiesta è un profilo anonimo legato al dispositivo; collegare un'email è opzionale e permette di ritrovare le sfide da un altro dispositivo.
-- **RF-23** Lo storico locale (RF-16) si sincronizza col server quando l'utente ha un profilo e c'è rete; resta comunque utilizzabile offline senza profilo.
+- **RF-19** Per usare l'app, anche in singolo, è necessario un account (username, email, password); senza sessione valida l'utente viene sempre indirizzato alla pagina di accesso/registrazione.
+- **RF-20** Un utente autenticato può creare una sfida su una configurazione di partita, definendo numero di partecipanti (o squadre e relativa composizione) e numero di match della serie (`bestOf`: 1 = secca, N = al meglio di N), e condividerne un link per invitare altri utenti.
+- **RF-21** Ogni match di una sfida ha un seed proprio (stessa configurazione, griglia diversa); i partecipanti giocano i match della serie in autonomia, quando vogliono.
+- **RF-22** Il punteggio di un match è rivalidato dal server ricostruendo griglia e soluzioni dal seed, non fidandosi del client.
+- **RF-23** Il punteggio di un match si calcola una sola volta, quando tutti i partecipanti (o tutte le squadre, se a squadre) lo hanno giocato: non esiste una scadenza, il match resta "in attesa" finché non lo giocano tutti.
+- **RF-24** Oltre alla regola `classic` (RF-12), una sfida può usare la regola `versus`: ogni parola vale 1 punto per 3 lettere, +1 per ogni lettera aggiuntiva; una parola trovata da un solo partecipante (o una sola squadra) vale il doppio di quel valore base, una trovata da almeno 2 vale il valore base. Il punteggio di una squadra è la somma dei punteggi individuali dei suoi membri.
+- **RF-25** Il punteggio totale di un partecipante (o squadra) nella sfida è la somma dei punteggi dei match già calcolati (RF-23) della serie; a fine serie vince chi ha il totale più alto.
+- **RF-26** Una sfida è un'entità con uno stato che avanza: aperta (in attesa che tutti i match vengano giocati) → completata (tutti i match della serie sono stati calcolati). Ogni utente ha una pagina "Sfide" per crearle, parteciparvi e vedere lo storico di quelle giocate.
+- **RF-27** Una classifica per sfida mostra partecipanti (o squadre), punteggio totale della serie, punteggio per singolo match e parole trovate.
 
 ### Fuori perimetro MVP
 Roadmap, in quest'ordine: punteggio Ruzzle (valore delle lettere e caselle bonus), multiplayer a turni sullo stesso dispositivo, sfide online asincrone, online in tempo reale.
 
 ## 3. Decisioni già prese
 
-- Web app PWA, nessun backend nell'MVP (Passi 1–4), hosting statico. Il backend arriva dal Passo 5 in poi, solo per le sfide.
+- Web app PWA. Nei Passi 1–4 il gioco è stato costruito senza backend, giocabile offline senza account. **Superato dal Passo 5**: da lì in poi l'app richiede login (username/email/password) per essere usata, anche in singolo (RF-19) — vedi §9 Passo 5a. Il gameplay resta comunque client-side (`packages/core`); dopo il primo login l'app torna a funzionare offline (RF-17).
 - Monorepo pnpm, TypeScript ovunque, incluso il futuro server (§9, Passo 5): riusa `packages/core` invece di reimplementarlo in un altro linguaggio.
 - UI: Svelte 5 + Vite, senza SvelteKit, con `vite-plugin-pwa`.
 - Validazione interamente locale: all'avvio della partita il solver calcola tutte le parole della griglia e la validazione diventa una lookup.
@@ -314,47 +318,73 @@ Un futuro porting, per esempio in Python, è corretto se riproduce esattamente q
 - Web app manifest (nome, colori, `display: standalone`) generato da `vite-plugin-pwa`; icona placeholder SVG (`public/icons/icon.svg`, con variante `maskable`) da sostituire con la grafica definitiva. **Non ancora fatto**: test reali su Chrome Android e Safari iOS (fuori portata dall'ambiente di sviluppo corrente: nessun tool di automazione browser disponibile in questa sessione, solo build/typecheck/lint/test verificati).
 - **Non fatto, rimandato**: hosting statico con compressione brotli (nessun host ancora scelto: da configurare quando si decide dove pubblicare) e sostituzione del trie con un DAWG binario (le misure del Passo 1 non lo richiedevano).
 
-### Passo 5 — Sfide asincrone (`apps/server`)
+### Passo 5a — Utenza obbligatoria (`apps/server`, gate su `apps/web`)
 
-Primo passo con backend. Introduce profilo, autenticazione minima, storico centralizzato e sfide; resta fuori tutto ciò che serve solo al multiplayer in tempo reale.
+Primo passo con backend. Da qui in poi l'app richiede un account per essere usata, anche in singolo giocatore (RF-19): **supera** la decisione dei Passi 1–4 "nessun backend nell'MVP, giocabile offline senza account" (§3).
 
 **Stack**: Fastify + TypeScript, Postgres, Drizzle come query builder (tipizzato, niente magic runtime, coerente con lo stile del monorepo). `apps/server` dipende da `@paroliere/core` e dal dizionario generato da `tools/dict-builder`, esattamente come `tools/cli`.
 
-**Perché non Supabase/BaaS**: valutato e scartato per ora — vendor lock-in e un adattamento di `core` per le Edge Function (Deno) non necessario quando un backend Node "sottile" costa poco in più e riusa `core` senza modifiche. Da riconsiderare se il carico operativo di gestire Postgres+hosting diventa un problema.
+**Perché non Supabase/BaaS**: valutato e scartato per ora — vendor lock-in e un adattamento di `core` per le Edge Function (Deno) non necessario quando un backend Node "sottile" costa poco in più e riusa `core` senza modifiche.
 
-**Perché non un server Python**: SPEC §1 lasciava aperta questa opzione; si scarta perché richiederebbe reimplementare `core` in un secondo linguaggio (raddoppio di manutenzione) senza un beneficio concreto per le sfide asincrone.
+**Perché non un server Python**: richiederebbe reimplementare `core` in un secondo linguaggio (raddoppio di manutenzione) senza un beneficio concreto.
 
-#### Identità e autenticazione
-- Al primo avvio (qualsiasi Passo ≥ 5) il client genera un `deviceId` (UUID v4) e lo conserva in IndexedDB, insieme a un `deviceSecret` casuale.
-- `POST /auth/device` registra `{deviceId, deviceSecret}` la prima volta e restituisce un JWT di breve durata (access token) da rinnovare con lo stesso endpoint; non serve una vera "registrazione" per iniziare a giocare o creare sfide.
-- Collegare un'email è opzionale (RF-22): `POST /auth/link-email {email}` invia un magic link; `GET /auth/verify?token=...` associa l'email al `deviceId` corrente (o crea l'utente se non esiste) e restituisce un JWT sullo stesso utente. Nessuna password da gestire.
-- Un utente può avere più `deviceId` collegati alla stessa email: la chiave di dominio è `userId`, `deviceId` è solo il modo per ottenere un token senza email.
+**Schema minimo** (deciso: solo username/email/password, nessuna verifica email o reset password per ora — si aggiungono più avanti se servono):
+- `users (id, username unique, email unique, password_hash, created_at)` — password con hash `argon2` (o `bcrypt`), mai in chiaro né loggata.
+- Sessione: JWT firmato (access token) rilasciato al login/registrazione; il client lo conserva e lo usa per autenticare sia le chiamate al server sia il gate lato client.
+
+**API**:
+- `POST /auth/register` `{username, email, password}` → crea l'utente, risponde con JWT.
+- `POST /auth/login` `{username | email, password}` → verifica l'hash, risponde con JWT.
+- `GET /auth/me` → dati dell'utente corrente dal JWT, per verificare se la sessione è ancora valida.
+
+**Lato client (`apps/web`)**:
+- Route guard globale (RF-19): senza JWT valido, qualunque schermata — incluse Home e il singolo giocatore — reindirizza a una pagina di accesso/registrazione; dopo il login si torna al gioco.
+- Il JWT persiste (es. IndexedDB o storage locale) così l'app resta utilizzabile offline dopo il primo login (RF-17): nessuna rete necessaria per rigiocare in singolo, solo per le operazioni verso il server (sfide, sync storico).
+- Lo storico locale (IndexedDB, Passo 4) resta come cache; l'associazione diventa quella dello `user_id` del JWT invece che anonima.
+
+**Non ancora deciso**:
+- Durata del JWT e meccanismo di refresh (refresh token separato, o solo nuovo login alla scadenza).
+- Se username ed email sono entrambi obbligatori o intercambiabili al login.
+- Requisiti minimi della password e limiti sui tentativi falliti.
+- Hosting del server (Fly.io/Railway/altro).
+
+### Passo 5b — Sfide asincrone come entità (`apps/server`)
+
+Si costruisce sopra il Passo 5a: le sfide hanno senso solo con utenti reali (partecipanti, squadre, storico condiviso).
+
+**Modello**: una sfida (`challenge`) è un'entità con uno stato che avanza (RF-26), composta da una serie di uno o più match (RF-20/21) sulla stessa configurazione. Ogni utente ha una pagina "Sfide" per crearle (configurazione, formazione squadre, numero di match), partecipare a quelle a cui è invitato, e vedere lo storico di quelle giocate.
 
 #### Entità principali (Postgres)
-- `users (id, email nullable, display_name, created_at)`
-- `devices (id, user_id, device_id_hash, device_secret_hash, created_at)`
-- `game_configs (id, size, duration_ms, min_word_length, min_words, scoring, generator_version, dictionary_version)` — stessa forma di `GameConfig` (§5.2); una sfida referenzia una riga esistente o ne crea una nuova se la combinazione non è mai stata vista.
-- `challenges (id, creator_user_id, config_id, seed, title nullable, created_at, expires_at)`
-- `challenge_results (id, challenge_id, user_id, score, words jsonb, duration_ms, submitted_at)` — un solo risultato per `(challenge_id, user_id)`, il client può sovrascrivere solo se non ha ancora superato il tempo della sfida.
-- `games (id, user_id, config_id, seed, started_at, score, words jsonb, source: 'local' | 'challenge')` — mirror server-side dello storico locale (RF-16), popolato per sync o alla submission di una sfida.
+- `game_configs (id, size, duration_ms, min_word_length, min_words, scoring, generator_version, dictionary_version)` — stessa forma di `GameConfig` (§5.2), `scoring` include anche `'versus'` (RF-24).
+- `challenges (id, creator_user_id, config_id, mode: 'individual' | 'team', max_participants nullable, best_of, status: 'open' | 'completed', created_at)` — `best_of` è il numero di match della serie (1 = secca); nessuna scadenza (RF-23): lo stato avanza solo in base a chi ha effettivamente giocato.
+- `teams (id, challenge_id, name)` — solo se `mode = 'team'`.
+- `challenge_participants (id, challenge_id, user_id, team_id nullable, joined_at)` — una riga per partecipante; `team_id` sempre `null` se `mode = 'individual'`.
+- `challenge_matches (id, challenge_id, match_index, seed, settled_at nullable)` — una riga per ciascuno dei `best_of` match; seed generato alla creazione della sfida con `crypto.randomInt`.
+- `match_results (id, challenge_match_id, user_id, paths jsonb, score numeric nullable, submitted_at)` — un solo risultato per `(challenge_match_id, user_id)`; `paths` sono i percorsi grezzi, `score` resta `null` finché il match non è settlato (RF-23).
+- `games (id, user_id, config_id, seed, started_at, score, words jsonb, source: 'local' | 'challenge')` — mirror server-side dello storico (RF-16), popolato per sync o dopo il settle di un match.
 
 #### API (bozza, REST + JSON)
-- `POST /auth/device`, `POST /auth/link-email`, `GET /auth/verify`
-- `POST /challenges` `{configId | config, expiresAt, title?}` → genera `seed` con `crypto.randomInt` lato server (il creatore non deve giocarla per primo), crea la riga e risponde con `{id, seed, config, expiresAt}`.
-- `GET /challenges/:id` → config, seed, scadenza, classifica (`challenge_results` ordinati per punteggio).
-- `POST /challenges/:id/results` `{path: number[][]}` (i percorsi delle parole trovate, non le parole: il server le ricava) → rigenera griglia dal seed+config con `core`, rivalida ogni percorso con lo stesso solver, ricalcola punteggio, salva `challenge_results` e aggiorna `games`. Rifiuta se `now > expiresAt`.
-- `GET /users/me/history`, `POST /users/me/history/sync` `{games: [...]}` → upsert per sincronizzare le partite locali (RF-23) create offline senza profilo, quando l'utente in seguito si autentica.
+- `POST /challenges` `{config, mode, maxParticipants?, bestOf, teams?: [{name}]}` → crea la sfida in stato `open` e genera i `challenge_matches` (un seed per ciascuno).
+- `POST /challenges/:id/join` `{teamId?}` → registra il partecipante autenticato; passo sempre esplicito, sia per `mode = 'individual'` sia per `'team'` (un solo flusso, nessun caso speciale).
+- `GET /challenges/:id` → config, stato, partecipanti/squadre, elenco match con relativo stato ("in attesa" / "completato") e, per i match completati, i punteggi.
+- `POST /challenges/:id/matches/:matchIndex/results` `{path: number[][]}` → rigenera griglia dal seed del match con `core`, rivalida ogni percorso, salva `paths` in `match_results`. Se dopo questo salvataggio tutti i partecipanti (o tutte le squadre) hanno un risultato per quel match, scatta il settle: il server calcola i punteggi del match e aggiorna `challenge_matches.settled_at`. Quando tutti i match della sfida sono settlati, `challenges.status` passa a `completed`.
+- `GET /users/me/challenges` → sfide create o a cui l'utente partecipa, con stato, per la pagina "Sfide".
+- `GET /users/me/history`, `POST /users/me/history/sync` `{games: [...]}` → sincronizzazione storico locale/centralizzato.
 
-**Nota di sicurezza implicita in RF-20**: il client non deve mai inviare "ho fatto X punti", solo i percorsi grezzi; ogni punteggio pubblicato in una classifica è quindi calcolato server-side.
+**Settle di un match (RF-23/24/25)**: quando l'ultimo partecipante (o l'ultima squadra) invia il risultato di un match, il server calcola una sola volta i punteggi di quel match: con `'classic'` ogni punteggio resta indipendente; con `'versus'`, ogni parola vale il doppio del valore base se trovata da un solo partecipante/squadra, o il valore base se trovata da almeno 2 — il punteggio di una squadra è la somma dei punteggi individuali dei suoi membri. Il punteggio totale della sfida per un partecipante/squadra è la somma dei punteggi dei match già settlati.
+
+**Nota di sicurezza implicita in RF-22**: il client non deve mai inviare "ho fatto X punti", solo i percorsi grezzi; ogni punteggio pubblicato in una classifica è quindi calcolato server-side.
 
 #### Integrazione col client esistente
-- Le sfide sono un `GameConfig` + `seed` che arrivano dal server invece che da `crypto.getRandomValues` (Passo 3): la sessione di gioco (§5.8) resta identica, cambia solo la provenienza del seed e la destinazione del risultato (`submitPath` locale come oggi, poi un'unica `POST /challenges/:id/results` a fine partita).
-- Lo storico (IndexedDB, Passo 4) resta la fonte primaria offline; il server è un'estensione, non una sostituzione — l'app deve restare giocabile in single player senza mai autenticarsi.
+- Ogni match è un `GameConfig` + `seed` che arriva dal server invece che da `crypto.getRandomValues` (Passo 3): la sessione di gioco (§5.8) resta identica, cambia solo la provenienza del seed e la destinazione del risultato.
+- Lo storico (IndexedDB, Passo 4) resta cache locale; il server è ora obbligatorio per usare l'app (Passo 5a), quindi la sincronizzazione dello storico non è più opzionale come nella progettazione precedente.
 
 #### Non ancora deciso (da chiedere quando si arriva a implementare)
-- Hosting del server (Fly.io/Railway/altro) e provider email per il magic link.
-- Se `challenge_results.words` conviene denormalizzato in `games` o derivato al volo.
-- Rate limiting su `POST /challenges` e `POST /challenges/:id/results` per evitare abusi.
+- Se un partecipante che non gioca mai un match blocca la sfida a tempo indefinito (RF-23 lo prevede esplicitamente), o se serve un modo per "abbandonare" e sbloccare il settle per gli altri.
+- Se `match_results.paths` conviene denormalizzato in `games` o derivato al volo.
+- Rate limiting su `POST /challenges` e sugli endpoint di submission.
+- Se i match di una serie si possono giocare in un ordine qualsiasi, o solo in sequenza (es. match 2 non giocabile finché il match 1 non è settlato).
+- Regole di parità sul punteggio totale della serie (RF-25).
 
 ## 10. Convenzioni e dipendenze
 
