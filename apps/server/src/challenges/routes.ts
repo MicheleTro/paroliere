@@ -1,7 +1,7 @@
 import { randomInt } from 'node:crypto';
 
 import { computeVersusScores, type GameConfig, type VersusEntry, type WordIndex } from '@paroliere/core';
-import { and, eq, inArray } from 'drizzle-orm';
+import { and, desc, eq } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 
@@ -256,10 +256,6 @@ export function registerChallengeRoutes(app: FastifyInstance): void {
       .from(schema.challengeParticipants)
       .innerJoin(schema.users, eq(schema.users.id, schema.challengeParticipants.userId))
       .where(eq(schema.challengeParticipants.challengeId, challenge.id));
-    const isParticipant = participants.some((p) => p.userId === request.userId);
-    if (!isParticipant && challenge.creatorUserId !== request.userId) {
-      return reply.code(403).send({ error: 'Non hai accesso a questa sfida' });
-    }
     const usernameByUserId = new Map(participants.map((p) => [p.userId, p.username]));
 
     const [configRow] = await db.select().from(schema.gameConfigs).where(eq(schema.gameConfigs.id, challenge.configId)).limit(1);
@@ -346,21 +342,8 @@ export function registerChallengeRoutes(app: FastifyInstance): void {
     return reply.send({ found: graded, settled });
   });
 
-  app.get('/users/me/challenges', { preHandler: requireAuth }, async (request, reply) => {
-    const created = await db.select().from(schema.challenges).where(eq(schema.challenges.creatorUserId, request.userId!));
-    const participantRows = await db
-      .select({ challengeId: schema.challengeParticipants.challengeId })
-      .from(schema.challengeParticipants)
-      .where(eq(schema.challengeParticipants.userId, request.userId!));
-    const participantChallengeIds = participantRows.map((p) => p.challengeId);
-    const participating =
-      participantChallengeIds.length > 0
-        ? await db.select().from(schema.challenges).where(inArray(schema.challenges.id, participantChallengeIds))
-        : [];
-
-    const byId = new Map<string, ChallengeRow>();
-    for (const challenge of [...created, ...participating]) byId.set(challenge.id, challenge);
-
-    return reply.send([...byId.values()]);
+  app.get('/challenges', { preHandler: requireAuth }, async (_request, reply) => {
+    const all = await db.select().from(schema.challenges).orderBy(desc(schema.challenges.createdAt));
+    return reply.send(all);
   });
 }

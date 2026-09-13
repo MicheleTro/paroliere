@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { listMyChallenges, type ChallengeSummary } from '../lib/challenges.js';
+  import { listChallenges, type ChallengeSummary } from '../lib/challenges.js';
 
   interface Props {
     onOpen: (challengeId: string) => void;
@@ -13,7 +13,7 @@
   let loading = $state(true);
   let error: string | undefined = $state();
 
-  listMyChallenges()
+  listChallenges()
     .then((result) => (challenges = result))
     .catch((err) => (error = err instanceof Error ? err.message : 'Errore imprevisto'))
     .finally(() => (loading = false));

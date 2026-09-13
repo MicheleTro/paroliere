@@ -4,7 +4,11 @@ const envSchema = z.object({
   DATABASE_URL: z.string().min(1),
   JWT_SECRET: z.string().min(1),
   PORT: z.coerce.number().int().positive().default(3000),
-  CORS_ORIGIN: z.string().min(1).default('http://localhost:5173'),
+  CORS_ORIGIN: z
+    .string()
+    .min(1)
+    .default('http://localhost:5173')
+    .transform((value) => value.split(',').map((origin) => origin.trim())),
 });
 
 export const config = envSchema.parse(process.env);

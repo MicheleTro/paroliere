@@ -109,6 +109,6 @@ export async function submitMatchResult(
   });
 }
 
-export async function listMyChallenges(): Promise<ChallengeSummary[]> {
-  return apiRequest('/users/me/challenges');
+export async function listChallenges(): Promise<ChallengeSummary[]> {
+  return apiRequest('/challenges');
 }
