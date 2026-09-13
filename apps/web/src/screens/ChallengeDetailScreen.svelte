@@ -318,8 +318,8 @@
 
   .leaderboard > li {
     padding: 8px 12px;
-    border-radius: 8px;
-    border: 2px solid #2c4256;
+    border-radius: var(--radius-md);
+    border: 2px solid var(--color-border);
   }
 
   .entry-row {
@@ -341,7 +341,7 @@
 
   .total {
     font-weight: 700;
-    color: #4a90d9;
+    color: var(--color-accent);
   }
 
   .members {
@@ -361,17 +361,17 @@
     align-items: center;
     gap: 8px;
     padding: 8px 12px;
-    border-radius: 8px;
-    border: 2px solid #2c4256;
+    border-radius: var(--radius-md);
+    border: 2px solid var(--color-border);
   }
 
   .status {
     font-weight: 600;
-    opacity: 0.8;
+    color: var(--color-ink-soft);
   }
 
   .status.completed {
-    color: #4a90d9;
+    color: var(--color-accent);
   }
 
   .scores {
@@ -392,16 +392,17 @@
   .secondary {
     font-size: 1rem;
     padding: 8px 16px;
-    border-radius: 8px;
-    border: 2px solid #2c4256;
-    background: #1c2b3a;
-    color: #f5f5f5;
+    border-radius: var(--radius-md);
+    border: 2px solid var(--color-border);
+    background: var(--color-surface);
+    color: var(--color-ink);
     cursor: pointer;
   }
 
   .options button.selected {
-    border-color: #4a90d9;
-    background: #4a90d9;
+    border-color: var(--color-accent);
+    background: var(--color-accent);
+    color: var(--color-accent-contrast);
   }
 
   .options button:disabled {
@@ -411,16 +412,18 @@
 
   .join .primary {
     border: none;
-    background: #4a90d9;
+    background: var(--color-accent);
+    color: var(--color-accent-contrast);
   }
 
   .join .primary:disabled {
-    background: #7a8a99;
+    background: var(--color-disabled);
+    color: var(--color-ink-soft);
     cursor: default;
   }
 
   .error {
-    color: #b3261e;
+    color: var(--color-danger);
   }
 
   .match .secondary {
@@ -431,10 +434,10 @@
   .danger {
     font-size: 1rem;
     padding: 8px 16px;
-    border-radius: 8px;
-    border: 2px solid #b3261e;
+    border-radius: var(--radius-md);
+    border: 2px solid var(--color-danger);
     background: transparent;
-    color: #ff6b60;
+    color: var(--color-danger);
     cursor: pointer;
   }
 

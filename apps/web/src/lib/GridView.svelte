@@ -98,23 +98,30 @@
     touch-action: none;
     user-select: none;
     -webkit-touch-callout: none;
-    border-radius: 12px;
-    padding: 8px;
-    background: #1c2b3a;
+    border-radius: var(--radius-lg);
+    padding: 10px;
+    background: var(--color-accent);
+    box-shadow: var(--shadow-card);
   }
 
   .cell {
     display: flex;
     align-items: center;
     justify-content: center;
+    font-family: var(--font-heading);
     font-size: 1.8rem;
-    font-weight: 600;
-    color: #f5f5f5;
-    background: #2c4256;
-    border-radius: 8px;
+    font-weight: 700;
+    color: var(--color-ink);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    transition: background-color 0.1s ease, transform 0.1s ease;
   }
 
   .cell.selected {
-    background: #4a90d9;
+    background: var(--color-stamp);
+    border-color: var(--color-stamp);
+    color: var(--color-accent-contrast);
+    transform: scale(0.96);
   }
 </style>

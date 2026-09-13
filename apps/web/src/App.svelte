@@ -21,6 +21,7 @@
   import AppShell, { type MainTab } from './lib/AppShell.svelte';
   import { randomSeed } from './lib/random-seed.js';
   import { getPersonalBest, saveGame } from './lib/history.js';
+  import { playAlreadyFound, playRejected, playWordAccepted } from './lib/sound.js';
   import { auth, checkSession, logout } from './lib/auth.svelte.js';
   import { submitMatchResult, type ChallengeDetail, type ChallengeMatch, type SubmitResultResponse } from './lib/challenges.js';
   import type { WordPopupData } from './lib/word-popup.js';
@@ -216,10 +217,12 @@
       case 'valid':
         showPopup({ word, tone: 'green' });
         vibrate(30);
+        playWordAccepted();
         break;
       case 'already_found':
         showPopup({ word, tone: 'yellow', subtitle: 'Già trovata' });
         vibrate([20, 30, 20]);
+        playAlreadyFound();
         break;
       case 'too_short':
         // Un percorso di 1-2 celle è quasi sempre un tap accidentale, non un
@@ -227,15 +230,18 @@
         if (path.length > 2) {
           showPopup({ word, tone: 'red', subtitle: 'Troppo corta' });
           vibrate([20, 30, 20]);
+          playRejected();
         }
         break;
       case 'not_in_dictionary':
         showPopup({ word, tone: 'red', subtitle: 'Non valida' });
         vibrate([20, 30, 20]);
+        playRejected();
         break;
       case 'invalid_path':
         showPopup({ word, tone: 'red', subtitle: 'Percorso non valido' });
         vibrate([20, 30, 20]);
+        playRejected();
         break;
     }
   }

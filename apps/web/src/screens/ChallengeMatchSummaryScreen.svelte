@@ -56,16 +56,16 @@
 
   .error {
     text-align: center;
-    color: #ff6b60;
+    color: var(--color-danger);
   }
 
   .primary {
     font-size: 1.1rem;
     padding: 10px 20px;
-    border-radius: 8px;
+    border-radius: var(--radius-md);
     border: none;
-    background: #4a90d9;
-    color: white;
+    background: var(--color-accent);
+    color: var(--color-accent-contrast);
     cursor: pointer;
   }
 </style>

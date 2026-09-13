@@ -92,16 +92,17 @@
   .tabs button {
     font-size: 1rem;
     padding: 8px 16px;
-    border-radius: 8px;
-    border: 2px solid #2c4256;
-    background: #1c2b3a;
-    color: #f5f5f5;
+    border-radius: var(--radius-md);
+    border: 2px solid var(--color-border);
+    background: var(--color-surface);
+    color: var(--color-ink);
     cursor: pointer;
   }
 
   .tabs button.selected {
-    border-color: #4a90d9;
-    background: #4a90d9;
+    border-color: var(--color-accent);
+    background: var(--color-accent);
+    color: var(--color-accent-contrast);
   }
 
   form {
@@ -116,20 +117,20 @@
     flex-direction: column;
     gap: 4px;
     font-size: 0.9rem;
-    color: #1c2b3a;
+    color: var(--color-ink);
   }
 
   input {
     font-size: 1rem;
     padding: 8px 12px;
-    border-radius: 8px;
-    border: 2px solid #2c4256;
-    background: white;
-    color: #1c2b3a;
+    border-radius: var(--radius-md);
+    border: 2px solid var(--color-border);
+    background: var(--color-surface);
+    color: var(--color-ink);
   }
 
   .error {
-    color: #e06c6c;
+    color: var(--color-danger);
     font-size: 0.9rem;
     margin: 0;
   }
@@ -137,15 +138,16 @@
   button.primary {
     font-size: 1.1rem;
     padding: 10px 20px;
-    border-radius: 8px;
+    border-radius: var(--radius-md);
     border: none;
-    background: #4a90d9;
-    color: white;
+    background: var(--color-accent);
+    color: var(--color-accent-contrast);
     cursor: pointer;
   }
 
   button.primary:disabled {
-    background: #7a8a99;
+    background: var(--color-disabled);
+    color: var(--color-ink-soft);
     cursor: default;
   }
 </style>

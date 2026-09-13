@@ -148,16 +148,17 @@
     flex: 1;
     font-size: 0.95rem;
     padding: 8px 0;
-    border-radius: 8px;
-    border: 2px solid #2c4256;
-    background: #1c2b3a;
-    color: #f5f5f5;
+    border-radius: var(--radius-md);
+    border: 2px solid var(--color-border);
+    background: var(--color-surface);
+    color: var(--color-ink);
     cursor: pointer;
   }
 
   .filters button.selected {
-    border-color: #4a90d9;
-    background: #4a90d9;
+    border-color: var(--color-accent);
+    background: var(--color-accent);
+    color: var(--color-accent-contrast);
   }
 
   .challenges {
@@ -169,7 +170,7 @@
   }
 
   .error {
-    color: #b3261e;
+    color: var(--color-danger);
   }
 
   ul {
@@ -195,10 +196,10 @@
     flex-direction: column;
     gap: 4px;
     padding: 12px 16px;
-    border-radius: 8px;
-    border: 2px solid #2c4256;
-    background: #1c2b3a;
-    color: #f5f5f5;
+    border-radius: var(--radius-md);
+    border: 2px solid var(--color-border);
+    background: var(--color-surface);
+    color: var(--color-ink);
     cursor: pointer;
     text-align: left;
   }
@@ -206,9 +207,9 @@
   .delete {
     flex-shrink: 0;
     width: 44px;
-    border-radius: 8px;
-    border: 2px solid #2c4256;
-    background: #1c2b3a;
+    border-radius: var(--radius-md);
+    border: 2px solid var(--color-border);
+    background: var(--color-surface);
     font-size: 1.1rem;
     cursor: pointer;
   }
@@ -229,17 +230,17 @@
   }
 
   .status.in-progress {
-    color: #e8b84a;
+    color: var(--color-warning);
   }
 
   .status.completed {
-    color: #7ac47f;
+    color: var(--color-success);
   }
 
   .creator,
   .config {
     font-size: 0.85rem;
-    opacity: 0.85;
+    color: var(--color-ink-soft);
   }
 
   .actions {
@@ -250,13 +251,13 @@
   .actions button {
     font-size: 1.1rem;
     padding: 10px 20px;
-    border-radius: 8px;
+    border-radius: var(--radius-md);
     border: none;
     cursor: pointer;
   }
 
   .actions .primary {
-    background: #4a90d9;
-    color: white;
+    background: var(--color-accent);
+    color: var(--color-accent-contrast);
   }
 </style>

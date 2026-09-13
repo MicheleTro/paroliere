@@ -69,10 +69,10 @@
     flex-direction: column;
     gap: 4px;
     padding: 12px 16px;
-    border-radius: 8px;
-    border: 2px solid #2c4256;
-    background: #1c2b3a;
-    color: #f5f5f5;
+    border-radius: var(--radius-md);
+    border: 2px solid var(--color-border);
+    background: var(--color-surface);
+    color: var(--color-ink);
   }
 
   .row {
@@ -83,15 +83,16 @@
 
   .score {
     font-weight: 700;
+    color: var(--color-accent);
   }
 
   .date {
-    opacity: 0.8;
+    color: var(--color-ink-soft);
     font-size: 0.9rem;
   }
 
   .config {
     font-size: 0.85rem;
-    opacity: 0.85;
+    color: var(--color-ink-soft);
   }
 </style>

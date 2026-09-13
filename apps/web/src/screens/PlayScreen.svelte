@@ -4,6 +4,7 @@
   import WordPopup from '../lib/WordPopup.svelte';
   import type { WordPopupData } from '../lib/word-popup.js';
   import { formatDuration } from '../lib/format.js';
+  import { isSoundMuted, playPathTone, setSoundMuted } from '../lib/sound.js';
 
   interface Props {
     session: GameSession;
@@ -15,6 +16,8 @@
   let { session, now, popup, onSubmit }: Props = $props();
 
   let currentPath: number[] = $state([]);
+  let muted = $state(isSoundMuted());
+  let lastPathLength = 0;
 
   const currentWord = $derived(currentPath.map((i) => session.grid.tiles[i]).join(''));
 
@@ -22,12 +25,28 @@
 
   const timeLeft = $derived(remainingMs(session, now));
   const urgent = $derived(timeLeft <= 10_000);
+
+  function handlePathChange(path: number[]): void {
+    currentPath = path;
+    if (path.length !== lastPathLength && path.length > 0) playPathTone(path.length - 1);
+    lastPathLength = path.length;
+  }
+
+  function toggleMute(): void {
+    muted = !muted;
+    setSoundMuted(muted);
+  }
 </script>
 
 <div class="play">
-  <p class="timer" class:urgent>{formatDuration(timeLeft)}</p>
+  <div class="top-row">
+    <p class="timer" class:urgent>{formatDuration(timeLeft)}</p>
+    <button type="button" class="mute" aria-label={muted ? 'Attiva audio' : 'Disattiva audio'} onclick={toggleMute}>
+      {muted ? '🔇' : '🔊'}
+    </button>
+  </div>
   <WordPopup {popup} />
-  <GridView grid={session.grid} {onSubmit} onPathChange={(p) => (currentPath = p)} />
+  <GridView grid={session.grid} {onSubmit} onPathChange={handlePathChange} />
   <p class="current-word">{currentWord || ' '}</p>
   <p class="score">Punteggio: {score}</p>
   <ul class="found-words">
@@ -45,14 +64,29 @@
     gap: 12px;
   }
 
+  .top-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
   .timer {
     font-size: 1.6rem;
     font-weight: 700;
     font-variant-numeric: tabular-nums;
   }
 
+  .mute {
+    font-size: 1.1rem;
+    padding: 4px 8px;
+    border-radius: var(--radius-sm);
+    border: 2px solid var(--color-border);
+    background: var(--color-surface);
+    cursor: pointer;
+  }
+
   .timer.urgent {
-    color: #e06c6c;
+    color: var(--color-danger);
     animation: pulse 1s ease-in-out infinite;
   }
 

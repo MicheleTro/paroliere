@@ -33,33 +33,34 @@
     align-items: center;
     gap: 2px;
     padding: 8px 20px;
-    border-radius: 10px;
+    border-radius: var(--radius-md);
     border: 3px solid;
-    background: #16222d;
+    background: var(--color-surface);
+    box-shadow: var(--shadow-card);
   }
 
   .popup.green {
-    border-color: #2ecc71;
+    border-color: var(--color-success);
   }
 
   .popup.yellow {
-    border-color: #f1c40f;
+    border-color: var(--color-warning);
   }
 
   .popup.red {
-    border-color: #e74c3c;
+    border-color: var(--color-danger);
   }
 
   .word {
+    font-family: var(--font-heading);
     font-size: 1.4rem;
     font-weight: 700;
     letter-spacing: 0.05em;
-    color: #f5f5f5;
+    color: var(--color-ink);
   }
 
   .subtitle {
     font-size: 0.85rem;
-    color: #f5f5f5;
-    opacity: 0.8;
+    color: var(--color-ink-soft);
   }
 </style>

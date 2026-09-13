@@ -11,8 +11,8 @@ export default defineConfig({
         name: 'Paroliere',
         short_name: 'Paroliere',
         description: 'Gioco di parole stile Paroliere/Boggle, in italiano.',
-        theme_color: '#1c2b3a',
-        background_color: '#1c2b3a',
+        theme_color: '#f4ecd8',
+        background_color: '#f4ecd8',
         display: 'standalone',
         start_url: '/',
         icons: [

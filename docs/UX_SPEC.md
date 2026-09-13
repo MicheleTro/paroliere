@@ -94,3 +94,8 @@ Non introdurrei un router client (es. history API/URL) in questa fase: i tab res
 
 - **Storico**: confermato come terza sezione della barra. Nuova schermata con l'elenco delle partite singole passate (dati già presenti in `apps/web/src/lib/history.ts`, solo la vista è nuova).
 - **Visibilità della barra**: solo nelle tre schermate principali (Gioca, Sfide, Storico). Le schermate verticali (Config, Play, Summary, CreateChallenge, ChallengeDetail, ChallengeMatchSummary) restano a tutta pagina senza barra, con "Indietro" verso il tab di provenienza.
+
+## 8. Tema visivo e suoni (fase 3, implementata)
+
+- **Palette "Carta e inchiostro"**: tema chiaro, ispirato al Paroliere da tavolo — sfondo pergamena, card avorio, testo inchiostro, accento blu inchiostro, rosso "timbro" per errori e per il percorso selezionato in griglia. Tutti i valori sono variabili CSS in `apps/web/src/app.css`, un solo punto da cui gestire la palette da qui in avanti (niente più colori hardcoded nei singoli componenti).
+- **Suoni sintetizzati** (`apps/web/src/lib/sound.ts`, Web Audio API, zero asset e zero nuove dipendenze — coerente con l'offline-first e le convenzioni §10): ogni lettera aggiunta al percorso in corso suona una nota via via più alta su una scala pentatonica maggiore (qualsiasi combinazione risulta comunque gradevole); una parola valida chiude con un breve accordo "premio"; una parola già trovata ha un tono neutro; una parola non valida/troppo corta/percorso non valido ha un doppio tono discendente. Toggle 🔊/🔇 in `PlayScreen`, preferenza salvata in `localStorage`.

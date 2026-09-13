@@ -30,15 +30,16 @@
   button {
     font-size: 1.1rem;
     padding: 12px 24px;
-    border-radius: 8px;
+    border-radius: var(--radius-md);
     border: none;
-    background: #4a90d9;
-    color: white;
+    background: var(--color-accent);
+    color: var(--color-accent-contrast);
     cursor: pointer;
   }
 
   button:disabled {
-    background: #7a8a99;
+    background: var(--color-disabled);
+    color: var(--color-ink-soft);
     cursor: default;
   }
 </style>

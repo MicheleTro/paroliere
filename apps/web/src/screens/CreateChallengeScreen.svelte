@@ -215,16 +215,17 @@
   .options button {
     font-size: 1rem;
     padding: 8px 16px;
-    border-radius: 8px;
-    border: 2px solid #2c4256;
-    background: #1c2b3a;
-    color: #f5f5f5;
+    border-radius: var(--radius-md);
+    border: 2px solid var(--color-border);
+    background: var(--color-surface);
+    color: var(--color-ink);
     cursor: pointer;
   }
 
   .options button.selected {
-    border-color: #4a90d9;
-    background: #4a90d9;
+    border-color: var(--color-accent);
+    background: var(--color-accent);
+    color: var(--color-accent-contrast);
   }
 
   .team-row {
@@ -238,10 +239,10 @@
     flex: 1;
     font-size: 1rem;
     padding: 8px 12px;
-    border-radius: 8px;
-    border: 2px solid #2c4256;
-    background: white;
-    color: #1c2b3a;
+    border-radius: var(--radius-md);
+    border: 2px solid var(--color-border);
+    background: var(--color-surface);
+    color: var(--color-ink);
   }
 
   .creator-team {
@@ -257,13 +258,13 @@
     padding: 0;
     border: none;
     background: none;
-    color: #4a90d9;
+    color: var(--color-accent);
     text-decoration: underline;
     cursor: pointer;
   }
 
   .error {
-    color: #b3261e;
+    color: var(--color-danger);
   }
 
   .actions {
@@ -275,23 +276,24 @@
   .actions button {
     font-size: 1.1rem;
     padding: 10px 20px;
-    border-radius: 8px;
+    border-radius: var(--radius-md);
     border: none;
     cursor: pointer;
   }
 
   .actions .primary {
-    background: #4a90d9;
-    color: white;
+    background: var(--color-accent);
+    color: var(--color-accent-contrast);
   }
 
   .actions .primary:disabled {
-    background: #7a8a99;
+    background: var(--color-disabled);
+    color: var(--color-ink-soft);
     cursor: default;
   }
 
   .actions .secondary {
-    background: #7a8a99;
-    color: white;
+    background: var(--color-disabled);
+    color: var(--color-ink);
   }
 </style>

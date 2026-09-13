@@ -70,7 +70,7 @@
     align-items: center;
     gap: 8px;
     font-size: 0.85rem;
-    color: #b5c2cd;
+    color: var(--color-ink-soft);
   }
 
   .link {
@@ -78,7 +78,7 @@
     padding: 0;
     border: none;
     background: none;
-    color: #4a90d9;
+    color: var(--color-accent);
     text-decoration: underline;
     cursor: pointer;
   }
@@ -100,15 +100,16 @@
     flex: 1;
     font-size: 1rem;
     padding: 10px 0;
-    border-radius: 8px;
-    border: 2px solid #2c4256;
-    background: #1c2b3a;
-    color: #f5f5f5;
+    border-radius: var(--radius-md);
+    border: 2px solid var(--color-border);
+    background: var(--color-surface);
+    color: var(--color-ink-soft);
     cursor: pointer;
   }
 
   .tabs button.active {
-    border-color: #4a90d9;
-    background: #4a90d9;
+    border-color: var(--color-accent);
+    background: var(--color-accent);
+    color: var(--color-accent-contrast);
   }
 </style>
