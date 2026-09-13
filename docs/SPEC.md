@@ -379,11 +379,14 @@ Si costruisce sopra il Passo 5a: le sfide hanno senso solo con utenti reali (par
 - Ogni match è un `GameConfig` + `seed` che arriva dal server invece che da `crypto.getRandomValues` (Passo 3): la sessione di gioco (§5.8) resta identica, cambia solo la provenienza del seed e la destinazione del risultato.
 - Lo storico (IndexedDB, Passo 4) resta cache locale; il server è ora obbligatorio per usare l'app (Passo 5a), quindi la sincronizzazione dello storico non è più opzionale come nella progettazione precedente.
 
+#### Decisioni prese in fase di design (prima dell'implementazione)
+- **Nessun abbandono**: un partecipante che non gioca mai un match blocca la sfida a tempo indefinito, come previsto letteralmente da RF-23. Nessun campo extra nello schema (niente `left_at` o simili); si aggiunge un meccanismo di uscita solo se emerge il bisogno concreto.
+- **`games.words` denormalizzato**: al settle, il server scrive già l'elenco parole+punteggio in `games.words` (jsonb), invece di derivarlo al volo da `match_results.paths` ad ogni lettura dello storico.
+- **Ordine dei match libero**: i `challenge_matches` di una serie (`best_of`) sono indipendenti; un partecipante può giocarli in qualsiasi ordine, coerente con l'assenza di scadenza (RF-23).
+- **`GameConfig.scoring` esteso in `packages/core`**: da literal `'classic'` a `'classic' | 'versus'`. La regola `versus` non è un `ScoringRule.scoreWord` (che vede una parola/giocatore alla volta): richiede una funzione pura separata in `core` che confronta le soluzioni di tutti i partecipanti di un match per decidere se una parola è unica (doppio valore) o condivisa (valore base).
+
 #### Non ancora deciso (da chiedere quando si arriva a implementare)
-- Se un partecipante che non gioca mai un match blocca la sfida a tempo indefinito (RF-23 lo prevede esplicitamente), o se serve un modo per "abbandonare" e sbloccare il settle per gli altri.
-- Se `match_results.paths` conviene denormalizzato in `games` o derivato al volo.
 - Rate limiting su `POST /challenges` e sugli endpoint di submission.
-- Se i match di una serie si possono giocare in un ordine qualsiasi, o solo in sequenza (es. match 2 non giocabile finché il match 1 non è settlato).
 - Regole di parità sul punteggio totale della serie (RF-25).
 
 ## 10. Convenzioni e dipendenze
