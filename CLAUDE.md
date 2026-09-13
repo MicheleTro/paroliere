@@ -3,17 +3,19 @@
 Gioco di parole stile Paroliere/Boggle, PWA Svelte + monorepo pnpm. Specifica completa: `docs/SPEC.md`.
 
 ## Passo corrente
-**Passo 5a — Utenza obbligatoria**, in corso. `apps/server` scaffoldato (Fastify + Drizzle + Postgres, vedi SPEC.md §9): schema `users`, migrazione generata (`apps/server/drizzle/0000_flimsy_mimic.sql`), route `POST /auth/register`, `POST /auth/login`, `GET /auth/me` (JWT via `jose`, hash password via `argon2`). `pnpm typecheck` passa (root + apps/server).
+**Passo 5a — Utenza obbligatoria**, completato. `apps/server` (Fastify + Drizzle + Postgres, vedi SPEC.md §9): schema `users`, migrazione applicata, route `POST /auth/register`, `POST /auth/login` (body: `identifier` — username o email — e `password`), `GET /auth/me` (JWT via `jose`, hash password via `argon2`), CORS abilitato via `CORS_ORIGIN` (default `http://localhost:5173`, richiede `@fastify/cors`). Verificato end-to-end contro Postgres reale via Docker.
 
-**Verifica end-to-end completata**: sbloccato il problema Docker Desktop (era un token di sessione Windows senza il gruppo `docker-users` applicato — richiedeva un nuovo login/processo elevato, non un problema di configurazione Docker). Creato `apps/server/.env` da `.env.example`. Corretto un bug nello script `dev` (`apps/server/package.json`): l'ordine argomenti per `tsx` era sbagliato (`--env-file` prima di `watch` veniva interpretato male, `watch` finiva trattato come nome di file); ora è `tsx watch --env-file=.env src/index.ts`. Migrazione applicata con `pnpm db:migrate`, server avviato con `pnpm dev`, e testate con successo `/health`, `/auth/register`, `/auth/login` (nota: il body richiede `identifier`, non `username` — accetta sia username che email), `/auth/me` contro Postgres reale via Docker.
+`apps/web`: gate lato client in `App.svelte` — al caricamento verifica il JWT salvato (`localStorage`) contro `/auth/me` (`src/lib/auth.svelte.ts`); se assente/non valido mostra `LoginScreen.svelte` (login + registrazione), altrimenti procede alla home (con azione di logout). Testato manualmente nel browser: login, registrazione, gate attivo.
 
-**Prossimo**: il gate lato client in `apps/web` (route guard, pagina login/registrazione, persistenza JWT) — non ancora iniziato.
+Setup locale necessario: `apps/server/.env` e `apps/web/.env` da copiare dai rispettivi `.env.example` (non versionati). `pnpm typecheck`, `pnpm lint`, `pnpm test` passano su tutto il monorepo.
+
+**Prossimo**: Passo 5b — Sfide come entità (vedi sotto), non iniziato.
 
 Ancora non fatto (Passo 4, non bloccante): test PWA su device reali Android e hosting con brotli.
 
 ## Passo 5 — Backend e sfide (design completo, implementazione in corso)
 Design in SPEC.md §9, in due parti:
-- **Passo 5a — Utenza obbligatoria** (IN CORSO, vedi sopra): login (username/email/password) richiesto per usare l'app anche in singolo giocatore (RF-19); supera la decisione "nessun backend nell'MVP" dei Passi 1–4. Manca ancora: verifica end-to-end (blocco Docker), poi il gate lato client in `apps/web` (route guard, pagina login/registrazione, persistenza JWT) — non ancora iniziato.
+- **Passo 5a — Utenza obbligatoria** (COMPLETATO, vedi sopra): login (username/email/password) richiesto per usare l'app anche in singolo giocatore (RF-19); supera la decisione "nessun backend nell'MVP" dei Passi 1–4.
 - **Passo 5b — Sfide come entità** (NON iniziato): si costruisce sopra il 5a. Sfida = serie di N match (`bestOf`) sulla stessa config, partecipanti individuali o a squadre, nessuna scadenza — il punteggio di un match si calcola solo quando tutti hanno giocato. Regola di punteggio `versus` (RF-24): parola unica = doppio del valore base, parola in comune (≥2 partecipanti) = valore base.
 
 Backend Node/TS in `apps/server`, riusa `@paroliere/core`, Postgres+Drizzle (già in uso, non solo progettato).
@@ -41,4 +43,4 @@ Backend Node/TS in `apps/server`, riusa `@paroliere/core`, Postgres+Drizzle (gi�
 - Passo 1 (solo dev): `typescript`, `tsx`, `vitest`, `@types/node`, `eslint`, `typescript-eslint`, `prettier`.
 - Passo 2: `svelte`, `vite`, `@sveltejs/vite-plugin-svelte`.
 - Passo 4: `idb`, `vite-plugin-pwa`.
-- Passo 5a (`apps/server`): `fastify`, `drizzle-orm`, `drizzle-kit` (dev), `postgres`, `argon2`, `jose`, `zod`.
+- Passo 5a (`apps/server`): `fastify`, `@fastify/cors`, `drizzle-orm`, `drizzle-kit` (dev), `postgres`, `argon2`, `jose`, `zod`.
