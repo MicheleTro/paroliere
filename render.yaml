@@ -31,8 +31,6 @@ services:
   - type: web
     name: paroliere-web
     runtime: static
-    plan: free
-    region: frankfurt
     rootDir: .
     buildCommand: corepack enable && corepack prepare pnpm@9 --activate && pnpm install --frozen-lockfile && pnpm --filter @paroliere/web run build
     staticPublishPath: apps/web/dist
