@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { adminLogin } from '../lib/admin.svelte.js';
   import { login, register } from '../lib/auth.svelte.js';
 
   type Mode = 'login' | 'register';
@@ -20,7 +21,9 @@
     error = undefined;
     submitting = true;
     try {
-      if (mode === 'login') {
+      if (mode === 'login' && identifier === 'admin') {
+        await adminLogin(identifier, password);
+      } else if (mode === 'login') {
         await login(identifier, password);
       } else {
         await register(username, email, password);

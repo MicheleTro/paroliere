@@ -21,3 +21,17 @@ export async function verifyAccessToken(token: string): Promise<string> {
   }
   return payload.sub;
 }
+
+export function signAdminToken(): Promise<string> {
+  return new SignJWT({ role: 'admin' })
+    .setProtectedHeader({ alg: 'HS256' })
+    .setSubject('admin')
+    .setIssuedAt()
+    .setExpirationTime(ACCESS_TOKEN_TTL)
+    .sign(secret);
+}
+
+export async function verifyAdminToken(token: string): Promise<boolean> {
+  const { payload } = await jwtVerify(token, secret);
+  return payload.role === 'admin';
+}

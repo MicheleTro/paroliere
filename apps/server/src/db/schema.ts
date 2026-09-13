@@ -29,7 +29,7 @@ export const challenges = pgTable('challenges', {
   id: uuid('id').primaryKey().defaultRandom(),
   creatorUserId: uuid('creator_user_id')
     .notNull()
-    .references(() => users.id),
+    .references(() => users.id, { onDelete: 'cascade' }),
   configId: uuid('config_id')
     .notNull()
     .references(() => gameConfigs.id),
@@ -45,7 +45,7 @@ export const teams = pgTable('teams', {
   id: uuid('id').primaryKey().defaultRandom(),
   challengeId: uuid('challenge_id')
     .notNull()
-    .references(() => challenges.id),
+    .references(() => challenges.id, { onDelete: 'cascade' }),
   name: varchar('name', { length: 64 }).notNull(),
 });
 
@@ -55,11 +55,11 @@ export const challengeParticipants = pgTable(
     id: uuid('id').primaryKey().defaultRandom(),
     challengeId: uuid('challenge_id')
       .notNull()
-      .references(() => challenges.id),
+      .references(() => challenges.id, { onDelete: 'cascade' }),
     userId: uuid('user_id')
       .notNull()
-      .references(() => users.id),
-    teamId: uuid('team_id').references(() => teams.id),
+      .references(() => users.id, { onDelete: 'cascade' }),
+    teamId: uuid('team_id').references(() => teams.id, { onDelete: 'cascade' }),
     joinedAt: timestamp('joined_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [unique().on(table.challengeId, table.userId)],
@@ -71,7 +71,7 @@ export const challengeMatches = pgTable(
     id: uuid('id').primaryKey().defaultRandom(),
     challengeId: uuid('challenge_id')
       .notNull()
-      .references(() => challenges.id),
+      .references(() => challenges.id, { onDelete: 'cascade' }),
     matchIndex: integer('match_index').notNull(),
     seed: bigint('seed', { mode: 'number' }).notNull(),
     settledAt: timestamp('settled_at', { withTimezone: true }),
@@ -85,10 +85,10 @@ export const matchResults = pgTable(
     id: uuid('id').primaryKey().defaultRandom(),
     challengeMatchId: uuid('challenge_match_id')
       .notNull()
-      .references(() => challengeMatches.id),
+      .references(() => challengeMatches.id, { onDelete: 'cascade' }),
     userId: uuid('user_id')
       .notNull()
-      .references(() => users.id),
+      .references(() => users.id, { onDelete: 'cascade' }),
     paths: jsonb('paths').notNull().$type<number[][]>(),
     score: integer('score'),
     submittedAt: timestamp('submitted_at', { withTimezone: true }).notNull().defaultNow(),
@@ -102,10 +102,10 @@ export const challengeMatchStarts = pgTable(
     id: uuid('id').primaryKey().defaultRandom(),
     challengeMatchId: uuid('challenge_match_id')
       .notNull()
-      .references(() => challengeMatches.id),
+      .references(() => challengeMatches.id, { onDelete: 'cascade' }),
     userId: uuid('user_id')
       .notNull()
-      .references(() => users.id),
+      .references(() => users.id, { onDelete: 'cascade' }),
     startedAt: timestamp('started_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [unique().on(table.challengeMatchId, table.userId)],
@@ -121,7 +121,7 @@ export const games = pgTable('games', {
   id: uuid('id').primaryKey().defaultRandom(),
   userId: uuid('user_id')
     .notNull()
-    .references(() => users.id),
+    .references(() => users.id, { onDelete: 'cascade' }),
   configId: uuid('config_id')
     .notNull()
     .references(() => gameConfigs.id),

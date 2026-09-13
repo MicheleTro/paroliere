@@ -8,6 +8,7 @@
     type GameSession,
     type SessionSummary,
   } from '@paroliere/core';
+  import AdminScreen from './screens/AdminScreen.svelte';
   import HomeScreen from './screens/HomeScreen.svelte';
   import ConfigScreen, { type GameSettings } from './screens/ConfigScreen.svelte';
   import LoginScreen from './screens/LoginScreen.svelte';
@@ -22,6 +23,7 @@
   import { randomSeed } from './lib/random-seed.js';
   import { getPersonalBest, saveGame } from './lib/history.js';
   import { playAlreadyFound, playRejected, playWordAccepted } from './lib/sound.js';
+  import { adminAuth } from './lib/admin.svelte.js';
   import { auth, checkSession, logout } from './lib/auth.svelte.js';
   import { submitMatchResult, type ChallengeDetail, type ChallengeMatch, type SubmitResultResponse } from './lib/challenges.js';
   import type { WordPopupData } from './lib/word-popup.js';
@@ -260,7 +262,9 @@
 </script>
 
 <main>
-  {#if auth.status === 'checking'}
+  {#if adminAuth.loggedIn}
+    <AdminScreen />
+  {:else if auth.status === 'checking'}
     <p>Caricamento...</p>
   {:else if auth.status === 'unauthenticated'}
     <LoginScreen />
