@@ -13,15 +13,28 @@
   import LoginScreen from './screens/LoginScreen.svelte';
   import PlayScreen from './screens/PlayScreen.svelte';
   import SummaryScreen from './screens/SummaryScreen.svelte';
+  import ChallengesScreen from './screens/ChallengesScreen.svelte';
+  import CreateChallengeScreen from './screens/CreateChallengeScreen.svelte';
+  import ChallengeDetailScreen from './screens/ChallengeDetailScreen.svelte';
+  import ChallengeMatchSummaryScreen from './screens/ChallengeMatchSummaryScreen.svelte';
   import { randomSeed } from './lib/random-seed.js';
   import { getPersonalBest, saveGame } from './lib/history.js';
   import { auth, checkSession, logout } from './lib/auth.svelte.js';
+  import { submitMatchResult, type ChallengeDetail, type ChallengeMatch, type SubmitResultResponse } from './lib/challenges.js';
   import type { WordPopupData } from './lib/word-popup.js';
   import type { NewGameConfig, WorkerResponse } from './worker/dictionary-worker.js';
 
   const POPUP_DURATION_MS = 1500;
 
-  type Screen = 'home' | 'config' | 'playing' | 'summary';
+  type Screen =
+    | 'home'
+    | 'config'
+    | 'playing'
+    | 'summary'
+    | 'challenges'
+    | 'challenge-create'
+    | 'challenge-detail'
+    | 'challenge-match-summary';
 
   let screen: Screen = $state('home');
   let ready = $state(false);
@@ -35,6 +48,10 @@
   let dictionaryVersion = '';
   let lastConfig: NewGameConfig | undefined;
   let rafId: number | undefined;
+
+  let selectedChallengeId: string | undefined = $state();
+  let challengeMatchContext: { challengeId: string; matchIndex: number } | undefined;
+  let challengeResult: SubmitResultResponse | undefined = $state();
 
   const worker = new Worker(new URL('./worker/dictionary-worker.ts', import.meta.url), {
     type: 'module',
@@ -80,6 +97,38 @@
     if (lastConfig) requestNewGame(lastConfig);
   }
 
+  function goToChallenges(): void {
+    screen = 'challenges';
+  }
+
+  function openChallenge(challengeId: string): void {
+    selectedChallengeId = challengeId;
+    screen = 'challenge-detail';
+  }
+
+  function playChallengeMatch(challenge: ChallengeDetail, match: ChallengeMatch): void {
+    if (challenge.config.dictionaryVersion !== dictionaryVersion) {
+      alert('Il dizionario locale non corrisponde a quello del server: ricarica la pagina e riprova.');
+      return;
+    }
+    challengeMatchContext = { challengeId: challenge.id, matchIndex: match.matchIndex };
+    requestNewGame({
+      seed: match.seed,
+      size: challenge.config.size,
+      durationMs: challenge.config.durationMs,
+      minWordLength: challenge.config.minWordLength,
+      minWords: challenge.config.minWords,
+      scoring: challenge.config.scoring,
+      generatorVersion: 1,
+    });
+  }
+
+  function backToChallengeDetail(): void {
+    challengeMatchContext = undefined;
+    challengeResult = undefined;
+    screen = 'challenge-detail';
+  }
+
   function startTimerLoop(): void {
     stopTimerLoop();
     const tick = (): void => {
@@ -102,6 +151,20 @@
     stopTimerLoop();
     if (!session) return;
     summary = summarize(session);
+
+    if (challengeMatchContext) {
+      const { challengeId, matchIndex } = challengeMatchContext;
+      const paths = session.foundWords.map((f) => f.path);
+      submitMatchResult(challengeId, matchIndex, paths)
+        .then((result) => (challengeResult = result))
+        .catch((err) => {
+          challengeResult = { found: [], settled: false };
+          alert(err instanceof Error ? err.message : 'Errore imprevisto durante l\'invio del risultato');
+        })
+        .finally(() => (screen = 'challenge-match-summary'));
+      return;
+    }
+
     record = Math.max(record, summary.score);
     screen = 'summary';
     saveGame(session.config, summary, Date.now())
@@ -180,13 +243,33 @@
   {:else if auth.status === 'unauthenticated'}
     <LoginScreen />
   {:else if screen === 'home'}
-    <HomeScreen {ready} {record} username={auth.user?.username ?? ''} onNewGame={goToConfig} onLogout={logout} />
+    <HomeScreen
+      {ready}
+      {record}
+      username={auth.user?.username ?? ''}
+      onNewGame={goToConfig}
+      onChallenges={goToChallenges}
+      onLogout={logout}
+    />
   {:else if screen === 'config'}
     <ConfigScreen onStart={startNewGame} onBack={() => (screen = 'home')} />
   {:else if screen === 'playing' && session}
     <PlayScreen {session} {now} {popup} onSubmit={handleSubmit} />
   {:else if screen === 'summary' && session && summary}
     <SummaryScreen {session} {summary} onReplaySameSeed={replaySameSeed} onNewGame={goToConfig} />
+  {:else if screen === 'challenges'}
+    <ChallengesScreen onOpen={openChallenge} onCreate={() => (screen = 'challenge-create')} onBack={() => (screen = 'home')} />
+  {:else if screen === 'challenge-create'}
+    <CreateChallengeScreen onCreated={openChallenge} onBack={goToChallenges} />
+  {:else if screen === 'challenge-detail' && selectedChallengeId}
+    <ChallengeDetailScreen
+      challengeId={selectedChallengeId}
+      currentUserId={auth.user?.id ?? ''}
+      onPlayMatch={playChallengeMatch}
+      onBack={goToChallenges}
+    />
+  {:else if screen === 'challenge-match-summary' && session && summary && challengeResult}
+    <ChallengeMatchSummaryScreen {session} {summary} result={challengeResult} onBack={backToChallengeDetail} />
   {/if}
 </main>
 

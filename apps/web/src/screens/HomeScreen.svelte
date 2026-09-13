@@ -4,10 +4,11 @@
     record: number;
     username: string;
     onNewGame: () => void;
+    onChallenges: () => void;
     onLogout: () => void;
   }
 
-  let { ready, record, username, onNewGame, onLogout }: Props = $props();
+  let { ready, record, username, onNewGame, onChallenges, onLogout }: Props = $props();
 </script>
 
 <div class="home">
@@ -20,6 +21,7 @@
   <button type="button" disabled={!ready} onclick={onNewGame}>
     {ready ? 'Nuova partita' : 'Caricamento dizionario...'}
   </button>
+  <button type="button" class="secondary" onclick={onChallenges}>Sfide</button>
 </div>
 
 <style>
@@ -65,5 +67,9 @@
   button:disabled {
     background: #7a8a99;
     cursor: default;
+  }
+
+  .secondary {
+    background: #7a8a99;
   }
 </style>
