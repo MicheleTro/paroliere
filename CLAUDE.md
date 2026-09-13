@@ -9,14 +9,16 @@ Gioco di parole stile Paroliere/Boggle, PWA Svelte + monorepo pnpm. Specifica co
 
 Setup locale necessario: `apps/server/.env` e `apps/web/.env` da copiare dai rispettivi `.env.example` (non versionati). `pnpm typecheck`, `pnpm lint`, `pnpm test` passano su tutto il monorepo.
 
-**Prossimo**: Passo 5b — Sfide come entità (vedi sotto), non iniziato.
+**Passo 5b — Sfide come entità**, implementato lato server (`apps/server`), non ancora integrato lato client (`apps/web`). Schema Drizzle (`game_configs`, `challenges`, `teams`, `challenge_participants`, `challenge_matches`, `match_results`, `games`) e route (`POST /challenges`, `POST /challenges/:id/join`, `GET /challenges/:id`, `POST /challenges/:id/matches/:matchIndex/results`, `GET /users/me/challenges`, `GET/POST /users/me/history(/sync)`) come da SPEC.md §9. `packages/core` esteso con `scoring: 'classic' | 'versus'` e `computeVersusScores` (RF-24). Verificato end-to-end contro Postgres reale: creazione sfida, join, settle di un match `versus` con punteggi corretti, sync storico locale.
+
+**Prossimo**: pagina "Sfide" lato client (`apps/web`) — creazione, partecipazione, storico — non ancora iniziata.
 
 Ancora non fatto (Passo 4, non bloccante): test PWA su device reali Android e hosting con brotli.
 
 ## Passo 5 — Backend e sfide (design completo, implementazione in corso)
 Design in SPEC.md §9, in due parti:
 - **Passo 5a — Utenza obbligatoria** (COMPLETATO, vedi sopra): login (username/email/password) richiesto per usare l'app anche in singolo giocatore (RF-19); supera la decisione "nessun backend nell'MVP" dei Passi 1–4.
-- **Passo 5b — Sfide come entità** (NON iniziato): si costruisce sopra il 5a. Sfida = serie di N match (`bestOf`) sulla stessa config, partecipanti individuali o a squadre, nessuna scadenza — il punteggio di un match si calcola solo quando tutti hanno giocato. Regola di punteggio `versus` (RF-24): parola unica = doppio del valore base, parola in comune (≥2 partecipanti) = valore base.
+- **Passo 5b — Sfide come entità** (backend completato, gate client non iniziato, vedi sopra): si costruisce sopra il 5a. Sfida = serie di N match (`bestOf`) sulla stessa config, partecipanti individuali o a squadre, nessuna scadenza — il punteggio di un match si calcola solo quando tutti hanno giocato. Regola di punteggio `versus` (RF-24): parola unica = doppio del valore base, parola in comune (≥2 partecipanti) = valore base.
 
 Backend Node/TS in `apps/server`, riusa `@paroliere/core`, Postgres+Drizzle (già in uso, non solo progettato).
 
