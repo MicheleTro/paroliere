@@ -5,7 +5,7 @@ export type ChallengeStatus = 'open' | 'in_progress' | 'completed' | 'cancelled'
 export type Scoring = 'classic' | 'versus';
 
 export interface ChallengeConfigInput {
-  size: 4 | 5 | 6;
+  size: 3 | 4 | 5 | 6;
   durationMs: number;
   minWordLength: number;
   minWords: number;
@@ -46,7 +46,7 @@ export interface ChallengeSummary {
   playersPerTeam: number | null;
   participantCount: number;
   config: {
-    size: 4 | 5 | 6;
+    size: 3 | 4 | 5 | 6;
     durationMs: number;
     minWordLength: number;
     scoring: Scoring;

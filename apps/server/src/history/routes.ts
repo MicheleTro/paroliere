@@ -14,7 +14,7 @@ const foundWordSchema = z.object({
 
 const gameConfigSchema = z.object({
   seed: z.number().int(),
-  size: z.union([z.literal(4), z.literal(5), z.literal(6)]),
+  size: z.union([z.literal(3), z.literal(4), z.literal(5), z.literal(6)]),
   durationMs: z.number().int().positive(),
   minWordLength: z.number().int().min(1),
   minWords: z.number().int().min(1),

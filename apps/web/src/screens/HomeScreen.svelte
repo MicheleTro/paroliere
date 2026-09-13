@@ -1,35 +1,32 @@
 <script lang="ts">
   interface Props {
     ready: boolean;
-    record: number;
     onNewGame: () => void;
+    onChallenges: () => void;
   }
 
-  let { ready, record, onNewGame }: Props = $props();
+  let { ready, onNewGame, onChallenges }: Props = $props();
 </script>
 
 <div class="home">
-  <p class="record">Record: {record}</p>
-  <button type="button" disabled={!ready} onclick={onNewGame}>
-    {ready ? 'Nuova partita' : 'Caricamento dizionario...'}
+  <button type="button" class="big" disabled={!ready} onclick={onNewGame}>
+    {ready ? 'Allenamento' : 'Caricamento dizionario...'}
   </button>
+  <button type="button" class="big" onclick={onChallenges}>Sfide</button>
 </div>
 
 <style>
   .home {
     display: flex;
     flex-direction: column;
-    align-items: center;
+    align-items: stretch;
     gap: 16px;
+    width: min(90vw, 320px);
   }
 
-  .record {
-    font-size: 1.1rem;
-  }
-
-  button {
-    font-size: 1.1rem;
-    padding: 12px 24px;
+  .big {
+    font-size: 1.4rem;
+    padding: 24px;
     border-radius: var(--radius-md);
     border: none;
     background: var(--color-accent);
@@ -37,7 +34,7 @@
     cursor: pointer;
   }
 
-  button:disabled {
+  .big:disabled {
     background: var(--color-disabled);
     color: var(--color-ink-soft);
     cursor: default;

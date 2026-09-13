@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { createChallenge, type ChallengeMode, type Scoring } from '../lib/challenges.js';
+  import { createChallenge, type ChallengeMode } from '../lib/challenges.js';
   import { formatDuration } from '../lib/format.js';
 
   interface Props {
@@ -11,47 +11,26 @@
 
   const DURATIONS_MS = [30_000, 60_000, 90_000, 120_000, 150_000];
   const MIN_WORD_LENGTHS = [3, 4, 5];
-  const SIZES = [4, 5, 6] as const;
+  const SIZES = [3, 4, 5] as const;
 
-  let durationMs = $state(120_000);
+  let durationMs = $state(90_000);
   let minWordLength = $state(3);
-  let size: 4 | 5 | 6 = $state(4);
-  let scoring: Scoring = $state('classic');
-  let mode: ChallengeMode = $state('individual');
+  let size: 3 | 4 | 5 = $state(4);
+  const mode: ChallengeMode = 'individual';
   let bestOf = $state(1);
   let maxParticipants = $state(2);
-  let playersPerTeam = $state(2);
-  let teamNames: string[] = $state(['Squadra A', 'Squadra B']);
-  let creatorTeamIndex = $state(0);
   let submitting = $state(false);
   let error: string | undefined = $state();
 
-  function addTeam(): void {
-    teamNames = [...teamNames, `Squadra ${teamNames.length + 1}`];
-  }
-
-  function removeTeam(index: number): void {
-    teamNames = teamNames.filter((_, i) => i !== index);
-    if (creatorTeamIndex >= teamNames.length) creatorTeamIndex = teamNames.length - 1;
-  }
-
   async function handleSubmit(): Promise<void> {
     error = undefined;
-    if (mode === 'team' && teamNames.filter((name) => name.trim().length > 0).length < 2) {
-      error = 'Servono almeno 2 squadre';
-      return;
-    }
-
     submitting = true;
     try {
       const result = await createChallenge({
-        config: { size, durationMs, minWordLength, minWords: 50, scoring },
+        config: { size, durationMs, minWordLength, minWords: 50, scoring: 'versus' },
         mode,
         bestOf,
-        maxParticipants: mode === 'individual' ? maxParticipants : undefined,
-        playersPerTeam: mode === 'team' ? playersPerTeam : undefined,
-        teams: mode === 'team' ? teamNames.map((name) => ({ name })) : undefined,
-        creatorTeamIndex: mode === 'team' ? creatorTeamIndex : undefined,
+        maxParticipants,
       });
       onCreated(result.challenge.id);
     } catch (err) {
@@ -88,78 +67,31 @@
   </section>
 
   <section>
-    <h2>Lettere per lato</h2>
+    <h2>Griglia</h2>
     <div class="options">
       {#each SIZES as s (s)}
         <button type="button" class:selected={size === s} onclick={() => (size = s)}>
-          {s}
+          {s}×{s}
         </button>
       {/each}
     </div>
   </section>
 
   <section>
-    <h2>Punteggio</h2>
+    <h2>Modalità</h2>
     <div class="options">
-      <button type="button" class:selected={scoring === 'classic'} onclick={() => (scoring = 'classic')}>
-        Classico
-      </button>
-      <button type="button" class:selected={scoring === 'versus'} onclick={() => (scoring = 'versus')}>
-        Versus
-      </button>
+      <button type="button" class="selected" disabled>Individuale</button>
+      <button type="button" disabled title="Disponibile più avanti">A squadre</button>
     </div>
   </section>
 
   <section>
-    <h2>Modalità</h2>
-    <div class="options">
-      <button type="button" class:selected={mode === 'individual'} onclick={() => (mode = 'individual')}>
-        Individuale
-      </button>
-      <button type="button" class:selected={mode === 'team'} onclick={() => (mode = 'team')}>A squadre</button>
+    <h2>Numero di giocatori</h2>
+    <div class="slider">
+      <input type="range" min="2" max="8" step="1" bind:value={maxParticipants} />
+      <span class="slider-value">{maxParticipants}</span>
     </div>
   </section>
-
-  {#if mode === 'individual'}
-    <section>
-      <h2>Numero di giocatori</h2>
-      <div class="options">
-        {#each [2, 3, 4, 6, 8] as n (n)}
-          <button type="button" class:selected={maxParticipants === n} onclick={() => (maxParticipants = n)}>
-            {n}
-          </button>
-        {/each}
-      </div>
-    </section>
-  {:else}
-    <section>
-      <h2>Giocatori per squadra</h2>
-      <div class="options">
-        {#each [2, 3, 4, 5] as n (n)}
-          <button type="button" class:selected={playersPerTeam === n} onclick={() => (playersPerTeam = n)}>
-            {n}
-          </button>
-        {/each}
-      </div>
-    </section>
-
-    <section>
-      <h2>Squadre</h2>
-      {#each teamNames as _, index (index)}
-        <div class="team-row">
-          <input type="text" bind:value={teamNames[index]} />
-          <label class="creator-team">
-            <input type="radio" name="creator-team" checked={creatorTeamIndex === index} onchange={() => (creatorTeamIndex = index)} />
-            Tu
-          </label>
-          {#if teamNames.length > 2}
-            <button type="button" class="link" onclick={() => removeTeam(index)}>Rimuovi</button>
-          {/if}
-        </div>
-      {/each}
-      <button type="button" class="link" onclick={addTeam}>Aggiungi squadra</button>
-    </section>
-  {/if}
 
   <section>
     <h2>Numero di match (best of)</h2>
@@ -228,39 +160,28 @@
     color: var(--color-accent-contrast);
   }
 
-  .team-row {
+  .options button:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+
+  .slider {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 12px;
     width: 100%;
   }
 
-  .team-row input[type='text'] {
+  .slider input[type='range'] {
     flex: 1;
-    font-size: 1rem;
-    padding: 8px 12px;
-    border-radius: var(--radius-md);
-    border: 2px solid var(--color-border);
-    background: var(--color-surface);
-    color: var(--color-ink);
   }
 
-  .creator-team {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    font-size: 0.85rem;
-    white-space: nowrap;
-  }
-
-  .link {
-    font-size: 0.9rem;
-    padding: 0;
-    border: none;
-    background: none;
+  .slider-value {
+    font-size: 1.1rem;
+    font-weight: 700;
     color: var(--color-accent);
-    text-decoration: underline;
-    cursor: pointer;
+    min-width: 1.5em;
+    text-align: center;
   }
 
   .error {

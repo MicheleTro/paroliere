@@ -1,30 +1,24 @@
-<script module lang="ts">
-  export type MainTab = 'home' | 'challenges' | 'history';
-</script>
-
 <script lang="ts">
   import type { Snippet } from 'svelte';
 
   interface Props {
     username: string;
-    active: MainTab;
-    onSelectTab: (tab: MainTab) => void;
+    showHome: boolean;
+    onHome: () => void;
     onLogout: () => void;
     children: Snippet;
   }
 
-  let { username, active, onSelectTab, onLogout, children }: Props = $props();
-
-  const TABS: { id: MainTab; label: string }[] = [
-    { id: 'home', label: 'Gioca' },
-    { id: 'challenges', label: 'Sfide' },
-    { id: 'history', label: 'Storico' },
-  ];
+  let { username, showHome, onHome, onLogout, children }: Props = $props();
 </script>
 
 <div class="shell">
   <header>
-    <h1>Paroliere</h1>
+    {#if showHome}
+      <button type="button" class="home" onclick={onHome}>🏠 Home</button>
+    {:else}
+      <h1>Paroliere</h1>
+    {/if}
     <div class="account">
       <span>{username}</span>
       <button type="button" class="link" onclick={onLogout}>Esci</button>
@@ -34,14 +28,6 @@
   <div class="content">
     {@render children()}
   </div>
-
-  <nav class="tabs">
-    {#each TABS as tab (tab.id)}
-      <button type="button" class:active={active === tab.id} onclick={() => onSelectTab(tab.id)}>
-        {tab.label}
-      </button>
-    {/each}
-  </nav>
 </div>
 
 <style>
@@ -90,26 +76,13 @@
     align-items: center;
   }
 
-  .tabs {
-    display: flex;
-    gap: 8px;
-    width: 100%;
-  }
-
-  .tabs button {
-    flex: 1;
+  .home {
     font-size: 1rem;
-    padding: 10px 0;
+    padding: 6px 12px;
     border-radius: var(--radius-md);
     border: 2px solid var(--color-border);
     background: var(--color-surface);
-    color: var(--color-ink-soft);
+    color: var(--color-ink);
     cursor: pointer;
-  }
-
-  .tabs button.active {
-    border-color: var(--color-accent);
-    background: var(--color-accent);
-    color: var(--color-accent-contrast);
   }
 </style>
