@@ -1,7 +1,7 @@
 import { apiRequest } from './api.js';
 
 export type ChallengeMode = 'individual' | 'team';
-export type ChallengeStatus = 'open' | 'completed';
+export type ChallengeStatus = 'open' | 'in_progress' | 'completed';
 export type Scoring = 'classic' | 'versus';
 
 export interface ChallengeConfigInput {
@@ -17,7 +17,9 @@ export interface CreateChallengeInput {
   mode: ChallengeMode;
   bestOf: number;
   maxParticipants?: number;
+  playersPerTeam?: number;
   teams?: { name: string }[];
+  creatorTeamIndex?: number;
 }
 
 export interface ChallengeRecord {
@@ -26,6 +28,7 @@ export interface ChallengeRecord {
   configId: string;
   mode: ChallengeMode;
   maxParticipants: number | null;
+  playersPerTeam: number | null;
   bestOf: number;
   status: ChallengeStatus;
   createdAt: string;
@@ -39,6 +42,9 @@ export interface ChallengeSummary {
   bestOf: number;
   status: ChallengeStatus;
   createdAt: string;
+  maxParticipants: number | null;
+  playersPerTeam: number | null;
+  participantCount: number;
   config: {
     size: 4 | 5 | 6;
     durationMs: number;
@@ -89,6 +95,7 @@ export interface ChallengeDetail {
   status: ChallengeStatus;
   bestOf: number;
   maxParticipants: number | null;
+  playersPerTeam: number | null;
   config: ChallengeConfig;
   teams: ChallengeTeam[];
   participants: ChallengeParticipant[];

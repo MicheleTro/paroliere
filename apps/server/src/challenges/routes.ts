@@ -25,9 +25,11 @@ const gameConfigInputSchema = z.object({
 const createChallengeSchema = z.object({
   config: gameConfigInputSchema,
   mode: z.enum(['individual', 'team']),
-  maxParticipants: z.number().int().positive().optional(),
+  maxParticipants: z.number().int().min(2).optional(),
+  playersPerTeam: z.number().int().min(1).optional(),
   bestOf: z.number().int().min(1).max(20),
   teams: z.array(z.object({ name: z.string().min(1).max(64) })).optional(),
+  creatorTeamIndex: z.number().int().min(0).optional(),
 });
 
 const joinSchema = z.object({ teamId: z.string().uuid().optional() });
@@ -42,6 +44,7 @@ const matchParamsSchema = z.object({ id: z.string().uuid(), matchIndex: z.coerce
 type ChallengeRow = typeof schema.challenges.$inferSelect;
 type ChallengeMatchRow = typeof schema.challengeMatches.$inferSelect;
 type GameConfigRow = typeof schema.gameConfigs.$inferSelect;
+type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
 function toGameConfig(row: GameConfigRow, seed: number): GameConfig {
   return {
@@ -136,19 +139,58 @@ async function trySettleMatch(
   return true;
 }
 
+/**
+ * Fa partire la sfida (open -> in_progress) quando il numero di giocatori
+ * richiesto in fase di creazione è stato raggiunto: tutti i partecipanti in
+ * modalità individuale, oppure ogni squadra piena in modalità a squadre.
+ * Prima di questo passaggio i match non sono giocabili (evita che una sfida
+ * si concluda con un solo giocatore su due).
+ */
+async function maybeStartChallenge(tx: Tx, challenge: ChallengeRow): Promise<void> {
+  if (challenge.status !== 'open') return;
+
+  const participants = await tx
+    .select()
+    .from(schema.challengeParticipants)
+    .where(eq(schema.challengeParticipants.challengeId, challenge.id));
+
+  let ready: boolean;
+  if (challenge.mode === 'team') {
+    const teamRows = await tx.select().from(schema.teams).where(eq(schema.teams.challengeId, challenge.id));
+    ready = teamRows.every(
+      (team) => participants.filter((p) => p.teamId === team.id).length >= challenge.playersPerTeam!,
+    );
+  } else {
+    ready = participants.length >= challenge.maxParticipants!;
+  }
+
+  if (ready) {
+    await tx.update(schema.challenges).set({ status: 'in_progress' }).where(eq(schema.challenges.id, challenge.id));
+  }
+}
+
 export function registerChallengeRoutes(app: FastifyInstance): void {
   app.post('/challenges', { preHandler: requireAuth }, async (request, reply) => {
     const body = createChallengeSchema.safeParse(request.body);
     if (!body.success) {
       return reply.code(400).send({ error: body.error.flatten() });
     }
-    const { config, mode, maxParticipants, bestOf, teams } = body.data;
+    const { config, mode, maxParticipants, playersPerTeam, bestOf, teams, creatorTeamIndex } = body.data;
 
     if (mode === 'team' && (!teams || teams.length < 2)) {
       return reply.code(400).send({ error: 'Una sfida a squadre richiede almeno 2 squadre' });
     }
     if (mode === 'individual' && teams) {
       return reply.code(400).send({ error: 'teams non è valido in modalità individuale' });
+    }
+    if (mode === 'individual' && maxParticipants === undefined) {
+      return reply.code(400).send({ error: 'maxParticipants obbligatorio in modalità individuale' });
+    }
+    if (mode === 'team' && playersPerTeam === undefined) {
+      return reply.code(400).send({ error: 'playersPerTeam obbligatorio in modalità a squadre' });
+    }
+    if (mode === 'team' && (creatorTeamIndex === undefined || creatorTeamIndex >= teams!.length)) {
+      return reply.code(400).send({ error: 'creatorTeamIndex non valido' });
     }
 
     const { dictionaryVersion } = loadDictionary();
@@ -165,7 +207,8 @@ export function registerChallengeRoutes(app: FastifyInstance): void {
           creatorUserId: request.userId!,
           configId: configRow!.id,
           mode,
-          maxParticipants: maxParticipants ?? null,
+          maxParticipants: mode === 'individual' ? maxParticipants : null,
+          playersPerTeam: mode === 'team' ? playersPerTeam : null,
           bestOf,
         })
         .returning();
@@ -188,6 +231,14 @@ export function registerChallengeRoutes(app: FastifyInstance): void {
           })),
         )
         .returning();
+
+      await tx.insert(schema.challengeParticipants).values({
+        challengeId: challengeRow!.id,
+        userId: request.userId!,
+        teamId: mode === 'team' ? teamRows[creatorTeamIndex!]!.id : null,
+      });
+
+      await maybeStartChallenge(tx, challengeRow!);
 
       return { challenge: challengeRow!, config: configRow!, teams: teamRows, matches: matchRows };
     });
@@ -213,23 +264,33 @@ export function registerChallengeRoutes(app: FastifyInstance): void {
         .where(and(eq(schema.teams.id, body.data.teamId), eq(schema.teams.challengeId, challenge.id)))
         .limit(1);
       if (!team) return reply.code(400).send({ error: 'Squadra non valida per questa sfida' });
+
+      const teamParticipants = await db
+        .select()
+        .from(schema.challengeParticipants)
+        .where(eq(schema.challengeParticipants.teamId, team.id));
+      if (teamParticipants.length >= challenge.playersPerTeam!) {
+        return reply.code(409).send({ error: 'Squadra al completo' });
+      }
     } else if (body.data.teamId) {
       return reply.code(400).send({ error: 'teamId non valido in modalità individuale' });
-    }
-
-    if (challenge.maxParticipants !== null) {
+    } else {
       const existing = await db
         .select()
         .from(schema.challengeParticipants)
         .where(eq(schema.challengeParticipants.challengeId, challenge.id));
-      if (existing.length >= challenge.maxParticipants) return reply.code(409).send({ error: 'Sfida al completo' });
+      if (existing.length >= challenge.maxParticipants!) return reply.code(409).send({ error: 'Sfida al completo' });
     }
 
     try {
-      const [participant] = await db
-        .insert(schema.challengeParticipants)
-        .values({ challengeId: challenge.id, userId: request.userId!, teamId: body.data.teamId ?? null })
-        .returning();
+      const participant = await db.transaction(async (tx) => {
+        const [inserted] = await tx
+          .insert(schema.challengeParticipants)
+          .values({ challengeId: challenge.id, userId: request.userId!, teamId: body.data.teamId ?? null })
+          .returning();
+        await maybeStartChallenge(tx, challenge);
+        return inserted!;
+      });
       return reply.code(201).send(participant);
     } catch (error) {
       if (isUniqueViolation(error)) return reply.code(409).send({ error: 'Hai già aderito a questa sfida' });
@@ -291,6 +352,7 @@ export function registerChallengeRoutes(app: FastifyInstance): void {
       status: challenge.status,
       bestOf: challenge.bestOf,
       maxParticipants: challenge.maxParticipants,
+      playersPerTeam: challenge.playersPerTeam,
       config: configRow,
       teams: teamRows,
       participants,
@@ -306,6 +368,9 @@ export function registerChallengeRoutes(app: FastifyInstance): void {
 
     const [challenge] = await db.select().from(schema.challenges).where(eq(schema.challenges.id, params.data.id)).limit(1);
     if (!challenge) return reply.code(404).send({ error: 'Sfida non trovata' });
+    if (challenge.status !== 'in_progress') {
+      return reply.code(409).send({ error: 'La sfida non è ancora iniziata: mancano ancora giocatori' });
+    }
 
     const [participant] = await db
       .select()
@@ -349,6 +414,8 @@ export function registerChallengeRoutes(app: FastifyInstance): void {
         mode: schema.challenges.mode,
         status: schema.challenges.status,
         bestOf: schema.challenges.bestOf,
+        maxParticipants: schema.challenges.maxParticipants,
+        playersPerTeam: schema.challenges.playersPerTeam,
         createdAt: schema.challenges.createdAt,
         creatorUserId: schema.challenges.creatorUserId,
         creatorUsername: schema.users.username,
@@ -364,15 +431,19 @@ export function registerChallengeRoutes(app: FastifyInstance): void {
       .innerJoin(schema.gameConfigs, eq(schema.gameConfigs.id, schema.challenges.configId))
       .orderBy(desc(schema.challenges.createdAt));
 
-    const participantRows = await db
-      .select({ challengeId: schema.challengeParticipants.challengeId })
-      .from(schema.challengeParticipants)
-      .where(eq(schema.challengeParticipants.userId, request.userId!));
-    const myChallengeIds = new Set(participantRows.map((p) => p.challengeId));
+    const allParticipants = await db
+      .select({ challengeId: schema.challengeParticipants.challengeId, userId: schema.challengeParticipants.userId })
+      .from(schema.challengeParticipants);
+    const participantCountByChallengeId = new Map<string, number>();
+    const myChallengeIds = new Set<string>();
+    for (const p of allParticipants) {
+      participantCountByChallengeId.set(p.challengeId, (participantCountByChallengeId.get(p.challengeId) ?? 0) + 1);
+      if (p.userId === request.userId) myChallengeIds.add(p.challengeId);
+    }
 
-    const visible = rows.filter(
-      (row) => row.status === 'open' || row.creatorUserId === request.userId || myChallengeIds.has(row.id),
-    );
+    const visible = rows
+      .filter((row) => row.status === 'open' || myChallengeIds.has(row.id))
+      .map((row) => ({ ...row, participantCount: participantCountByChallengeId.get(row.id) ?? 0 }));
 
     return reply.send(visible);
   });

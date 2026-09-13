@@ -46,6 +46,20 @@
   function teamName(teamId: string | null): string | undefined {
     return challenge?.teams.find((t) => t.id === teamId)?.name;
   }
+
+  function statusLabel(status: NonNullable<typeof challenge>['status']): string {
+    if (status === 'open') return 'aperta';
+    if (status === 'in_progress') return 'in corso';
+    return 'completata';
+  }
+
+  function teamParticipantCount(teamId: string): number {
+    return challenge?.participants.filter((p) => p.teamId === teamId).length ?? 0;
+  }
+
+  function isTeamFull(teamId: string): boolean {
+    return challenge !== undefined && teamParticipantCount(teamId) >= challenge.playersPerTeam!;
+  }
 </script>
 
 <div class="detail">
@@ -58,7 +72,7 @@
   {:else if challenge}
     <p class="summary">
       {challenge.mode === 'individual' ? 'Individuale' : 'A squadre'} · al meglio di {challenge.bestOf} ·
-      {challenge.status === 'open' ? 'aperta' : 'completata'}
+      {statusLabel(challenge.status)}
     </p>
 
     <section>
@@ -84,9 +98,10 @@
               <button
                 type="button"
                 class:selected={selectedTeamId === team.id}
+                disabled={isTeamFull(team.id)}
                 onclick={() => (selectedTeamId = team.id)}
               >
-                {team.name}
+                {team.name} ({teamParticipantCount(team.id)}/{challenge.playersPerTeam})
               </button>
             {/each}
           </div>
@@ -114,10 +129,12 @@
             <span>Match {match.matchIndex + 1}</span>
             {#if match.status === 'waiting'}
               <span class="status">In attesa</span>
-              {#if isParticipant}
+              {#if isParticipant && challenge.status === 'in_progress'}
                 <button type="button" class="secondary" onclick={() => onPlayMatch(challenge!, match)}>
                   Gioca
                 </button>
+              {:else if isParticipant}
+                <span class="status">In attesa di altri giocatori</span>
               {/if}
             {:else}
               <span class="status completed">Completato</span>
@@ -220,6 +237,11 @@
   .options button.selected {
     border-color: #4a90d9;
     background: #4a90d9;
+  }
+
+  .options button:disabled {
+    opacity: 0.5;
+    cursor: default;
   }
 
   .join .primary {

@@ -10,7 +10,7 @@ export const users = pgTable('users', {
 
 export const scoringEnum = pgEnum('scoring', ['classic', 'versus']);
 export const challengeModeEnum = pgEnum('challenge_mode', ['individual', 'team']);
-export const challengeStatusEnum = pgEnum('challenge_status', ['open', 'completed']);
+export const challengeStatusEnum = pgEnum('challenge_status', ['open', 'in_progress', 'completed']);
 export const gameSourceEnum = pgEnum('game_source', ['local', 'challenge']);
 
 export const gameConfigs = pgTable('game_configs', {
@@ -35,6 +35,7 @@ export const challenges = pgTable('challenges', {
     .references(() => gameConfigs.id),
   mode: challengeModeEnum('mode').notNull(),
   maxParticipants: integer('max_participants'),
+  playersPerTeam: integer('players_per_team'),
   bestOf: integer('best_of').notNull(),
   status: challengeStatusEnum('status').notNull().default('open'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),

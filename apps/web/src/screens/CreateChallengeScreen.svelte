@@ -19,7 +19,10 @@
   let scoring: Scoring = $state('classic');
   let mode: ChallengeMode = $state('individual');
   let bestOf = $state(1);
+  let maxParticipants = $state(2);
+  let playersPerTeam = $state(1);
   let teamNames: string[] = $state(['Squadra A', 'Squadra B']);
+  let creatorTeamIndex = $state(0);
   let submitting = $state(false);
   let error: string | undefined = $state();
 
@@ -29,6 +32,7 @@
 
   function removeTeam(index: number): void {
     teamNames = teamNames.filter((_, i) => i !== index);
+    if (creatorTeamIndex >= teamNames.length) creatorTeamIndex = teamNames.length - 1;
   }
 
   async function handleSubmit(): Promise<void> {
@@ -44,7 +48,10 @@
         config: { size, durationMs, minWordLength, minWords: 50, scoring },
         mode,
         bestOf,
+        maxParticipants: mode === 'individual' ? maxParticipants : undefined,
+        playersPerTeam: mode === 'team' ? playersPerTeam : undefined,
         teams: mode === 'team' ? teamNames.map((name) => ({ name })) : undefined,
+        creatorTeamIndex: mode === 'team' ? creatorTeamIndex : undefined,
       });
       onCreated(result.challenge.id);
     } catch (err) {
@@ -113,12 +120,38 @@
     </div>
   </section>
 
-  {#if mode === 'team'}
+  {#if mode === 'individual'}
+    <section>
+      <h2>Numero di giocatori</h2>
+      <div class="options">
+        {#each [2, 3, 4, 6, 8] as n (n)}
+          <button type="button" class:selected={maxParticipants === n} onclick={() => (maxParticipants = n)}>
+            {n}
+          </button>
+        {/each}
+      </div>
+    </section>
+  {:else}
+    <section>
+      <h2>Giocatori per squadra</h2>
+      <div class="options">
+        {#each [1, 2, 3, 4] as n (n)}
+          <button type="button" class:selected={playersPerTeam === n} onclick={() => (playersPerTeam = n)}>
+            {n}
+          </button>
+        {/each}
+      </div>
+    </section>
+
     <section>
       <h2>Squadre</h2>
       {#each teamNames as _, index (index)}
         <div class="team-row">
           <input type="text" bind:value={teamNames[index]} />
+          <label class="creator-team">
+            <input type="radio" name="creator-team" checked={creatorTeamIndex === index} onchange={() => (creatorTeamIndex = index)} />
+            Tu
+          </label>
           {#if teamNames.length > 2}
             <button type="button" class="link" onclick={() => removeTeam(index)}>Rimuovi</button>
           {/if}
@@ -201,7 +234,7 @@
     width: 100%;
   }
 
-  .team-row input {
+  .team-row input[type='text'] {
     flex: 1;
     font-size: 1rem;
     padding: 8px 12px;
@@ -209,6 +242,14 @@
     border: 2px solid #2c4256;
     background: white;
     color: #1c2b3a;
+  }
+
+  .creator-team {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.85rem;
+    white-space: nowrap;
   }
 
   .link {

@@ -20,11 +20,20 @@
     .finally(() => (loading = false));
 
   function statusLabel(status: ChallengeSummary['status']): string {
-    return status === 'open' ? 'Aperta' : 'Completata';
+    if (status === 'open') return 'Aperta';
+    if (status === 'in_progress') return 'In corso';
+    return 'Completata';
   }
 
   function modeLabel(mode: ChallengeSummary['mode']): string {
     return mode === 'individual' ? 'Individuale' : 'A squadre';
+  }
+
+  function playersLabel(challenge: ChallengeSummary): string {
+    if (challenge.mode === 'individual') {
+      return `${challenge.participantCount}/${challenge.maxParticipants} giocatori`;
+    }
+    return `${challenge.participantCount} iscritti · ${challenge.playersPerTeam} per squadra`;
   }
 
   function scoringLabel(scoring: ChallengeSummary['config']['scoring']): string {
@@ -48,11 +57,15 @@
           <button type="button" class="challenge" onclick={() => onOpen(challenge.id)}>
             <div class="row">
               <span class="mode">{modeLabel(challenge.mode)}</span>
-              <span class="status" class:completed={challenge.status === 'completed'}>
+              <span
+                class="status"
+                class:in-progress={challenge.status === 'in_progress'}
+                class:completed={challenge.status === 'completed'}
+              >
                 {statusLabel(challenge.status)}
               </span>
             </div>
-            <span class="creator">Creata da {challenge.creatorUsername}</span>
+            <span class="creator">Creata da {challenge.creatorUsername} · {playersLabel(challenge)}</span>
             <span class="config">
               {challenge.config.size}×{challenge.config.size} · {formatDuration(challenge.config.durationMs)} · min
               {challenge.config.minWordLength} lettere · {scoringLabel(challenge.config.scoring)} · al meglio di {challenge.bestOf}
@@ -114,6 +127,10 @@
 
   .status {
     font-weight: 600;
+  }
+
+  .status.in-progress {
+    color: #e8b84a;
   }
 
   .status.completed {
