@@ -1,5 +1,6 @@
 <script lang="ts">
   import { listChallenges, type ChallengeSummary } from '../lib/challenges.js';
+  import { formatDuration } from '../lib/format.js';
 
   interface Props {
     onOpen: (challengeId: string) => void;
@@ -25,6 +26,10 @@
   function modeLabel(mode: ChallengeSummary['mode']): string {
     return mode === 'individual' ? 'Individuale' : 'A squadre';
   }
+
+  function scoringLabel(scoring: ChallengeSummary['config']['scoring']): string {
+    return scoring === 'classic' ? 'Classico' : 'Versus';
+  }
 </script>
 
 <div class="challenges">
@@ -41,11 +46,17 @@
       {#each challenges as challenge (challenge.id)}
         <li>
           <button type="button" class="challenge" onclick={() => onOpen(challenge.id)}>
-            <span class="mode">{modeLabel(challenge.mode)}</span>
-            <span class="status" class:completed={challenge.status === 'completed'}>
-              {statusLabel(challenge.status)}
+            <div class="row">
+              <span class="mode">{modeLabel(challenge.mode)}</span>
+              <span class="status" class:completed={challenge.status === 'completed'}>
+                {statusLabel(challenge.status)}
+              </span>
+            </div>
+            <span class="creator">Creata da {challenge.creatorUsername}</span>
+            <span class="config">
+              {challenge.config.size}×{challenge.config.size} · {formatDuration(challenge.config.durationMs)} · min
+              {challenge.config.minWordLength} lettere · {scoringLabel(challenge.config.scoring)} · al meglio di {challenge.bestOf}
             </span>
-            <span class="best-of">Al meglio di {challenge.bestOf}</span>
           </button>
         </li>
       {/each}
@@ -84,8 +95,8 @@
   .challenge {
     width: 100%;
     display: flex;
-    justify-content: space-between;
-    gap: 8px;
+    flex-direction: column;
+    gap: 4px;
     padding: 12px 16px;
     border-radius: 8px;
     border: 2px solid #2c4256;
@@ -95,12 +106,24 @@
     text-align: left;
   }
 
+  .row {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
   .status {
     font-weight: 600;
   }
 
   .status.completed {
     color: #7ac47f;
+  }
+
+  .creator,
+  .config {
+    font-size: 0.85rem;
+    opacity: 0.85;
   }
 
   .actions {

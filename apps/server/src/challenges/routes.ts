@@ -342,8 +342,38 @@ export function registerChallengeRoutes(app: FastifyInstance): void {
     return reply.send({ found: graded, settled });
   });
 
-  app.get('/challenges', { preHandler: requireAuth }, async (_request, reply) => {
-    const all = await db.select().from(schema.challenges).orderBy(desc(schema.challenges.createdAt));
-    return reply.send(all);
+  app.get('/challenges', { preHandler: requireAuth }, async (request, reply) => {
+    const rows = await db
+      .select({
+        id: schema.challenges.id,
+        mode: schema.challenges.mode,
+        status: schema.challenges.status,
+        bestOf: schema.challenges.bestOf,
+        createdAt: schema.challenges.createdAt,
+        creatorUserId: schema.challenges.creatorUserId,
+        creatorUsername: schema.users.username,
+        config: {
+          size: schema.gameConfigs.size,
+          durationMs: schema.gameConfigs.durationMs,
+          minWordLength: schema.gameConfigs.minWordLength,
+          scoring: schema.gameConfigs.scoring,
+        },
+      })
+      .from(schema.challenges)
+      .innerJoin(schema.users, eq(schema.users.id, schema.challenges.creatorUserId))
+      .innerJoin(schema.gameConfigs, eq(schema.gameConfigs.id, schema.challenges.configId))
+      .orderBy(desc(schema.challenges.createdAt));
+
+    const participantRows = await db
+      .select({ challengeId: schema.challengeParticipants.challengeId })
+      .from(schema.challengeParticipants)
+      .where(eq(schema.challengeParticipants.userId, request.userId!));
+    const myChallengeIds = new Set(participantRows.map((p) => p.challengeId));
+
+    const visible = rows.filter(
+      (row) => row.status === 'open' || row.creatorUserId === request.userId || myChallengeIds.has(row.id),
+    );
+
+    return reply.send(visible);
   });
 }

@@ -20,7 +20,7 @@ export interface CreateChallengeInput {
   teams?: { name: string }[];
 }
 
-export interface ChallengeSummary {
+export interface ChallengeRecord {
   id: string;
   creatorUserId: string;
   configId: string;
@@ -29,6 +29,22 @@ export interface ChallengeSummary {
   bestOf: number;
   status: ChallengeStatus;
   createdAt: string;
+}
+
+export interface ChallengeSummary {
+  id: string;
+  creatorUserId: string;
+  creatorUsername: string;
+  mode: ChallengeMode;
+  bestOf: number;
+  status: ChallengeStatus;
+  createdAt: string;
+  config: {
+    size: 4 | 5 | 6;
+    durationMs: number;
+    minWordLength: number;
+    scoring: Scoring;
+  };
 }
 
 export interface ChallengeTeam {
@@ -86,7 +102,7 @@ export interface SubmitResultResponse {
 
 export async function createChallenge(
   input: CreateChallengeInput,
-): Promise<{ challenge: ChallengeSummary; config: ChallengeConfig; teams: ChallengeTeam[]; matches: ChallengeMatch[] }> {
+): Promise<{ challenge: ChallengeRecord; config: ChallengeConfig; teams: ChallengeTeam[]; matches: ChallengeMatch[] }> {
   return apiRequest('/challenges', { method: 'POST', body: JSON.stringify(input) });
 }
 
