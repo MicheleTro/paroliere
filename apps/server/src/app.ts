@@ -2,7 +2,9 @@ import cors from '@fastify/cors';
 import Fastify, { type FastifyInstance } from 'fastify';
 
 import { registerAuthRoutes } from './auth/routes.js';
+import { registerChallengeRoutes } from './challenges/routes.js';
 import { config } from './config.js';
+import { registerHistoryRoutes } from './history/routes.js';
 
 export function buildApp(): FastifyInstance {
   const app = Fastify({ logger: true });
@@ -12,6 +14,8 @@ export function buildApp(): FastifyInstance {
   app.get('/health', async () => ({ status: 'ok' }));
 
   registerAuthRoutes(app);
+  registerChallengeRoutes(app);
+  registerHistoryRoutes(app);
 
   return app;
 }

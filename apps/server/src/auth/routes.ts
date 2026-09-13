@@ -3,6 +3,7 @@ import { eq, or } from 'drizzle-orm';
 import { z } from 'zod';
 
 import { db } from '../db/client.js';
+import { isUniqueViolation } from '../db/errors.js';
 import { users } from '../db/schema.js';
 import { signAccessToken } from './jwt.js';
 import { hashPassword, verifyPassword } from './password.js';
@@ -18,12 +19,6 @@ const loginSchema = z.object({
   identifier: z.string().min(1),
   password: z.string().min(1),
 });
-
-const POSTGRES_UNIQUE_VIOLATION = '23505';
-
-function isUniqueViolation(error: unknown): boolean {
-  return typeof error === 'object' && error !== null && 'code' in error && error.code === POSTGRES_UNIQUE_VIOLATION;
-}
 
 export function registerAuthRoutes(app: FastifyInstance): void {
   app.post('/auth/register', async (request, reply) => {
