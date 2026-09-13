@@ -1,9 +1,13 @@
 node_modules/
 dist/
+!dist/dictionary/
+!dist/dictionary/**
 *.tsbuildinfo
 .DS_Store
 
 # dizionario sorgente e generato: non committare senza decisione esplicita (CLAUDE.md §10)
+# eccezione: dist/dictionary è committato deliberatamente per il deploy su Render (nessuna
+# fonte del dizionario sorgente disponibile in build su Render)
 tools/dict-builder/source/
 tools/dict-builder/dist/
 morph-it/
