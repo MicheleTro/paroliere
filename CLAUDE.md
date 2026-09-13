@@ -5,7 +5,9 @@ Gioco di parole stile Paroliere/Boggle, PWA Svelte + monorepo pnpm. Specifica co
 ## Passo corrente
 **Passo 5a — Utenza obbligatoria**, in corso. `apps/server` scaffoldato (Fastify + Drizzle + Postgres, vedi SPEC.md §9): schema `users`, migrazione generata (`apps/server/drizzle/0000_flimsy_mimic.sql`), route `POST /auth/register`, `POST /auth/login`, `GET /auth/me` (JWT via `jose`, hash password via `argon2`). `pnpm typecheck` passa (root + apps/server).
 
-**Non ancora verificato**: la migrazione non è mai stata applicata e le route non sono state testate contro un DB reale — Docker Desktop, su questa macchina, dava "access is denied" sulla named pipe (`dockerDesktopLinuxEngine`) nell'ultima sessione, quindi `docker compose up -d` in `apps/server` non è mai riuscito. Prima di continuare: verificare che Docker Desktop sia "Engine running" e che l'utente Windows sia nel gruppo `docker-users` (serve logout/login per applicare), poi da `apps/server`: `docker compose up -d`, `pnpm db:migrate`, `pnpm dev`, e provare `/health`, `/auth/register`, `/auth/login`, `/auth/me` con curl.
+**Verifica end-to-end completata**: sbloccato il problema Docker Desktop (era un token di sessione Windows senza il gruppo `docker-users` applicato — richiedeva un nuovo login/processo elevato, non un problema di configurazione Docker). Creato `apps/server/.env` da `.env.example`. Corretto un bug nello script `dev` (`apps/server/package.json`): l'ordine argomenti per `tsx` era sbagliato (`--env-file` prima di `watch` veniva interpretato male, `watch` finiva trattato come nome di file); ora è `tsx watch --env-file=.env src/index.ts`. Migrazione applicata con `pnpm db:migrate`, server avviato con `pnpm dev`, e testate con successo `/health`, `/auth/register`, `/auth/login` (nota: il body richiede `identifier`, non `username` — accetta sia username che email), `/auth/me` contro Postgres reale via Docker.
+
+**Prossimo**: il gate lato client in `apps/web` (route guard, pagina login/registrazione, persistenza JWT) — non ancora iniziato.
 
 Ancora non fatto (Passo 4, non bloccante): test PWA su device reali Android e hosting con brotli.
 
