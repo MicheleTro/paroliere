@@ -258,7 +258,12 @@
   {:else if screen === 'summary' && session && summary}
     <SummaryScreen {session} {summary} onReplaySameSeed={replaySameSeed} onNewGame={goToConfig} />
   {:else if screen === 'challenges'}
-    <ChallengesScreen onOpen={openChallenge} onCreate={() => (screen = 'challenge-create')} onBack={() => (screen = 'home')} />
+    <ChallengesScreen
+      currentUserId={auth.user?.id ?? ''}
+      onOpen={openChallenge}
+      onCreate={() => (screen = 'challenge-create')}
+      onBack={() => (screen = 'home')}
+    />
   {:else if screen === 'challenge-create'}
     <CreateChallengeScreen onCreated={openChallenge} onBack={goToChallenges} />
   {:else if screen === 'challenge-detail' && selectedChallengeId}

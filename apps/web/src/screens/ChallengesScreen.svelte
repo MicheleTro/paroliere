@@ -1,23 +1,45 @@
 <script lang="ts">
-  import { listChallenges, type ChallengeSummary } from '../lib/challenges.js';
+  import { cancelChallenge, listChallenges, type ChallengeSummary } from '../lib/challenges.js';
   import { formatDuration } from '../lib/format.js';
 
   interface Props {
+    currentUserId: string;
     onOpen: (challengeId: string) => void;
     onCreate: () => void;
     onBack: () => void;
   }
 
-  let { onOpen, onCreate, onBack }: Props = $props();
+  let { currentUserId, onOpen, onCreate, onBack }: Props = $props();
 
   let challenges: ChallengeSummary[] = $state([]);
   let loading = $state(true);
   let error: string | undefined = $state();
+  let cancellingId: string | undefined = $state();
 
-  listChallenges()
-    .then((result) => (challenges = result))
-    .catch((err) => (error = err instanceof Error ? err.message : 'Errore imprevisto'))
-    .finally(() => (loading = false));
+  function load(): void {
+    loading = true;
+    error = undefined;
+    listChallenges()
+      .then((result) => (challenges = result))
+      .catch((err) => (error = err instanceof Error ? err.message : 'Errore imprevisto'))
+      .finally(() => (loading = false));
+  }
+
+  load();
+
+  async function handleCancel(challenge: ChallengeSummary): Promise<void> {
+    if (!confirm('Cancellare questa sfida? L\'operazione non si può annullare.')) return;
+    error = undefined;
+    cancellingId = challenge.id;
+    try {
+      await cancelChallenge(challenge.id);
+      challenges = challenges.filter((c) => c.id !== challenge.id);
+    } catch (err) {
+      error = err instanceof Error ? err.message : 'Errore imprevisto';
+    } finally {
+      cancellingId = undefined;
+    }
+  }
 
   function statusLabel(status: ChallengeSummary['status']): string {
     if (status === 'open') return 'Aperta';
@@ -54,7 +76,7 @@
   {:else}
     <ul>
       {#each challenges as challenge (challenge.id)}
-        <li>
+        <li class="row-item">
           <button type="button" class="challenge" onclick={() => onOpen(challenge.id)}>
             <div class="row">
               <span class="mode">{modeLabel(challenge.mode)}</span>
@@ -62,7 +84,6 @@
                 class="status"
                 class:in-progress={challenge.status === 'in_progress'}
                 class:completed={challenge.status === 'completed'}
-                class:cancelled={challenge.status === 'cancelled'}
               >
                 {statusLabel(challenge.status)}
               </span>
@@ -73,6 +94,17 @@
               {challenge.config.minWordLength} lettere · {scoringLabel(challenge.config.scoring)} · al meglio di {challenge.bestOf}
             </span>
           </button>
+          {#if challenge.creatorUserId === currentUserId}
+            <button
+              type="button"
+              class="delete"
+              aria-label="Cancella sfida"
+              disabled={cancellingId === challenge.id}
+              onclick={() => handleCancel(challenge)}
+            >
+              🗑️
+            </button>
+          {/if}
         </li>
       {/each}
     </ul>
@@ -107,8 +139,15 @@
     gap: 8px;
   }
 
+  .row-item {
+    display: flex;
+    align-items: stretch;
+    gap: 8px;
+  }
+
   .challenge {
-    width: 100%;
+    flex: 1;
+    min-width: 0;
     display: flex;
     flex-direction: column;
     gap: 4px;
@@ -119,6 +158,21 @@
     color: #f5f5f5;
     cursor: pointer;
     text-align: left;
+  }
+
+  .delete {
+    flex-shrink: 0;
+    width: 44px;
+    border-radius: 8px;
+    border: 2px solid #2c4256;
+    background: #1c2b3a;
+    font-size: 1.1rem;
+    cursor: pointer;
+  }
+
+  .delete:disabled {
+    opacity: 0.5;
+    cursor: default;
   }
 
   .row {
@@ -137,10 +191,6 @@
 
   .status.completed {
     color: #7ac47f;
-  }
-
-  .status.cancelled {
-    color: #b3261e;
   }
 
   .creator,

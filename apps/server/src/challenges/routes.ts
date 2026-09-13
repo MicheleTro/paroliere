@@ -592,7 +592,7 @@ export function registerChallengeRoutes(app: FastifyInstance): void {
     }
 
     const visible = rows
-      .filter((row) => row.status === 'open' || myChallengeIds.has(row.id))
+      .filter((row) => row.status !== 'cancelled' && (row.status === 'open' || myChallengeIds.has(row.id)))
       .map((row) => ({ ...row, participantCount: participantCountByChallengeId.get(row.id) ?? 0 }));
 
     return reply.send(visible);
