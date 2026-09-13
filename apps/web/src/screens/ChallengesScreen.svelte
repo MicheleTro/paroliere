@@ -22,6 +22,7 @@
   function statusLabel(status: ChallengeSummary['status']): string {
     if (status === 'open') return 'Aperta';
     if (status === 'in_progress') return 'In corso';
+    if (status === 'cancelled') return 'Cancellata';
     return 'Completata';
   }
 
@@ -61,6 +62,7 @@
                 class="status"
                 class:in-progress={challenge.status === 'in_progress'}
                 class:completed={challenge.status === 'completed'}
+                class:cancelled={challenge.status === 'cancelled'}
               >
                 {statusLabel(challenge.status)}
               </span>
@@ -135,6 +137,10 @@
 
   .status.completed {
     color: #7ac47f;
+  }
+
+  .status.cancelled {
+    color: #b3261e;
   }
 
   .creator,

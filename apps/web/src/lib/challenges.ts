@@ -1,7 +1,7 @@
 import { apiRequest } from './api.js';
 
 export type ChallengeMode = 'individual' | 'team';
-export type ChallengeStatus = 'open' | 'in_progress' | 'completed';
+export type ChallengeStatus = 'open' | 'in_progress' | 'completed' | 'cancelled';
 export type Scoring = 'classic' | 'versus';
 
 export interface ChallengeConfigInput {
@@ -80,6 +80,8 @@ export interface ChallengeMatch {
   seed: number;
   status: 'waiting' | 'completed';
   scores?: ChallengeMatchScore[];
+  submittedByMe?: boolean;
+  startedByMe?: string | null;
 }
 
 export interface ChallengeConfig extends ChallengeConfigInput {
@@ -91,6 +93,7 @@ export interface ChallengeConfig extends ChallengeConfigInput {
 
 export interface ChallengeDetail {
   id: string;
+  creatorUserId: string;
   mode: ChallengeMode;
   status: ChallengeStatus;
   bestOf: number;
@@ -134,4 +137,12 @@ export async function submitMatchResult(
 
 export async function listChallenges(): Promise<ChallengeSummary[]> {
   return apiRequest('/challenges');
+}
+
+export async function startMatch(challengeId: string, matchIndex: number): Promise<{ startedAt: string }> {
+  return apiRequest(`/challenges/${challengeId}/matches/${matchIndex}/start`, { method: 'POST', body: '{}' });
+}
+
+export async function cancelChallenge(challengeId: string): Promise<void> {
+  await apiRequest(`/challenges/${challengeId}/cancel`, { method: 'POST', body: '{}' });
 }

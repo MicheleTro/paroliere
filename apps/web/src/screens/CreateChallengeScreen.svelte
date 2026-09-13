@@ -20,7 +20,7 @@
   let mode: ChallengeMode = $state('individual');
   let bestOf = $state(1);
   let maxParticipants = $state(2);
-  let playersPerTeam = $state(1);
+  let playersPerTeam = $state(2);
   let teamNames: string[] = $state(['Squadra A', 'Squadra B']);
   let creatorTeamIndex = $state(0);
   let submitting = $state(false);
@@ -135,7 +135,7 @@
     <section>
       <h2>Giocatori per squadra</h2>
       <div class="options">
-        {#each [1, 2, 3, 4] as n (n)}
+        {#each [2, 3, 4, 5] as n (n)}
           <button type="button" class:selected={playersPerTeam === n} onclick={() => (playersPerTeam = n)}>
             {n}
           </button>

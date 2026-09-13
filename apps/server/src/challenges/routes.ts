@@ -1,7 +1,7 @@
 import { randomInt } from 'node:crypto';
 
 import { computeVersusScores, type GameConfig, type VersusEntry, type WordIndex } from '@paroliere/core';
-import { and, desc, eq } from 'drizzle-orm';
+import { and, desc, eq, isNull } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 
@@ -13,6 +13,7 @@ import { loadDictionary } from '../dictionary.js';
 import { gradeSubmission } from './grading.js';
 
 const MAX_SEED = 2 ** 31 - 1;
+const MATCH_TIMEOUT_MARGIN_MS = 15_000;
 
 const gameConfigInputSchema = z.object({
   size: z.union([z.literal(4), z.literal(5), z.literal(6)]),
@@ -26,7 +27,7 @@ const createChallengeSchema = z.object({
   config: gameConfigInputSchema,
   mode: z.enum(['individual', 'team']),
   maxParticipants: z.number().int().min(2).optional(),
-  playersPerTeam: z.number().int().min(1).optional(),
+  playersPerTeam: z.number().int().min(2).optional(),
   bestOf: z.number().int().min(1).max(20),
   teams: z.array(z.object({ name: z.string().min(1).max(64) })).optional(),
   creatorTeamIndex: z.number().int().min(0).optional(),
@@ -72,6 +73,8 @@ async function trySettleMatch(
   configRow: GameConfigRow,
   index: WordIndex,
 ): Promise<boolean> {
+  if (match.settledAt) return false;
+
   const participants = await db
     .select()
     .from(schema.challengeParticipants)
@@ -166,6 +169,54 @@ async function maybeStartChallenge(tx: Tx, challenge: ChallengeRow): Promise<voi
 
   if (ready) {
     await tx.update(schema.challenges).set({ status: 'in_progress' }).where(eq(schema.challenges.id, challenge.id));
+  }
+}
+
+/**
+ * Un match che un giocatore ha iniziato (POST .../start) ma non ha mai
+ * inviato scade dopo durationMs + margine: gli viene assegnato un risultato
+ * a zero punti (nessuna parola trovata), così il match può settlare senza
+ * aspettare all'infinito chi ha abbandonato o ricaricato la pagina per
+ * ricominciare il timer da capo. Il controllo è pigro (eseguito quando la
+ * sfida viene letta o quando arriva un invio), non un job in background.
+ */
+async function expireStaleMatchStarts(challenge: ChallengeRow): Promise<void> {
+  if (challenge.status !== 'in_progress') return;
+
+  const [configRow] = await db.select().from(schema.gameConfigs).where(eq(schema.gameConfigs.id, challenge.configId)).limit(1);
+  if (!configRow) return;
+
+  const matches = await db
+    .select()
+    .from(schema.challengeMatches)
+    .where(and(eq(schema.challengeMatches.challengeId, challenge.id), isNull(schema.challengeMatches.settledAt)));
+
+  for (const match of matches) {
+    const starts = await db
+      .select()
+      .from(schema.challengeMatchStarts)
+      .where(eq(schema.challengeMatchStarts.challengeMatchId, match.id));
+    if (starts.length === 0) continue;
+
+    const results = await db.select().from(schema.matchResults).where(eq(schema.matchResults.challengeMatchId, match.id));
+    const submittedUserIds = new Set(results.map((r) => r.userId));
+    const deadline = configRow.durationMs + MATCH_TIMEOUT_MARGIN_MS;
+
+    for (const start of starts) {
+      if (submittedUserIds.has(start.userId)) continue;
+      if (Date.now() - start.startedAt.getTime() < deadline) continue;
+
+      try {
+        await db.insert(schema.matchResults).values({ challengeMatchId: match.id, userId: start.userId, paths: [], score: 0 });
+      } catch (error) {
+        if (!isUniqueViolation(error)) throw error;
+      }
+    }
+  }
+
+  const { index } = loadDictionary();
+  for (const match of matches) {
+    await trySettleMatch(challenge, match, configRow, index);
   }
 }
 
@@ -298,12 +349,82 @@ export function registerChallengeRoutes(app: FastifyInstance): void {
     }
   });
 
+  app.post('/challenges/:id/matches/:matchIndex/start', { preHandler: requireAuth }, async (request, reply) => {
+    const params = matchParamsSchema.safeParse(request.params);
+    if (!params.success) return reply.code(400).send({ error: 'Parametri non validi' });
+
+    const [challenge] = await db.select().from(schema.challenges).where(eq(schema.challenges.id, params.data.id)).limit(1);
+    if (!challenge) return reply.code(404).send({ error: 'Sfida non trovata' });
+    if (challenge.status !== 'in_progress') {
+      return reply.code(409).send({ error: 'La sfida non è ancora iniziata: mancano ancora giocatori' });
+    }
+
+    const [participant] = await db
+      .select()
+      .from(schema.challengeParticipants)
+      .where(and(eq(schema.challengeParticipants.challengeId, challenge.id), eq(schema.challengeParticipants.userId, request.userId!)))
+      .limit(1);
+    if (!participant) return reply.code(403).send({ error: 'Non partecipi a questa sfida' });
+
+    const [match] = await db
+      .select()
+      .from(schema.challengeMatches)
+      .where(and(eq(schema.challengeMatches.challengeId, challenge.id), eq(schema.challengeMatches.matchIndex, params.data.matchIndex)))
+      .limit(1);
+    if (!match) return reply.code(404).send({ error: 'Match non trovato' });
+    if (match.settledAt) return reply.code(409).send({ error: 'Match già concluso' });
+
+    const [existingResult] = await db
+      .select()
+      .from(schema.matchResults)
+      .where(and(eq(schema.matchResults.challengeMatchId, match.id), eq(schema.matchResults.userId, request.userId!)))
+      .limit(1);
+    if (existingResult) return reply.code(409).send({ error: 'Hai già inviato un risultato per questo match' });
+
+    try {
+      const [start] = await db
+        .insert(schema.challengeMatchStarts)
+        .values({ challengeMatchId: match.id, userId: request.userId! })
+        .returning();
+      return reply.code(201).send({ startedAt: start!.startedAt });
+    } catch (error) {
+      if (isUniqueViolation(error)) {
+        const [existing] = await db
+          .select()
+          .from(schema.challengeMatchStarts)
+          .where(and(eq(schema.challengeMatchStarts.challengeMatchId, match.id), eq(schema.challengeMatchStarts.userId, request.userId!)))
+          .limit(1);
+        return reply.send({ startedAt: existing!.startedAt });
+      }
+      throw error;
+    }
+  });
+
+  app.post('/challenges/:id/cancel', { preHandler: requireAuth }, async (request, reply) => {
+    const params = idParamsSchema.safeParse(request.params);
+    if (!params.success) return reply.code(400).send({ error: 'id non valido' });
+
+    const [challenge] = await db.select().from(schema.challenges).where(eq(schema.challenges.id, params.data.id)).limit(1);
+    if (!challenge) return reply.code(404).send({ error: 'Sfida non trovata' });
+    if (challenge.creatorUserId !== request.userId) {
+      return reply.code(403).send({ error: 'Solo chi ha creato la sfida può cancellarla' });
+    }
+    if (challenge.status === 'cancelled') return reply.code(409).send({ error: 'Sfida già cancellata' });
+
+    await db.update(schema.challenges).set({ status: 'cancelled' }).where(eq(schema.challenges.id, challenge.id));
+    return reply.send({ status: 'cancelled' });
+  });
+
   app.get('/challenges/:id', { preHandler: requireAuth }, async (request, reply) => {
     const params = idParamsSchema.safeParse(request.params);
     if (!params.success) return reply.code(400).send({ error: 'id non valido' });
 
     const [challenge] = await db.select().from(schema.challenges).where(eq(schema.challenges.id, params.data.id)).limit(1);
     if (!challenge) return reply.code(404).send({ error: 'Sfida non trovata' });
+
+    await expireStaleMatchStarts(challenge);
+    const [refreshedChallenge] = await db.select().from(schema.challenges).where(eq(schema.challenges.id, challenge.id)).limit(1);
+    Object.assign(challenge, refreshedChallenge);
 
     const participants = await db
       .select({
@@ -333,7 +454,24 @@ export function registerChallengeRoutes(app: FastifyInstance): void {
     const matchesWithResults = await Promise.all(
       matches.map(async (match) => {
         if (!match.settledAt) {
-          return { id: match.id, matchIndex: match.matchIndex, seed: match.seed, status: 'waiting' as const };
+          const [myResult] = await db
+            .select()
+            .from(schema.matchResults)
+            .where(and(eq(schema.matchResults.challengeMatchId, match.id), eq(schema.matchResults.userId, request.userId!)))
+            .limit(1);
+          const [myStart] = await db
+            .select()
+            .from(schema.challengeMatchStarts)
+            .where(and(eq(schema.challengeMatchStarts.challengeMatchId, match.id), eq(schema.challengeMatchStarts.userId, request.userId!)))
+            .limit(1);
+          return {
+            id: match.id,
+            matchIndex: match.matchIndex,
+            seed: match.seed,
+            status: 'waiting' as const,
+            submittedByMe: myResult !== undefined,
+            startedByMe: myStart?.startedAt ?? null,
+          };
         }
         const results = await db.select().from(schema.matchResults).where(eq(schema.matchResults.challengeMatchId, match.id));
         return {
@@ -348,6 +486,7 @@ export function registerChallengeRoutes(app: FastifyInstance): void {
 
     return reply.send({
       id: challenge.id,
+      creatorUserId: challenge.creatorUserId,
       mode: challenge.mode,
       status: challenge.status,
       bestOf: challenge.bestOf,
@@ -388,6 +527,17 @@ export function registerChallengeRoutes(app: FastifyInstance): void {
     if (match.settledAt) return reply.code(409).send({ error: 'Match già concluso' });
 
     const [configRow] = await db.select().from(schema.gameConfigs).where(eq(schema.gameConfigs.id, challenge.configId)).limit(1);
+
+    const [start] = await db
+      .select()
+      .from(schema.challengeMatchStarts)
+      .where(and(eq(schema.challengeMatchStarts.challengeMatchId, match.id), eq(schema.challengeMatchStarts.userId, request.userId!)))
+      .limit(1);
+    if (start && Date.now() - start.startedAt.getTime() > configRow!.durationMs + MATCH_TIMEOUT_MARGIN_MS) {
+      await expireStaleMatchStarts(challenge);
+      return reply.code(409).send({ error: 'Tempo scaduto per questo match' });
+    }
+
     const { index } = loadDictionary();
     const graded = gradeSubmission(toGameConfig(configRow!, match.seed), index, body.data.paths);
 

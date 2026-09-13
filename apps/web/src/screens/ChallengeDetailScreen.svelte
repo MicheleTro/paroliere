@@ -1,10 +1,17 @@
 <script lang="ts">
-  import { getChallenge, joinChallenge, type ChallengeDetail, type ChallengeMatch } from '../lib/challenges.js';
+  import {
+    cancelChallenge,
+    getChallenge,
+    joinChallenge,
+    startMatch,
+    type ChallengeDetail,
+    type ChallengeMatch,
+  } from '../lib/challenges.js';
 
   interface Props {
     challengeId: string;
     currentUserId: string;
-    onPlayMatch: (challenge: ChallengeDetail, match: ChallengeMatch) => void;
+    onPlayMatch: (challenge: ChallengeDetail, match: ChallengeMatch, remainingMs: number) => void;
     onBack: () => void;
   }
 
@@ -15,6 +22,7 @@
   let error: string | undefined = $state();
   let selectedTeamId: string | undefined = $state();
   let joining = $state(false);
+  let cancelling = $state(false);
 
   function load(): void {
     loading = true;
@@ -50,7 +58,42 @@
   function statusLabel(status: NonNullable<typeof challenge>['status']): string {
     if (status === 'open') return 'aperta';
     if (status === 'in_progress') return 'in corso';
+    if (status === 'cancelled') return 'cancellata';
     return 'completata';
+  }
+
+  async function handlePlay(match: ChallengeMatch): Promise<void> {
+    if (!challenge) return;
+    error = undefined;
+    try {
+      const { startedAt } = await startMatch(challenge.id, match.matchIndex);
+      const elapsed = Date.now() - new Date(startedAt).getTime();
+      const remainingMs = challenge.config.durationMs - elapsed;
+      if (remainingMs <= 0) {
+        error = 'Tempo scaduto per questo match.';
+        load();
+        return;
+      }
+      onPlayMatch(challenge, match, remainingMs);
+    } catch (err) {
+      error = err instanceof Error ? err.message : 'Errore imprevisto';
+      load();
+    }
+  }
+
+  async function handleCancel(): Promise<void> {
+    if (!challenge) return;
+    if (!confirm('Cancellare questa sfida? L\'operazione non si può annullare.')) return;
+    error = undefined;
+    cancelling = true;
+    try {
+      await cancelChallenge(challenge.id);
+      load();
+    } catch (err) {
+      error = err instanceof Error ? err.message : 'Errore imprevisto';
+    } finally {
+      cancelling = false;
+    }
   }
 
   function teamParticipantCount(teamId: string): number {
@@ -129,9 +172,11 @@
             <span>Match {match.matchIndex + 1}</span>
             {#if match.status === 'waiting'}
               <span class="status">In attesa</span>
-              {#if isParticipant && challenge.status === 'in_progress'}
-                <button type="button" class="secondary" onclick={() => onPlayMatch(challenge!, match)}>
-                  Gioca
+              {#if isParticipant && challenge.status === 'in_progress' && match.submittedByMe}
+                <span class="status">Hai già giocato, in attesa degli altri</span>
+              {:else if isParticipant && challenge.status === 'in_progress'}
+                <button type="button" class="secondary" onclick={() => handlePlay(match)}>
+                  {match.startedByMe ? 'Riprendi' : 'Gioca'}
                 </button>
               {:else if isParticipant}
                 <span class="status">In attesa di altri giocatori</span>
@@ -148,6 +193,12 @@
         {/each}
       </ul>
     </section>
+
+    {#if challenge.creatorUserId === currentUserId && challenge.status !== 'cancelled'}
+      <button type="button" class="danger" disabled={cancelling} onclick={handleCancel}>
+        {cancelling ? 'Cancellazione...' : 'Cancella sfida'}
+      </button>
+    {/if}
   {/if}
 
   <button type="button" class="secondary" onclick={onBack}>Indietro</button>
@@ -261,5 +312,20 @@
   .match .secondary {
     padding: 6px 12px;
     font-size: 0.9rem;
+  }
+
+  .danger {
+    font-size: 1rem;
+    padding: 8px 16px;
+    border-radius: 8px;
+    border: 2px solid #b3261e;
+    background: transparent;
+    color: #ff6b60;
+    cursor: pointer;
+  }
+
+  .danger:disabled {
+    opacity: 0.5;
+    cursor: default;
   }
 </style>

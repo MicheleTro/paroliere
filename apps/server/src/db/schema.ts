@@ -10,7 +10,7 @@ export const users = pgTable('users', {
 
 export const scoringEnum = pgEnum('scoring', ['classic', 'versus']);
 export const challengeModeEnum = pgEnum('challenge_mode', ['individual', 'team']);
-export const challengeStatusEnum = pgEnum('challenge_status', ['open', 'in_progress', 'completed']);
+export const challengeStatusEnum = pgEnum('challenge_status', ['open', 'in_progress', 'completed', 'cancelled']);
 export const gameSourceEnum = pgEnum('game_source', ['local', 'challenge']);
 
 export const gameConfigs = pgTable('game_configs', {
@@ -92,6 +92,21 @@ export const matchResults = pgTable(
     paths: jsonb('paths').notNull().$type<number[][]>(),
     score: integer('score'),
     submittedAt: timestamp('submitted_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [unique().on(table.challengeMatchId, table.userId)],
+);
+
+export const challengeMatchStarts = pgTable(
+  'challenge_match_starts',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    challengeMatchId: uuid('challenge_match_id')
+      .notNull()
+      .references(() => challengeMatches.id),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id),
+    startedAt: timestamp('started_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [unique().on(table.challengeMatchId, table.userId)],
 );

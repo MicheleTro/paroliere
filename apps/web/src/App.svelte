@@ -106,7 +106,7 @@
     screen = 'challenge-detail';
   }
 
-  function playChallengeMatch(challenge: ChallengeDetail, match: ChallengeMatch): void {
+  function playChallengeMatch(challenge: ChallengeDetail, match: ChallengeMatch, remainingMs: number): void {
     if (challenge.config.dictionaryVersion !== dictionaryVersion) {
       alert('Il dizionario locale non corrisponde a quello del server: ricarica la pagina e riprova.');
       return;
@@ -115,7 +115,7 @@
     requestNewGame({
       seed: match.seed,
       size: challenge.config.size,
-      durationMs: challenge.config.durationMs,
+      durationMs: remainingMs,
       minWordLength: challenge.config.minWordLength,
       minWords: challenge.config.minWords,
       scoring: challenge.config.scoring,
