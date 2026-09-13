@@ -4,10 +4,10 @@ import { computeVersusScores, type VersusEntry } from './versus-scoring.js';
 describe('computeVersusScores — RF-24', () => {
   it('raddoppia il valore base di una parola trovata da un solo partecipante', () => {
     const entries: VersusEntry[] = [
-      { participantId: 'a', groupId: 'a', words: ['casa'] }, // 4 lettere -> base 1
+      { participantId: 'a', groupId: 'a', words: ['casa'] }, // 4 lettere -> base 2
       { participantId: 'b', groupId: 'b', words: [] },
     ];
-    expect(computeVersusScores(entries)).toEqual({ a: 2, b: 0 });
+    expect(computeVersusScores(entries)).toEqual({ a: 4, b: 0 });
   });
 
   it('assegna il valore base a una parola trovata da almeno due partecipanti', () => {
@@ -15,20 +15,20 @@ describe('computeVersusScores — RF-24', () => {
       { participantId: 'a', groupId: 'a', words: ['casa'] },
       { participantId: 'b', groupId: 'b', words: ['casa'] },
     ];
-    expect(computeVersusScores(entries)).toEqual({ a: 1, b: 1 });
+    expect(computeVersusScores(entries)).toEqual({ a: 2, b: 2 });
   });
 
   it('somma i valori delle parole distinte trovate da un partecipante', () => {
     const entries: VersusEntry[] = [
-      { participantId: 'a', groupId: 'a', words: ['casa', 'abcdefgh'] }, // base 1 (unica) + base 11 (unica)
+      { participantId: 'a', groupId: 'a', words: ['casa', 'abcdefgh'] }, // base 2 (unica) + base 6 (unica)
       { participantId: 'b', groupId: 'b', words: [] },
     ];
-    expect(computeVersusScores(entries)).toEqual({ a: 1 * 2 + 11 * 2, b: 0 });
+    expect(computeVersusScores(entries)).toEqual({ a: 2 * 2 + 6 * 2, b: 0 });
   });
 
   it('ignora i duplicati della stessa parola nello stesso partecipante', () => {
     const entries: VersusEntry[] = [{ participantId: 'a', groupId: 'a', words: ['casa', 'casa'] }];
-    expect(computeVersusScores(entries)).toEqual({ a: 2 });
+    expect(computeVersusScores(entries)).toEqual({ a: 4 });
   });
 
   it('in modalità a squadre valuta l\'unicità a livello di squadra (groupId), non di singolo membro', () => {
@@ -38,7 +38,7 @@ describe('computeVersusScores — RF-24', () => {
       { participantId: 'b1', groupId: 'team-b', words: [] },
     ];
     // "casa" trovata da un solo gruppo (team-a) -> doppio, applicato a ciascun membro che l'ha trovata
-    expect(computeVersusScores(entries)).toEqual({ a1: 2, a2: 2, b1: 0 });
+    expect(computeVersusScores(entries)).toEqual({ a1: 4, a2: 4, b1: 0 });
   });
 
   it('somma i punteggi individuali per ottenere il punteggio di squadra', () => {
@@ -48,6 +48,6 @@ describe('computeVersusScores — RF-24', () => {
     ];
     const scores = computeVersusScores(entries);
     const teamScore = scores.a1! + scores.a2!;
-    expect(teamScore).toBe(4);
+    expect(teamScore).toBe(8);
   });
 });

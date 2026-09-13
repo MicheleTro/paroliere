@@ -24,12 +24,12 @@ describe('classicScoring — tabella RF-12', () => {
 
   it.each([
     ['abc', 1],
-    ['abcd', 1],
-    ['abcde', 2],
-    ['abcdef', 3],
+    ['abcd', 2],
+    ['abcde', 3],
+    ['abcdef', 4],
     ['abcdefg', 5],
-    ['abcdefgh', 11],
-    ['abcdefghijklmnop', 11],
+    ['abcdefgh', 6],
+    ['abcdefghijklmnop', 14],
   ] as const)('lunghezza %s -> %i punti', (word, expected) => {
     expect(classicScoring.scoreWord(word, [], emptyGrid)).toBe(expected);
   });

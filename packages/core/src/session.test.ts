@@ -86,7 +86,7 @@ describe('submitPath — ordine dei controlli (SPEC.md §5.8)', () => {
   it('valid include word e points', () => {
     const session = createSession(config, grid, solutions, 0);
     const { result } = submitPath(session, [0, 1, 2, 3], 10);
-    expect(result).toEqual({ kind: 'valid', word: 'casa', points: 1 });
+    expect(result).toEqual({ kind: 'valid', word: 'casa', points: 2 });
   });
 });
 
@@ -141,9 +141,9 @@ describe('summarize', () => {
     const summary = summarize(session);
 
     expect(summary.foundWords).toHaveLength(1);
-    expect(summary.score).toBe(1);
+    expect(summary.score).toBe(2);
     expect(summary.totalWords).toBe(2);
-    expect(summary.maxScore).toBe(2);
+    expect(summary.maxScore).toBe(4);
     expect(summary.foundPercentage).toBe(50);
     expect(summary.missedWords).toEqual([{ word: 'rete', path: [4, 5, 6, 7] }]);
   });

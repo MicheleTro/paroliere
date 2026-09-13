@@ -39,7 +39,7 @@ L'MVP è single player. Il progetto evolverà per incrementi verso punteggio sti
 
 ### Partita e punteggio
 - **RF-11** Durata 120 secondi con countdown visibile. **Deciso nel Passo 3**: durata (30/60/90/120/150s), lunghezza minima parola e lato griglia (4/5/6) sono configurabili in una schermata dedicata (`ConfigScreen`) prima di iniziare; 120s/3 lettere/4 lati restano i default.
-- **RF-12** Punteggio classico: 3–4 lettere = 1 punto, 5 = 2, 6 = 3, 7 = 5, 8 o più = 11.
+- **RF-12** Punteggio classico: 1 punto per 3 lettere, +1 per ogni lettera aggiuntiva (3 = 1, 4 = 2, 5 = 3, ...). Stessa regola di base usata da `versus` (RF-24).
 - **RF-13** Ogni partita è definita da una configurazione (§5.2). Nell'MVP esiste solo la regola di punteggio classica; la regola Ruzzle sarà un'aggiunta, non una modifica.
 - **RF-14** A fine partita si vedono parole trovate, punteggio, tutte le parole possibili e percentuale trovata.
 - **RF-15** Toccando una parola nel riepilogo, il suo percorso si illumina sulla griglia.
