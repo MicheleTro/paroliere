@@ -1,6 +1,7 @@
 databases:
   - name: paroliere-db
     plan: free
+    region: frankfurt
     postgresMajorVersion: 16
 
 services:
