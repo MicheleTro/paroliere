@@ -6,7 +6,7 @@ export interface GameConfig {
   durationMs: number;
   minWordLength: number;
   minWords: number;
-  scoring: 'classic';
+  scoring: 'classic' | 'versus';
   generatorVersion: 1;
   dictionaryVersion: string;
 }

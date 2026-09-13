@@ -5,5 +5,6 @@ export * from './word-index.js';
 export * from './solver.js';
 export * from './generate.js';
 export * from './scoring.js';
+export * from './versus-scoring.js';
 export * from './session.js';
 export * from './types.js';
