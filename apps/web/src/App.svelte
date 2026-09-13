@@ -10,10 +10,12 @@
   } from '@paroliere/core';
   import HomeScreen from './screens/HomeScreen.svelte';
   import ConfigScreen, { type GameSettings } from './screens/ConfigScreen.svelte';
+  import LoginScreen from './screens/LoginScreen.svelte';
   import PlayScreen from './screens/PlayScreen.svelte';
   import SummaryScreen from './screens/SummaryScreen.svelte';
   import { randomSeed } from './lib/random-seed.js';
   import { getPersonalBest, saveGame } from './lib/history.js';
+  import { auth, checkSession, logout } from './lib/auth.svelte.js';
   import type { WordPopupData } from './lib/word-popup.js';
   import type { NewGameConfig, WorkerResponse } from './worker/dictionary-worker.js';
 
@@ -169,11 +171,16 @@
   getPersonalBest()
     .then((best) => (record = best))
     .catch(() => {});
+  void checkSession();
 </script>
 
 <main>
-  {#if screen === 'home'}
-    <HomeScreen {ready} {record} onNewGame={goToConfig} />
+  {#if auth.status === 'checking'}
+    <p>Caricamento...</p>
+  {:else if auth.status === 'unauthenticated'}
+    <LoginScreen />
+  {:else if screen === 'home'}
+    <HomeScreen {ready} {record} username={auth.user?.username ?? ''} onNewGame={goToConfig} onLogout={logout} />
   {:else if screen === 'config'}
     <ConfigScreen onStart={startNewGame} onBack={() => (screen = 'home')} />
   {:else if screen === 'playing' && session}

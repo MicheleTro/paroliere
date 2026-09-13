@@ -16,6 +16,14 @@ export default tseslint.config(
     },
   },
   {
+    // eslint-plugin-svelte tratta anche i moduli *.svelte.ts (rune fuori dai
+    // componenti) come file Svelte: vanno riportati al parser TypeScript puro.
+    files: ['**/*.svelte.ts'],
+    languageOptions: {
+      parser: tseslint.parser,
+    },
+  },
+  {
     rules: {
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
       // Le Map costruite dentro una funzione derivata sono valori immutabili una
