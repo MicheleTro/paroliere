@@ -2,6 +2,7 @@
   "name": "paroliere",
   "private": true,
   "type": "module",
+  "packageManager": "pnpm@12.4.1",
   "engines": {
     "node": ">=20"
   },
