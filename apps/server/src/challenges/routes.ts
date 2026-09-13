@@ -245,13 +245,22 @@ export function registerChallengeRoutes(app: FastifyInstance): void {
     if (!challenge) return reply.code(404).send({ error: 'Sfida non trovata' });
 
     const participants = await db
-      .select()
+      .select({
+        id: schema.challengeParticipants.id,
+        challengeId: schema.challengeParticipants.challengeId,
+        userId: schema.challengeParticipants.userId,
+        username: schema.users.username,
+        teamId: schema.challengeParticipants.teamId,
+        joinedAt: schema.challengeParticipants.joinedAt,
+      })
       .from(schema.challengeParticipants)
+      .innerJoin(schema.users, eq(schema.users.id, schema.challengeParticipants.userId))
       .where(eq(schema.challengeParticipants.challengeId, challenge.id));
     const isParticipant = participants.some((p) => p.userId === request.userId);
     if (!isParticipant && challenge.creatorUserId !== request.userId) {
       return reply.code(403).send({ error: 'Non hai accesso a questa sfida' });
     }
+    const usernameByUserId = new Map(participants.map((p) => [p.userId, p.username]));
 
     const [configRow] = await db.select().from(schema.gameConfigs).where(eq(schema.gameConfigs.id, challenge.configId)).limit(1);
     const teamRows =
@@ -275,7 +284,7 @@ export function registerChallengeRoutes(app: FastifyInstance): void {
           matchIndex: match.matchIndex,
           seed: match.seed,
           status: 'completed' as const,
-          scores: results.map((r) => ({ userId: r.userId, score: r.score })),
+          scores: results.map((r) => ({ userId: r.userId, username: usernameByUserId.get(r.userId), score: r.score })),
         };
       }),
     );
