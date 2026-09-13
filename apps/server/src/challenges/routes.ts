@@ -23,7 +23,7 @@ const MAX_SEED = 2 ** 31 - 1;
 const MATCH_TIMEOUT_MARGIN_MS = 15_000;
 
 const gameConfigInputSchema = z.object({
-  size: z.union([z.literal(3), z.literal(4), z.literal(5), z.literal(6)]),
+  size: z.union([z.literal(4), z.literal(5), z.literal(6)]),
   durationMs: z.number().int().positive(),
   minWordLength: z.number().int().min(1),
   minWords: z.number().int().min(1),
@@ -57,7 +57,7 @@ type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 function toGameConfig(row: GameConfigRow, seed: number): GameConfig {
   return {
     seed,
-    size: row.size as 3 | 4 | 5 | 6,
+    size: row.size as 4 | 5 | 6,
     durationMs: row.durationMs,
     minWordLength: row.minWordLength,
     minWords: row.minWords,

@@ -2,7 +2,7 @@ import type { Tile } from './tile.js';
 
 export interface GameConfig {
   seed: number;
-  size: 3 | 4 | 5 | 6;
+  size: 4 | 5 | 6;
   durationMs: number;
   minWordLength: number;
   minWords: number;

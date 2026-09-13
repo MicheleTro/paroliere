@@ -20,9 +20,9 @@
   const MIN_WORD_LENGTHS = [3, 4, 5];
   const SIZES = [4, 5, 6] as const;
 
-  let durationMs = $state(120_000);
+  let durationMs = $state(90_000);
   let minWordLength = $state(3);
-  let size: 4 | 5 | 6 = $state(4);
+  let size: 4 | 5 | 6 = $state(5);
 </script>
 
 <div class="config">
@@ -51,11 +51,11 @@
   </section>
 
   <section>
-    <h2>Lettere per lato</h2>
+    <h2>Griglia</h2>
     <div class="options">
       {#each SIZES as s (s)}
         <button type="button" class:selected={size === s} onclick={() => (size = s)}>
-          {s}
+          {s}×{s}
         </button>
       {/each}
     </div>

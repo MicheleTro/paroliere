@@ -11,11 +11,11 @@
 
   const DURATIONS_MS = [30_000, 60_000, 90_000, 120_000, 150_000];
   const MIN_WORD_LENGTHS = [3, 4, 5];
-  const SIZES = [3, 4, 5] as const;
+  const SIZES = [4, 5, 6] as const;
 
   let durationMs = $state(90_000);
   let minWordLength = $state(3);
-  let size: 3 | 4 | 5 = $state(4);
+  let size: 4 | 5 | 6 = $state(5);
   const mode: ChallengeMode = 'individual';
   let bestOf = $state(1);
   let maxParticipants = $state(2);
@@ -94,7 +94,7 @@
   </section>
 
   <section>
-    <h2>Numero di match (best of)</h2>
+    <h2>Numero di match</h2>
     <div class="options">
       {#each [1, 3, 5] as n (n)}
         <button type="button" class:selected={bestOf === n} onclick={() => (bestOf = n)}>{n}</button>
