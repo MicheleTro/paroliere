@@ -61,11 +61,11 @@ function toGameConfig(row: GameConfigRow, seed: number): GameConfig {
 }
 
 /**
- * Prova a settlare un match: scatta solo quando tutti i gruppi richiesti
- * (partecipanti in modalità individuale, squadre in modalità a squadre)
- * hanno inviato un risultato (SPEC.md §9). Nessun meccanismo di abbandono:
- * un partecipante che non gioca mai blocca la sfida a tempo indefinito
- * (RF-23), per scelta esplicita.
+ * Prova a settlare un match: scatta solo quando tutti i partecipanti (anche
+ * in modalità a squadre, ogni membro di ogni squadra) hanno inviato un
+ * risultato (SPEC.md §9). Nessun meccanismo di abbandono: un partecipante
+ * che non gioca mai blocca la sfida a tempo indefinito (RF-23), per scelta
+ * esplicita.
  */
 async function trySettleMatch(
   challenge: ChallengeRow,
@@ -84,12 +84,7 @@ async function trySettleMatch(
   if (participants.length === 0) return false;
 
   const submittedUserIds = new Set(results.map((r) => r.userId));
-  const ready =
-    challenge.mode === 'team'
-      ? [...new Set(participants.map((p) => p.teamId).filter((t): t is string => t !== null))].every((teamId) =>
-          participants.some((p) => p.teamId === teamId && submittedUserIds.has(p.userId)),
-        )
-      : participants.every((p) => submittedUserIds.has(p.userId));
+  const ready = participants.every((p) => submittedUserIds.has(p.userId));
 
   if (!ready) return false;
 
