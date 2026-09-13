@@ -6,20 +6,23 @@
   interface Props {
     session: GameSession;
     summary: SessionSummary;
-    result: SubmitResultResponse;
+    result?: SubmitResultResponse;
+    error?: string;
     onBack: () => void;
   }
 
-  let { session, summary, result, onBack }: Props = $props();
+  let { session, summary, result, error, onBack }: Props = $props();
 </script>
 
 <div class="summary">
-  <h1>Match inviato</h1>
+  <h1>{error ? 'Invio non riuscito' : 'Match inviato'}</h1>
   <p class="score">Parole trovate: {summary.foundWords.length} / {summary.totalWords}</p>
 
   <GridView grid={session.grid} interactive={false} highlightPath={[]} onSubmit={() => {}} />
 
-  {#if result.settled}
+  {#if error}
+    <p class="error">Il risultato non è stato registrato: {error}. Riprova dal dettaglio della sfida.</p>
+  {:else if result?.settled}
     <p class="settled">Il match è concluso: tutti i partecipanti hanno giocato, il punteggio è disponibile.</p>
   {:else}
     <p class="waiting">
@@ -49,6 +52,11 @@
   .waiting {
     text-align: center;
     opacity: 0.9;
+  }
+
+  .error {
+    text-align: center;
+    color: #ff6b60;
   }
 
   .primary {

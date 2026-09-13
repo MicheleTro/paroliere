@@ -37,6 +37,47 @@
 
   const isParticipant = $derived(challenge?.participants.some((p) => p.userId === currentUserId) ?? false);
 
+  interface LeaderboardEntry {
+    id: string;
+    label: string;
+    total: number;
+    members?: { username: string; total: number }[];
+  }
+
+  const leaderboard: LeaderboardEntry[] = $derived.by(() => {
+    if (!challenge) return [];
+
+    const totalsByUser = new Map<string, number>();
+    for (const p of challenge.participants) totalsByUser.set(p.userId, 0);
+    for (const match of challenge.matches) {
+      if (match.status !== 'completed') continue;
+      for (const score of match.scores ?? []) {
+        totalsByUser.set(score.userId, (totalsByUser.get(score.userId) ?? 0) + (score.score ?? 0));
+      }
+    }
+
+    if (challenge.mode === 'team') {
+      const entries = new Map<string, LeaderboardEntry>(
+        challenge.teams.map((team) => [team.id, { id: team.id, label: team.name, total: 0, members: [] }]),
+      );
+      for (const p of challenge.participants) {
+        if (!p.teamId) continue;
+        const entry = entries.get(p.teamId);
+        if (!entry) continue;
+        const total = totalsByUser.get(p.userId) ?? 0;
+        entry.total += total;
+        entry.members!.push({ username: p.username, total });
+      }
+      return [...entries.values()].sort((a, b) => b.total - a.total);
+    }
+
+    return challenge.participants
+      .map((p) => ({ id: p.userId, label: p.username, total: totalsByUser.get(p.userId) ?? 0 }))
+      .sort((a, b) => b.total - a.total);
+  });
+
+  const hasCompletedMatches = $derived(challenge?.matches.some((m) => m.status === 'completed') ?? false);
+
   async function handleJoin(): Promise<void> {
     if (!challenge) return;
     error = undefined;
@@ -164,6 +205,30 @@
       <p class="error">{error}</p>
     {/if}
 
+    {#if hasCompletedMatches}
+      <section>
+        <h2>Classifica</h2>
+        <ol class="leaderboard">
+          {#each leaderboard as entry, i (entry.id)}
+            <li>
+              <div class="entry-row">
+                <span class="rank">{i + 1}</span>
+                <span class="label">{entry.label}</span>
+                <span class="total">{entry.total}</span>
+              </div>
+              {#if entry.members}
+                <ul class="members">
+                  {#each entry.members as member (member.username)}
+                    <li>{member.username}: {member.total}</li>
+                  {/each}
+                </ul>
+              {/if}
+            </li>
+          {/each}
+        </ol>
+      </section>
+    {/if}
+
     <section>
       <h2>Match</h2>
       <ul>
@@ -239,6 +304,55 @@
     display: flex;
     flex-direction: column;
     gap: 8px;
+  }
+
+  .leaderboard {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .leaderboard > li {
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: 2px solid #2c4256;
+  }
+
+  .entry-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .rank {
+    font-weight: 700;
+    opacity: 0.7;
+    width: 1.5em;
+  }
+
+  .label {
+    flex: 1;
+    font-weight: 600;
+  }
+
+  .total {
+    font-weight: 700;
+    color: #4a90d9;
+  }
+
+  .members {
+    list-style: none;
+    padding: 0 0 0 2.3em;
+    margin: 4px 0 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    font-size: 0.85rem;
+    opacity: 0.8;
   }
 
   .match {

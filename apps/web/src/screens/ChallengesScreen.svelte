@@ -6,15 +6,31 @@
     currentUserId: string;
     onOpen: (challengeId: string) => void;
     onCreate: () => void;
-    onBack: () => void;
   }
 
-  let { currentUserId, onOpen, onCreate, onBack }: Props = $props();
+  let { currentUserId, onOpen, onCreate }: Props = $props();
+
+  type FilterTab = 'open' | 'in_progress' | 'completed';
+  const FILTERS: { id: FilterTab; label: string }[] = [
+    { id: 'open', label: 'Aperte' },
+    { id: 'in_progress', label: 'In corso' },
+    { id: 'completed', label: 'Completate' },
+  ];
 
   let challenges: ChallengeSummary[] = $state([]);
   let loading = $state(true);
   let error: string | undefined = $state();
   let cancellingId: string | undefined = $state();
+  let filter: FilterTab = $state('open');
+
+  const filtered = $derived(challenges.filter((c) => c.status === filter));
+  const emptyLabel = $derived(
+    filter === 'open'
+      ? 'Nessuna sfida aperta. Creane una per iniziare.'
+      : filter === 'in_progress'
+        ? 'Nessuna sfida in corso.'
+        : 'Nessuna sfida completata ancora.',
+  );
 
   function load(): void {
     loading = true;
@@ -67,15 +83,21 @@
 <div class="challenges">
   <h1>Sfide</h1>
 
+  <div class="filters">
+    {#each FILTERS as f (f.id)}
+      <button type="button" class:selected={filter === f.id} onclick={() => (filter = f.id)}>{f.label}</button>
+    {/each}
+  </div>
+
   {#if loading}
     <p>Caricamento...</p>
   {:else if error}
     <p class="error">{error}</p>
-  {:else if challenges.length === 0}
-    <p>Nessuna sfida ancora. Creane una per iniziare.</p>
+  {:else if filtered.length === 0}
+    <p>{emptyLabel}</p>
   {:else}
     <ul>
-      {#each challenges as challenge (challenge.id)}
+      {#each filtered as challenge (challenge.id)}
         <li class="row-item">
           <button type="button" class="challenge" onclick={() => onOpen(challenge.id)}>
             <div class="row">
@@ -111,12 +133,33 @@
   {/if}
 
   <div class="actions">
-    <button type="button" class="secondary" onclick={onBack}>Indietro</button>
     <button type="button" class="primary" onclick={onCreate}>Nuova sfida</button>
   </div>
 </div>
 
 <style>
+  .filters {
+    display: flex;
+    gap: 8px;
+    width: 100%;
+  }
+
+  .filters button {
+    flex: 1;
+    font-size: 0.95rem;
+    padding: 8px 0;
+    border-radius: 8px;
+    border: 2px solid #2c4256;
+    background: #1c2b3a;
+    color: #f5f5f5;
+    cursor: pointer;
+  }
+
+  .filters button.selected {
+    border-color: #4a90d9;
+    background: #4a90d9;
+  }
+
   .challenges {
     display: flex;
     flex-direction: column;
@@ -214,11 +257,6 @@
 
   .actions .primary {
     background: #4a90d9;
-    color: white;
-  }
-
-  .actions .secondary {
-    background: #7a8a99;
     color: white;
   }
 </style>

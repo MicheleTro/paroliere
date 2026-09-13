@@ -19,10 +19,13 @@
   const currentWord = $derived(currentPath.map((i) => session.grid.tiles[i]).join(''));
 
   const score = $derived(session.foundWords.reduce((sum, f) => sum + f.points, 0));
+
+  const timeLeft = $derived(remainingMs(session, now));
+  const urgent = $derived(timeLeft <= 10_000);
 </script>
 
 <div class="play">
-  <p class="timer">{formatDuration(remainingMs(session, now))}</p>
+  <p class="timer" class:urgent>{formatDuration(timeLeft)}</p>
   <WordPopup {popup} />
   <GridView grid={session.grid} {onSubmit} onPathChange={(p) => (currentPath = p)} />
   <p class="current-word">{currentWord || ' '}</p>
@@ -46,6 +49,21 @@
     font-size: 1.6rem;
     font-weight: 700;
     font-variant-numeric: tabular-nums;
+  }
+
+  .timer.urgent {
+    color: #e06c6c;
+    animation: pulse 1s ease-in-out infinite;
+  }
+
+  @keyframes pulse {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.5;
+    }
   }
 
   .current-word {

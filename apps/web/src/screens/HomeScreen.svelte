@@ -2,26 +2,17 @@
   interface Props {
     ready: boolean;
     record: number;
-    username: string;
     onNewGame: () => void;
-    onChallenges: () => void;
-    onLogout: () => void;
   }
 
-  let { ready, record, username, onNewGame, onChallenges, onLogout }: Props = $props();
+  let { ready, record, onNewGame }: Props = $props();
 </script>
 
 <div class="home">
-  <h1>Paroliere</h1>
-  <p class="user">
-    {username}
-    <button type="button" class="link" onclick={onLogout}>Esci</button>
-  </p>
   <p class="record">Record: {record}</p>
   <button type="button" disabled={!ready} onclick={onNewGame}>
     {ready ? 'Nuova partita' : 'Caricamento dizionario...'}
   </button>
-  <button type="button" class="secondary" onclick={onChallenges}>Sfide</button>
 </div>
 
 <style>
@@ -34,24 +25,6 @@
 
   .record {
     font-size: 1.1rem;
-  }
-
-  .user {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 0.9rem;
-    color: #b5c2cd;
-  }
-
-  .link {
-    font-size: 0.9rem;
-    padding: 0;
-    border: none;
-    background: none;
-    color: #4a90d9;
-    text-decoration: underline;
-    cursor: pointer;
   }
 
   button {
@@ -67,9 +40,5 @@
   button:disabled {
     background: #7a8a99;
     cursor: default;
-  }
-
-  .secondary {
-    background: #7a8a99;
   }
 </style>

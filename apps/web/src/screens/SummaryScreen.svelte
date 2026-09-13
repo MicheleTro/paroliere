@@ -7,9 +7,10 @@
     summary: SessionSummary;
     onReplaySameSeed: () => void;
     onNewGame: () => void;
+    onHome: () => void;
   }
 
-  let { session, summary, onReplaySameSeed, onNewGame }: Props = $props();
+  let { session, summary, onReplaySameSeed, onNewGame, onHome }: Props = $props();
 
   let selectedPath: number[] = $state([]);
 
@@ -73,6 +74,7 @@
   <div class="actions">
     <button type="button" onclick={onReplaySameSeed}>Rigioca questa griglia</button>
     <button type="button" onclick={onNewGame}>Nuova partita</button>
+    <button type="button" class="secondary" onclick={onHome}>Home</button>
   </div>
 </div>
 
@@ -128,5 +130,10 @@
     border: none;
     background: #4a90d9;
     color: white;
+    cursor: pointer;
+  }
+
+  .actions .secondary {
+    background: #7a8a99;
   }
 </style>

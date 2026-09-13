@@ -17,6 +17,8 @@
   import CreateChallengeScreen from './screens/CreateChallengeScreen.svelte';
   import ChallengeDetailScreen from './screens/ChallengeDetailScreen.svelte';
   import ChallengeMatchSummaryScreen from './screens/ChallengeMatchSummaryScreen.svelte';
+  import HistoryScreen from './screens/HistoryScreen.svelte';
+  import AppShell, { type MainTab } from './lib/AppShell.svelte';
   import { randomSeed } from './lib/random-seed.js';
   import { getPersonalBest, saveGame } from './lib/history.js';
   import { auth, checkSession, logout } from './lib/auth.svelte.js';
@@ -34,7 +36,10 @@
     | 'challenges'
     | 'challenge-create'
     | 'challenge-detail'
-    | 'challenge-match-summary';
+    | 'challenge-match-summary'
+    | 'history';
+
+  const MAIN_TABS = new Set<Screen>(['home', 'challenges', 'history']);
 
   let screen: Screen = $state('home');
   let ready = $state(false);
@@ -52,6 +57,7 @@
   let selectedChallengeId: string | undefined = $state();
   let challengeMatchContext: { challengeId: string; matchIndex: number } | undefined;
   let challengeResult: SubmitResultResponse | undefined = $state();
+  let challengeSubmitError: string | undefined = $state();
 
   const worker = new Worker(new URL('./worker/dictionary-worker.ts', import.meta.url), {
     type: 'module',
@@ -101,6 +107,14 @@
     screen = 'challenges';
   }
 
+  function goHome(): void {
+    screen = 'home';
+  }
+
+  function selectMainTab(tab: MainTab): void {
+    screen = tab;
+  }
+
   function openChallenge(challengeId: string): void {
     selectedChallengeId = challengeId;
     screen = 'challenge-detail';
@@ -126,6 +140,7 @@
   function backToChallengeDetail(): void {
     challengeMatchContext = undefined;
     challengeResult = undefined;
+    challengeSubmitError = undefined;
     screen = 'challenge-detail';
   }
 
@@ -155,11 +170,12 @@
     if (challengeMatchContext) {
       const { challengeId, matchIndex } = challengeMatchContext;
       const paths = session.foundWords.map((f) => f.path);
+      challengeResult = undefined;
+      challengeSubmitError = undefined;
       submitMatchResult(challengeId, matchIndex, paths)
         .then((result) => (challengeResult = result))
         .catch((err) => {
-          challengeResult = { found: [], settled: false };
-          alert(err instanceof Error ? err.message : 'Errore imprevisto durante l\'invio del risultato');
+          challengeSubmitError = err instanceof Error ? err.message : 'Errore imprevisto';
         })
         .finally(() => (screen = 'challenge-match-summary'));
       return;
@@ -242,28 +258,26 @@
     <p>Caricamento...</p>
   {:else if auth.status === 'unauthenticated'}
     <LoginScreen />
-  {:else if screen === 'home'}
-    <HomeScreen
-      {ready}
-      {record}
-      username={auth.user?.username ?? ''}
-      onNewGame={goToConfig}
-      onChallenges={goToChallenges}
-      onLogout={logout}
-    />
+  {:else if MAIN_TABS.has(screen)}
+    <AppShell username={auth.user?.username ?? ''} active={screen as MainTab} onSelectTab={selectMainTab} onLogout={logout}>
+      {#if screen === 'home'}
+        <HomeScreen {ready} {record} onNewGame={goToConfig} />
+      {:else if screen === 'challenges'}
+        <ChallengesScreen
+          currentUserId={auth.user?.id ?? ''}
+          onOpen={openChallenge}
+          onCreate={() => (screen = 'challenge-create')}
+        />
+      {:else if screen === 'history'}
+        <HistoryScreen />
+      {/if}
+    </AppShell>
   {:else if screen === 'config'}
-    <ConfigScreen onStart={startNewGame} onBack={() => (screen = 'home')} />
+    <ConfigScreen onStart={startNewGame} onBack={goHome} />
   {:else if screen === 'playing' && session}
     <PlayScreen {session} {now} {popup} onSubmit={handleSubmit} />
   {:else if screen === 'summary' && session && summary}
-    <SummaryScreen {session} {summary} onReplaySameSeed={replaySameSeed} onNewGame={goToConfig} />
-  {:else if screen === 'challenges'}
-    <ChallengesScreen
-      currentUserId={auth.user?.id ?? ''}
-      onOpen={openChallenge}
-      onCreate={() => (screen = 'challenge-create')}
-      onBack={() => (screen = 'home')}
-    />
+    <SummaryScreen {session} {summary} onReplaySameSeed={replaySameSeed} onNewGame={goToConfig} onHome={goHome} />
   {:else if screen === 'challenge-create'}
     <CreateChallengeScreen onCreated={openChallenge} onBack={goToChallenges} />
   {:else if screen === 'challenge-detail' && selectedChallengeId}
@@ -273,8 +287,14 @@
       onPlayMatch={playChallengeMatch}
       onBack={goToChallenges}
     />
-  {:else if screen === 'challenge-match-summary' && session && summary && challengeResult}
-    <ChallengeMatchSummaryScreen {session} {summary} result={challengeResult} onBack={backToChallengeDetail} />
+  {:else if screen === 'challenge-match-summary' && session && summary && (challengeResult || challengeSubmitError)}
+    <ChallengeMatchSummaryScreen
+      {session}
+      {summary}
+      result={challengeResult}
+      error={challengeSubmitError}
+      onBack={backToChallengeDetail}
+    />
   {/if}
 </main>
 
