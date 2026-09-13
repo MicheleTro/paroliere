@@ -23,6 +23,14 @@
   let selectedTeamId: string | undefined = $state();
   let joining = $state(false);
   let cancelling = $state(false);
+  let expandedMatchIds = $state(new Set<string>());
+
+  function toggleMatchWords(matchId: string): void {
+    const next = new Set(expandedMatchIds);
+    if (next.has(matchId)) next.delete(matchId);
+    else next.add(matchId);
+    expandedMatchIds = next;
+  }
 
   function load(): void {
     loading = true;
@@ -135,6 +143,28 @@
     } finally {
       cancelling = false;
     }
+  }
+
+  interface WordTable {
+    players: { userId: string; label: string }[];
+    rows: { word: string; cells: (number | undefined)[] }[];
+  }
+
+  function buildWordTable(match: ChallengeMatch): WordTable {
+    const scores = [...(match.scores ?? [])].sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
+    const players = scores.map((s) => ({ userId: s.userId, label: s.username ?? s.userId }));
+
+    const words = new Set<string>();
+    for (const s of scores) for (const w of s.words ?? []) words.add(w.word);
+
+    const rows = [...words]
+      .sort((a, b) => b.length - a.length || a.localeCompare(b))
+      .map((word) => ({
+        word,
+        cells: scores.map((s) => s.words?.find((w) => w.word === word)?.points),
+      }));
+
+    return { players, rows };
   }
 
   function teamParticipantCount(teamId: string): number {
@@ -253,6 +283,38 @@
                   <li>{score.username ?? score.userId}: {score.score}</li>
                 {/each}
               </ul>
+              <button type="button" class="secondary expand" onclick={() => toggleMatchWords(match.id)}>
+                {expandedMatchIds.has(match.id) ? 'Nascondi parole' : 'Mostra parole'}
+              </button>
+              {#if expandedMatchIds.has(match.id)}
+                {@const table = buildWordTable(match)}
+                <div class="word-breakdown">
+                  {#if table.rows.length > 0}
+                    <table class="word-table">
+                      <thead>
+                        <tr>
+                          <th></th>
+                          {#each table.players as player (player.userId)}
+                            <th>{player.label}</th>
+                          {/each}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {#each table.rows as row (row.word)}
+                          <tr>
+                            <th scope="row">{row.word}</th>
+                            {#each row.cells as points, i (table.players[i]!.userId)}
+                              <td>{points ?? ''}</td>
+                            {/each}
+                          </tr>
+                        {/each}
+                      </tbody>
+                    </table>
+                  {:else}
+                    <p class="empty">Nessuna parola trovata</p>
+                  {/if}
+                </div>
+              {/if}
             {/if}
           </li>
         {/each}
@@ -429,6 +491,48 @@
   .match .secondary {
     padding: 6px 12px;
     font-size: 0.9rem;
+  }
+
+  .word-breakdown {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding-top: 4px;
+    overflow-x: auto;
+  }
+
+  .word-table {
+    border-collapse: collapse;
+    font-size: 0.85rem;
+  }
+
+  .word-table th,
+  .word-table td {
+    padding: 4px 10px;
+    text-align: center;
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .word-table thead th {
+    font-weight: 600;
+    opacity: 0.8;
+  }
+
+  .word-table tbody th[scope='row'] {
+    text-align: left;
+    font-weight: 400;
+  }
+
+  .word-table td {
+    font-weight: 700;
+    color: var(--color-accent);
+  }
+
+  .word-breakdown .empty {
+    margin: 0;
+    font-size: 0.85rem;
+    opacity: 0.7;
   }
 
   .danger {

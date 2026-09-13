@@ -1,6 +1,13 @@
 import { randomInt } from 'node:crypto';
 
-import { computeVersusScores, type GameConfig, type VersusEntry, type WordIndex } from '@paroliere/core';
+import {
+  computeVersusScores,
+  versusWordValue,
+  wordGroupCounts,
+  type GameConfig,
+  type VersusEntry,
+  type WordIndex,
+} from '@paroliere/core';
 import { and, desc, eq, isNull } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
@@ -135,6 +142,48 @@ async function trySettleMatch(
   });
 
   return true;
+}
+
+/**
+ * Ricostruisce, per un match già concluso, le parole trovate da ciascun
+ * partecipante con il punteggio effettivo (per 'versus', già raddoppiato o
+ * dimezzato secondo RF-24), ordinate per lunghezza decrescente — usato per
+ * il riepilogo espandibile della sfida completata. Ricalcola dai `paths`
+ * grezzi già salvati in `match_results` (nessuna parola testuale persistita
+ * separatamente, vedi grading.ts).
+ */
+function buildMatchWordBreakdown(
+  configRow: GameConfigRow,
+  index: WordIndex,
+  match: ChallengeMatchRow,
+  results: (typeof schema.matchResults.$inferSelect)[],
+  participants: (typeof schema.challengeParticipants.$inferSelect)[],
+): Map<string, { word: string; points: number }[]> {
+  const gameConfig = toGameConfig(configRow, match.seed);
+  const gradedByUser = new Map(results.map((r) => [r.userId, gradeSubmission(gameConfig, index, r.paths)]));
+
+  let groupCounts: Map<string, number> | undefined;
+  if (configRow.scoring === 'versus') {
+    const teamIdByUser = new Map(participants.map((p) => [p.userId, p.teamId]));
+    const entries: VersusEntry[] = [...gradedByUser.entries()].map(([userId, graded]) => ({
+      participantId: userId,
+      groupId: teamIdByUser.get(userId) ?? userId,
+      words: graded.map((g) => g.word),
+    }));
+    groupCounts = wordGroupCounts(entries);
+  }
+
+  const breakdown = new Map<string, { word: string; points: number }[]>();
+  for (const [userId, graded] of gradedByUser) {
+    const words = graded
+      .map((g) => ({
+        word: g.word,
+        points: groupCounts ? versusWordValue(g.word, groupCounts.get(g.word) ?? 1) : g.points,
+      }))
+      .sort((a, b) => b.word.length - a.word.length || a.word.localeCompare(b.word));
+    breakdown.set(userId, words);
+  }
+  return breakdown;
 }
 
 /**
@@ -446,6 +495,8 @@ export function registerChallengeRoutes(app: FastifyInstance): void {
       .where(eq(schema.challengeMatches.challengeId, challenge.id))
       .orderBy(schema.challengeMatches.matchIndex);
 
+    const { index } = loadDictionary();
+
     const matchesWithResults = await Promise.all(
       matches.map(async (match) => {
         if (!match.settledAt) {
@@ -469,12 +520,18 @@ export function registerChallengeRoutes(app: FastifyInstance): void {
           };
         }
         const results = await db.select().from(schema.matchResults).where(eq(schema.matchResults.challengeMatchId, match.id));
+        const wordsByUser = buildMatchWordBreakdown(configRow!, index, match, results, participants);
         return {
           id: match.id,
           matchIndex: match.matchIndex,
           seed: match.seed,
           status: 'completed' as const,
-          scores: results.map((r) => ({ userId: r.userId, username: usernameByUserId.get(r.userId), score: r.score })),
+          scores: results.map((r) => ({
+            userId: r.userId,
+            username: usernameByUserId.get(r.userId),
+            score: r.score,
+            words: wordsByUser.get(r.userId) ?? [],
+          })),
         };
       }),
     );

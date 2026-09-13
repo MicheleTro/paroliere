@@ -68,10 +68,16 @@ export interface ChallengeParticipant {
   joinedAt: string;
 }
 
+export interface ChallengeMatchWord {
+  word: string;
+  points: number;
+}
+
 export interface ChallengeMatchScore {
   userId: string;
   username?: string;
   score: number | null;
+  words?: ChallengeMatchWord[];
 }
 
 export interface ChallengeMatch {
