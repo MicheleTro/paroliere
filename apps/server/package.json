@@ -11,6 +11,7 @@
     "db:migrate": "tsx --env-file=.env src/db/migrate.ts"
   },
   "dependencies": {
+    "@fastify/cors": "^11.3.0",
     "@paroliere/core": "workspace:*",
     "argon2": "^0.41.1",
     "drizzle-orm": "^0.38.2",
