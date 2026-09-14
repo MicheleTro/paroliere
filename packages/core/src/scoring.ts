@@ -5,9 +5,13 @@ export interface ScoringRule {
   scoreWord(word: string, path: number[], grid: Grid): number;
 }
 
-/** RF-12: punti = lunghezza della parola − 2 (3 lettere = 1 punto, 4 = 2, 5 = 3, ...). */
+/**
+ * RF-12: punti = lunghezza della parola − 2 (3 lettere = 1 punto, 4 = 2, 5 = 3, ...),
+ * con un bonus crescente da 6 lettere in su (+1 a 6, +2 a 7, +3 a 8, ...) per premiare
+ * chi cerca le parole più lunghe.
+ */
 export function baseWordValue(word: string): number {
-  return word.length - 2;
+  return word.length - 2 + Math.max(0, word.length - 5);
 }
 
 export const classicScoring: ScoringRule = {

@@ -20,10 +20,10 @@ describe('computeVersusScores — RF-24', () => {
 
   it('somma i valori delle parole distinte trovate da un partecipante', () => {
     const entries: VersusEntry[] = [
-      { participantId: 'a', groupId: 'a', words: ['casa', 'abcdefgh'] }, // base 2 (unica) + base 6 (unica)
+      { participantId: 'a', groupId: 'a', words: ['casa', 'abcdefgh'] }, // base 2 (unica) + base 9 (unica)
       { participantId: 'b', groupId: 'b', words: [] },
     ];
-    expect(computeVersusScores(entries)).toEqual({ a: 2 * 2 + 6 * 2, b: 0 });
+    expect(computeVersusScores(entries)).toEqual({ a: 2 * 2 + 9 * 2, b: 0 });
   });
 
   it('ignora i duplicati della stessa parola nello stesso partecipante', () => {
