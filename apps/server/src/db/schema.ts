@@ -152,6 +152,7 @@ export const playerWordStats = pgTable(
     totalWordLengthSum: bigint('total_word_length_sum', { mode: 'number' }).notNull().default(0),
     longestWord: varchar('longest_word', { length: 64 }),
     longestWordLength: integer('longest_word_length').notNull().default(0),
+    maxWordsInGame: integer('max_words_in_game').notNull().default(0),
     lastPlayedAt: timestamp('last_played_at', { withTimezone: true }),
   },
   (table) => [unique().on(table.userId, table.gridSize, table.durationMs)],

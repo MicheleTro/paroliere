@@ -43,6 +43,10 @@
           <span class="value">{typeStats.averageWordsPerGame.toFixed(1)}</span>
           <span class="label">media parole trovate</span>
         </div>
+        <div class="stat">
+          <span class="value">{typeStats.maxWordsInGame}</span>
+          <span class="label">record parole trovate</span>
+        </div>
       </div>
     </div>
   {/if}

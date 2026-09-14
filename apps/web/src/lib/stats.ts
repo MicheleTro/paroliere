@@ -8,6 +8,7 @@ export interface WordStats {
   longestWordLength: number;
   averageWordLength: number;
   averageWordsPerGame: number;
+  maxWordsInGame: number;
   lastPlayedAt: string | null;
 }
 

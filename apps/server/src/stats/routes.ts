@@ -19,6 +19,7 @@ export interface WordStatsResponse {
   longestWordLength: number;
   averageWordLength: number;
   averageWordsPerGame: number;
+  maxWordsInGame: number;
   lastPlayedAt: Date | null;
 }
 
@@ -32,6 +33,7 @@ function toResponse(gridSize: number, durationMs: number, row?: typeof schema.pl
       longestWordLength: 0,
       averageWordLength: 0,
       averageWordsPerGame: 0,
+      maxWordsInGame: 0,
       lastPlayedAt: null,
     };
   }
@@ -43,6 +45,7 @@ function toResponse(gridSize: number, durationMs: number, row?: typeof schema.pl
     longestWordLength: row.longestWordLength,
     averageWordLength: row.totalWords > 0 ? row.totalWordLengthSum / row.totalWords : 0,
     averageWordsPerGame: row.gamesPlayed > 0 ? row.totalWords / row.gamesPlayed : 0,
+    maxWordsInGame: row.maxWordsInGame,
     lastPlayedAt: row.lastPlayedAt,
   };
 }

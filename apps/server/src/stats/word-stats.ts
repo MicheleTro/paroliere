@@ -48,6 +48,7 @@ export async function updatePlayerWordStats(
       totalWordLengthSum: wordLengthSum,
       longestWord: longestInGame?.word ?? null,
       longestWordLength: longestInGame?.word.length ?? 0,
+      maxWordsInGame: words.length,
       lastPlayedAt: playedAt,
     });
     return;
@@ -63,6 +64,7 @@ export async function updatePlayerWordStats(
       totalWordLengthSum: existing.totalWordLengthSum + wordLengthSum,
       longestWord: useNewLongest ? longestInGame!.word : existing.longestWord,
       longestWordLength: useNewLongest ? longestInGame!.word.length : existing.longestWordLength,
+      maxWordsInGame: Math.max(existing.maxWordsInGame, words.length),
       lastPlayedAt: !existing.lastPlayedAt || playedAt > existing.lastPlayedAt ? playedAt : existing.lastPlayedAt,
     })
     .where(eq(schema.playerWordStats.id, existing.id));
