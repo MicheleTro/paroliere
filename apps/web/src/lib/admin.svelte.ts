@@ -69,3 +69,33 @@ export function listUsers(): Promise<AdminUser[]> {
 export function deleteUser(id: string): Promise<void> {
   return adminRequest(`/admin/users/${id}`, { method: 'DELETE', body: '{}' });
 }
+
+export interface AdminWordStat {
+  gridSize: number;
+  durationMs: number;
+  gamesPlayed: number;
+  longestWord: string | null;
+  longestWordLength: number;
+  averageWordLength: number;
+  averageWordsPerGame: number;
+  lastPlayedAt: string | null;
+}
+
+export interface AdminRecentGame {
+  id: string;
+  size: number;
+  durationMs: number;
+  score: number;
+  wordCount: number;
+  source: 'local' | 'challenge';
+  startedAt: string;
+}
+
+export interface AdminUserStats {
+  wordStats: AdminWordStat[];
+  recentGames: AdminRecentGame[];
+}
+
+export function getUserStats(id: string): Promise<AdminUserStats> {
+  return adminRequest(`/admin/users/${id}/stats`);
+}

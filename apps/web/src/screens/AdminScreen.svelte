@@ -1,10 +1,12 @@
 <script lang="ts">
   import { adminLogout, deleteUser, listUsers, type AdminUser } from '../lib/admin.svelte.js';
+  import AdminUserDetailScreen from './AdminUserDetailScreen.svelte';
 
   let users: AdminUser[] = $state([]);
   let loading = $state(true);
   let error: string | undefined = $state();
   let deletingId: string | undefined = $state();
+  let selectedUser: AdminUser | undefined = $state();
 
   function load(): void {
     loading = true;
@@ -17,7 +19,8 @@
 
   load();
 
-  async function handleDelete(user: AdminUser): Promise<void> {
+  async function handleDelete(user: AdminUser, event: MouseEvent): Promise<void> {
+    event.stopPropagation();
     if (!confirm(`Cancellare l'utente "${user.username}"? L'operazione non si può annullare.`)) return;
     error = undefined;
     deletingId = user.id;
@@ -33,34 +36,40 @@
 </script>
 
 <div class="admin">
-  <div class="header">
-    <h1>Amministrazione utenti</h1>
-    <button type="button" class="secondary" onclick={adminLogout}>Esci</button>
-  </div>
-
-  {#if error}
-    <p class="error">{error}</p>
-  {/if}
-
-  {#if loading}
-    <p>Caricamento...</p>
+  {#if selectedUser}
+    <AdminUserDetailScreen user={selectedUser} onBack={() => (selectedUser = undefined)} />
   {:else}
-    <ul class="users">
-      {#each users as user (user.id)}
-        <li>
-          <div class="info">
-            <span class="username">{user.username}</span>
-            <span class="email">{user.email}</span>
-            <span class="date">registrato il {new Date(user.createdAt).toLocaleDateString('it-IT')}</span>
-          </div>
-          <button type="button" class="danger" disabled={deletingId === user.id} onclick={() => handleDelete(user)}>
-            {deletingId === user.id ? 'Cancellazione...' : 'Cancella'}
-          </button>
-        </li>
-      {:else}
-        <p class="empty">Nessun utente registrato</p>
-      {/each}
-    </ul>
+    <div class="header">
+      <h1>Amministrazione utenti</h1>
+      <button type="button" class="secondary" onclick={adminLogout}>Esci</button>
+    </div>
+
+    {#if error}
+      <p class="error">{error}</p>
+    {/if}
+
+    {#if loading}
+      <p>Caricamento...</p>
+    {:else}
+      <ul class="users">
+        {#each users as user (user.id)}
+          <li>
+            <button type="button" class="row" onclick={() => (selectedUser = user)}>
+              <div class="info">
+                <span class="username">{user.username}</span>
+                <span class="email">{user.email}</span>
+                <span class="date">registrato il {new Date(user.createdAt).toLocaleDateString('it-IT')}</span>
+              </div>
+            </button>
+            <button type="button" class="danger" disabled={deletingId === user.id} onclick={(e) => handleDelete(user, e)}>
+              {deletingId === user.id ? 'Cancellazione...' : 'Cancella'}
+            </button>
+          </li>
+        {:else}
+          <p class="empty">Nessun utente registrato</p>
+        {/each}
+      </ul>
+    {/if}
   {/if}
 </div>
 
@@ -104,6 +113,17 @@
     padding: 8px 12px;
     border-radius: var(--radius-md);
     border: 2px solid var(--color-border);
+  }
+
+  .row {
+    flex: 1;
+    display: flex;
+    text-align: left;
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    min-width: 0;
   }
 
   .info {
