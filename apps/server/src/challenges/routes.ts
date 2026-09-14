@@ -17,6 +17,7 @@ import { db } from '../db/client.js';
 import { isUniqueViolation } from '../db/errors.js';
 import * as schema from '../db/schema.js';
 import { loadDictionary } from '../dictionary.js';
+import { updatePlayerWordStats } from '../stats/word-stats.js';
 import { gradeSubmission } from './grading.js';
 
 const MAX_SEED = 2 ** 31 - 1;
@@ -127,6 +128,7 @@ async function trySettleMatch(
         words: graded,
         source: 'challenge',
       });
+      await updatePlayerWordStats(tx, result.userId, configRow.size, configRow.durationMs, graded, result.submittedAt);
     }
 
     await tx.update(schema.challengeMatches).set({ settledAt: new Date() }).where(eq(schema.challengeMatches.id, match.id));

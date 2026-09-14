@@ -1,16 +1,18 @@
 <script lang="ts">
   import type { GameSession, SessionSummary } from '@paroliere/core';
+  import GameStatsSummary from '../lib/GameStatsSummary.svelte';
   import GridView from '../lib/GridView.svelte';
+  import type { WordStats } from '../lib/stats.js';
 
   interface Props {
     session: GameSession;
     summary: SessionSummary;
-    onReplaySameSeed: () => void;
+    typeStats?: WordStats;
     onNewGame: () => void;
     onHome: () => void;
   }
 
-  let { session, summary, onReplaySameSeed, onNewGame, onHome }: Props = $props();
+  let { session, summary, typeStats, onNewGame, onHome }: Props = $props();
 
   let selectedPath: number[] = $state([]);
 
@@ -30,10 +32,12 @@
 
 <div class="summary">
   <h1>Riepilogo</h1>
-  <p class="score">Punteggio: {summary.score} / {summary.maxScore}</p>
-  <p class="percentage">
-    {summary.foundWords.length} / {summary.totalWords} parole trovate ({summary.foundPercentage.toFixed(0)}%)
-  </p>
+
+  <GameStatsSummary
+    score={{ value: summary.score, max: summary.maxScore }}
+    wordsFound={{ found: summary.foundWords.length, total: summary.totalWords, percentage: summary.foundPercentage }}
+    {typeStats}
+  />
 
   <GridView grid={session.grid} interactive={false} highlightPath={selectedPath} onSubmit={() => {}} />
 
@@ -72,7 +76,6 @@
   </div>
 
   <div class="actions">
-    <button type="button" onclick={onReplaySameSeed}>Rigioca questa griglia</button>
     <button type="button" onclick={onNewGame}>Nuova partita</button>
     <button type="button" class="secondary" onclick={onHome}>Home</button>
   </div>
@@ -84,11 +87,7 @@
     flex-direction: column;
     align-items: center;
     gap: 12px;
-  }
-
-  .score {
-    font-size: 1.3rem;
-    font-weight: 700;
+    width: min(92vw, 480px);
   }
 
   .word-lists {

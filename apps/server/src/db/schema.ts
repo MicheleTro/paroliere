@@ -131,3 +131,28 @@ export const games = pgTable('games', {
   words: jsonb('words').notNull().$type<GameWordEntry[]>(),
   source: gameSourceEnum('source').notNull(),
 });
+
+/**
+ * Statistiche aggregate per giocatore, per "tipologia" di partita (dimensione
+ * griglia + durata). Normalizzato: si mantengono i totali (`totalWords`,
+ * `totalWordLengthSum`) invece della media già calcolata, per poter
+ * ricalcolare la media esatta a ogni nuova partita senza rileggere `games`.
+ */
+export const playerWordStats = pgTable(
+  'player_word_stats',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    gridSize: integer('grid_size').notNull(),
+    durationMs: integer('duration_ms').notNull(),
+    gamesPlayed: integer('games_played').notNull().default(0),
+    totalWords: integer('total_words').notNull().default(0),
+    totalWordLengthSum: bigint('total_word_length_sum', { mode: 'number' }).notNull().default(0),
+    longestWord: varchar('longest_word', { length: 64 }),
+    longestWordLength: integer('longest_word_length').notNull().default(0),
+    lastPlayedAt: timestamp('last_played_at', { withTimezone: true }),
+  },
+  (table) => [unique().on(table.userId, table.gridSize, table.durationMs)],
+);

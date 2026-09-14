@@ -1,22 +1,29 @@
 <script lang="ts">
   import type { GameSession, SessionSummary } from '@paroliere/core';
+  import GameStatsSummary from '../lib/GameStatsSummary.svelte';
   import GridView from '../lib/GridView.svelte';
   import type { SubmitResultResponse } from '../lib/challenges.js';
+  import type { WordStats } from '../lib/stats.js';
 
   interface Props {
     session: GameSession;
     summary: SessionSummary;
+    typeStats?: WordStats;
     result?: SubmitResultResponse;
     error?: string;
     onBack: () => void;
   }
 
-  let { session, summary, result, error, onBack }: Props = $props();
+  let { session, summary, typeStats, result, error, onBack }: Props = $props();
 </script>
 
 <div class="summary">
   <h1>{error ? 'Invio non riuscito' : 'Match inviato'}</h1>
-  <p class="score">Parole trovate: {summary.foundWords.length} / {summary.totalWords}</p>
+
+  <GameStatsSummary
+    wordsFound={{ found: summary.foundWords.length, total: summary.totalWords, percentage: summary.foundPercentage }}
+    {typeStats}
+  />
 
   <GridView grid={session.grid} interactive={false} highlightPath={[]} onSubmit={() => {}} />
 
@@ -41,11 +48,6 @@
     align-items: center;
     gap: 12px;
     width: min(90vw, 420px);
-  }
-
-  .score {
-    font-size: 1.2rem;
-    font-weight: 600;
   }
 
   .settled,

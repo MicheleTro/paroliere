@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { requireAuth } from '../auth/require-auth.js';
 import { db } from '../db/client.js';
 import * as schema from '../db/schema.js';
+import { updatePlayerWordStats } from '../stats/word-stats.js';
 
 const foundWordSchema = z.object({
   word: z.string().min(1),
@@ -50,19 +51,24 @@ export function registerHistoryRoutes(app: FastifyInstance): void {
     for (const game of body.data.games) {
       await db.transaction(async (tx) => {
         const [configRow] = await tx.insert(schema.gameConfigs).values(game.config).returning();
-        await tx
+        const startedAt = new Date(game.playedAt);
+        const inserted = await tx
           .insert(schema.games)
           .values({
             id: game.id,
             userId: request.userId!,
             configId: configRow!.id,
             seed: game.config.seed,
-            startedAt: new Date(game.playedAt),
+            startedAt,
             score: game.score,
             words: game.foundWords,
             source: 'local',
           })
-          .onConflictDoNothing({ target: schema.games.id });
+          .onConflictDoNothing({ target: schema.games.id })
+          .returning();
+        if (inserted.length > 0) {
+          await updatePlayerWordStats(tx, request.userId!, game.config.size, game.config.durationMs, game.foundWords, startedAt);
+        }
       });
     }
 

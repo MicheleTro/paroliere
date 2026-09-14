@@ -6,6 +6,7 @@ import { registerAuthRoutes } from './auth/routes.js';
 import { registerChallengeRoutes } from './challenges/routes.js';
 import { config } from './config.js';
 import { registerHistoryRoutes } from './history/routes.js';
+import { registerStatsRoutes } from './stats/routes.js';
 
 export function buildApp(): FastifyInstance {
   const app = Fastify({ logger: true });
@@ -17,6 +18,7 @@ export function buildApp(): FastifyInstance {
   registerAuthRoutes(app);
   registerChallengeRoutes(app);
   registerHistoryRoutes(app);
+  registerStatsRoutes(app);
   registerAdminRoutes(app);
 
   return app;

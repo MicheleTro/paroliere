@@ -20,7 +20,8 @@
   import ChallengeMatchSummaryScreen from './screens/ChallengeMatchSummaryScreen.svelte';
   import AppShell from './lib/AppShell.svelte';
   import { randomSeed } from './lib/random-seed.js';
-  import { saveGame } from './lib/history.js';
+  import { saveGame, syncGame } from './lib/history.js';
+  import { getWordStats, type WordStats } from './lib/stats.js';
   import { playAlreadyFound, playRejected, playWordAccepted } from './lib/sound.js';
   import { adminAuth } from './lib/admin.svelte.js';
   import { auth, checkSession, logout } from './lib/auth.svelte.js';
@@ -44,6 +45,7 @@
   let ready = $state(false);
   let session: GameSession | undefined = $state();
   let summary: SessionSummary | undefined = $state();
+  let typeStats: WordStats | undefined = $state();
   let now = $state(performance.now());
   let popup: WordPopupData | null = $state(null);
   let popupTimeout: ReturnType<typeof setTimeout> | undefined;
@@ -95,10 +97,6 @@
       scoring: 'classic',
       generatorVersion: 1,
     });
-  }
-
-  function replaySameSeed(): void {
-    if (lastConfig) requestNewGame(lastConfig);
   }
 
   function goToChallenges(): void {
@@ -160,6 +158,8 @@
     stopTimerLoop();
     if (!session) return;
     summary = summarize(session);
+    typeStats = undefined;
+    const { size, durationMs } = session.config;
 
     if (challengeMatchContext) {
       const { challengeId, matchIndex } = challengeMatchContext;
@@ -167,16 +167,28 @@
       challengeResult = undefined;
       challengeSubmitError = undefined;
       submitMatchResult(challengeId, matchIndex, paths)
-        .then((result) => (challengeResult = result))
+        .then((result) => {
+          challengeResult = result;
+          return getWordStats(size, durationMs);
+        })
+        .then((stats) => (typeStats = stats))
         .catch((err) => {
-          challengeSubmitError = err instanceof Error ? err.message : 'Errore imprevisto';
+          if (!challengeResult) {
+            challengeSubmitError = err instanceof Error ? err.message : 'Errore imprevisto';
+          } else {
+            console.error('Statistiche match sfida non riuscite', err);
+          }
         })
         .finally(() => (screen = 'challenge-match-summary'));
       return;
     }
 
     screen = 'summary';
-    saveGame(session.config, summary, Date.now()).catch(() => {});
+    saveGame(session.config, summary, Date.now())
+      .then((record) => syncGame(record))
+      .then(() => getWordStats(size, durationMs))
+      .then((stats) => (typeStats = stats))
+      .catch((err) => console.error('Sync/statistiche allenamento non riuscite', err));
   }
 
   function showPopup(data: WordPopupData): void {
@@ -206,7 +218,7 @@
       case 'valid':
         showPopup({ word, tone: 'green' });
         vibrate(30);
-        playWordAccepted();
+        playWordAccepted(word.length);
         break;
       case 'already_found':
         showPopup({ word, tone: 'yellow', subtitle: 'Già trovata' });
@@ -261,7 +273,7 @@
       {:else if screen === 'config'}
         <ConfigScreen onStart={startNewGame} onBack={goHome} />
       {:else if screen === 'summary' && session && summary}
-        <SummaryScreen {session} {summary} onReplaySameSeed={replaySameSeed} onNewGame={goToConfig} onHome={goHome} />
+        <SummaryScreen {session} {summary} {typeStats} onNewGame={goToConfig} onHome={goHome} />
       {:else if screen === 'challenges'}
         <ChallengesScreen
           currentUserId={auth.user?.id ?? ''}
@@ -281,6 +293,7 @@
         <ChallengeMatchSummaryScreen
           {session}
           {summary}
+          {typeStats}
           result={challengeResult}
           error={challengeSubmitError}
           onBack={backToChallengeDetail}

@@ -1,6 +1,8 @@
 import { openDB, type DBSchema, type IDBPDatabase } from 'idb';
 import type { FoundWord, GameConfig, SessionSummary } from '@paroliere/core';
 
+import { apiRequest } from './api.js';
+
 export interface GameRecord {
   id: string;
   config: GameConfig;
@@ -35,18 +37,43 @@ function getDb(): Promise<IDBPDatabase<ParoliereDB>> {
   return dbPromise;
 }
 
-export async function saveGame(config: GameConfig, summary: SessionSummary, playedAt: number): Promise<void> {
+export async function saveGame(config: GameConfig, summary: SessionSummary, playedAt: number): Promise<GameRecord> {
   const db = await getDb();
   const record: GameRecord = {
     id: crypto.randomUUID(),
-    config,
+    // config/foundWords possono essere Proxy reattivi Svelte ($state): un
+    // giro JSON li rende oggetti semplici, cloneabili da IndexedDB.
+    config: JSON.parse(JSON.stringify(config)),
     score: summary.score,
     maxScore: summary.maxScore,
     totalWords: summary.totalWords,
-    foundWords: summary.foundWords,
+    foundWords: JSON.parse(JSON.stringify(summary.foundWords)),
     playedAt,
   };
   await db.put(STORE_NAME, record);
+  return record;
+}
+
+/**
+ * Invia la partita al server (RF-24 statistiche): il salvataggio locale
+ * resta la fonte primaria dello storico, questa chiamata alimenta solo le
+ * statistiche per tipologia (`player_word_stats`), best-effort.
+ */
+export function syncGame(game: GameRecord): Promise<void> {
+  return apiRequest('/users/me/history/sync', {
+    method: 'POST',
+    body: JSON.stringify({
+      games: [
+        {
+          id: game.id,
+          config: game.config,
+          score: game.score,
+          foundWords: game.foundWords,
+          playedAt: game.playedAt,
+        },
+      ],
+    }),
+  });
 }
 
 export async function listGames(): Promise<GameRecord[]> {
