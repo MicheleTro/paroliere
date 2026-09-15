@@ -112,14 +112,14 @@
     grid-template-rows: repeat(var(--size), 1fr);
     width: min(90vw, 400px);
     height: min(90vw, 400px);
-    gap: 8px;
+    gap: 7px;
     touch-action: none;
     user-select: none;
     -webkit-touch-callout: none;
     border-radius: var(--radius-lg);
-    padding: 10px;
-    background: var(--color-accent);
-    box-shadow: var(--shadow-card);
+    padding: 12px;
+    background: linear-gradient(150deg, var(--color-accent), var(--color-accent-soft));
+    box-shadow: var(--shadow-pop);
   }
 
   .cell {
@@ -128,20 +128,19 @@
     align-items: center;
     justify-content: center;
     font-family: var(--font-heading);
-    font-size: 1.8rem;
-    font-weight: 700;
+    font-size: 1.7rem;
+    font-weight: 800;
     color: var(--color-ink);
     background: var(--color-surface);
-    border: 1px solid var(--color-border);
     border-radius: var(--radius-sm);
-    transition: background-color 0.1s ease, transform 0.1s ease;
+    box-shadow: 0 1px 0 rgba(25, 26, 36, 0.04);
+    transition: background-color 0.12s ease, color 0.12s ease, transform 0.12s ease;
   }
 
   .cell.selected {
     background: var(--color-stamp);
-    border-color: var(--color-stamp);
     color: var(--color-accent-contrast);
-    transform: scale(0.96);
+    transform: scale(0.92);
   }
 
   .cell.position-edge {

@@ -85,32 +85,32 @@
   }
 </script>
 
-<div class="challenges">
+<div class="page">
   <h1>Sfide</h1>
 
-  <div class="filters">
+  <div class="chip-group filters">
     {#each FILTERS as f (f.id)}
-      <button type="button" class:selected={filter === f.id} onclick={() => (filter = f.id)}>{f.label}</button>
+      <button type="button" class="chip" class:selected={filter === f.id} onclick={() => (filter = f.id)}>{f.label}</button>
     {/each}
   </div>
 
   {#if loading}
-    <p>Caricamento...</p>
+    <p class="empty-text">Caricamento...</p>
   {:else if error}
-    <p class="error">{error}</p>
+    <p class="error-text">{error}</p>
   {:else if filtered.length === 0}
-    <p>{emptyLabel}</p>
+    <p class="empty-text">{emptyLabel}</p>
   {:else}
     <ul>
       {#each filtered as challenge (challenge.id)}
         <li class="row-item">
-          <button type="button" class="challenge" onclick={() => onOpen(challenge.id)}>
+          <button type="button" class="challenge card" onclick={() => onOpen(challenge.id)}>
             <div class="row">
               <span class="mode">{modeLabel(challenge.mode)}</span>
               <span
-                class="status"
-                class:in-progress={challenge.status === 'in_progress'}
-                class:completed={challenge.status === 'completed'}
+                class="badge"
+                class:badge-warning={challenge.status === 'in_progress'}
+                class:badge-success={challenge.status === 'completed'}
               >
                 {statusLabel(challenge.status)}
               </span>
@@ -125,7 +125,7 @@
           {#if challenge.creatorUserId === currentUserId}
             <button
               type="button"
-              class="delete"
+              class="btn-icon delete"
               aria-label="Cancella sfida"
               disabled={cancellingId === challenge.id}
               onclick={() => handleCancel(challenge)}
@@ -139,44 +139,18 @@
   {/if}
 
   <div class="actions">
-    <button type="button" class="primary" onclick={onCreate}>Nuova sfida</button>
+    <button type="button" class="btn btn-primary btn-block" onclick={onCreate}>+ Nuova sfida</button>
   </div>
 </div>
 
 <style>
   .filters {
-    display: flex;
-    gap: 8px;
     width: 100%;
   }
 
-  .filters button {
+  .filters .chip {
     flex: 1;
-    font-size: 0.95rem;
-    padding: 8px 0;
-    border-radius: var(--radius-md);
-    border: 2px solid var(--color-border);
-    background: var(--color-surface);
-    color: var(--color-ink);
-    cursor: pointer;
-  }
-
-  .filters button.selected {
-    border-color: var(--color-accent);
-    background: var(--color-accent);
-    color: var(--color-accent-contrast);
-  }
-
-  .challenges {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 16px;
-    width: min(90vw, 400px);
-  }
-
-  .error {
-    color: var(--color-danger);
+    padding: 0 4px;
   }
 
   ul {
@@ -186,7 +160,7 @@
     width: 100%;
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 10px;
   }
 
   .row-item {
@@ -200,70 +174,37 @@
     min-width: 0;
     display: flex;
     flex-direction: column;
-    gap: 4px;
-    padding: 12px 16px;
-    border-radius: var(--radius-md);
-    border: 2px solid var(--color-border);
-    background: var(--color-surface);
+    gap: 5px;
+    padding: 14px 16px;
+    border: none;
     color: var(--color-ink);
     cursor: pointer;
     text-align: left;
   }
 
   .delete {
-    flex-shrink: 0;
-    width: 44px;
-    border-radius: var(--radius-md);
-    border: 2px solid var(--color-border);
-    background: var(--color-surface);
-    font-size: 1.1rem;
-    cursor: pointer;
-  }
-
-  .delete:disabled {
-    opacity: 0.5;
-    cursor: default;
+    align-self: center;
   }
 
   .row {
     display: flex;
     justify-content: space-between;
+    align-items: center;
     gap: 8px;
   }
 
-  .status {
-    font-weight: 600;
-  }
-
-  .status.in-progress {
-    color: var(--color-warning);
-  }
-
-  .status.completed {
-    color: var(--color-success);
+  .mode {
+    font-weight: 700;
   }
 
   .creator,
   .config {
-    font-size: 0.85rem;
+    font-size: 0.82rem;
     color: var(--color-ink-soft);
   }
 
   .actions {
     display: flex;
-    gap: 12px;
-  }
-
-  .actions button {
-    font-size: 1.1rem;
-    padding: 10px 20px;
-    border-radius: var(--radius-md);
-    border: none;
-    cursor: pointer;
-  }
-
-  .actions .primary {
-    background: var(--color-accent);
-    color: var(--color-accent-contrast);
+    margin-top: 4px;
   }
 </style>

@@ -312,8 +312,8 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 16px;
-    padding: 16px;
-    font-family: system-ui, sans-serif;
+    width: 100%;
+    min-height: 100vh;
+    padding: calc(16px + env(safe-area-inset-top, 0px)) 16px calc(16px + env(safe-area-inset-bottom, 0px));
   }
 </style>

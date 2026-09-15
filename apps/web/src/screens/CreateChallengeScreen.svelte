@@ -43,159 +43,110 @@
   }
 </script>
 
-<div class="create">
+<div class="page">
   <h1>Nuova sfida</h1>
 
-  <section>
-    <h2>Durata</h2>
-    <div class="options">
+  <div class="section">
+    <p class="section-title">Durata</p>
+    <div class="chip-group">
       {#each DURATIONS_MS as ms (ms)}
-        <button type="button" class:selected={durationMs === ms} onclick={() => (durationMs = ms)}>
+        <button type="button" class="chip" class:selected={durationMs === ms} onclick={() => (durationMs = ms)}>
           {formatDuration(ms)}
         </button>
       {/each}
     </div>
-  </section>
+  </div>
 
-  <section>
-    <h2>Lunghezza minima parola</h2>
-    <div class="options">
+  <div class="section">
+    <p class="section-title">Lunghezza minima parola</p>
+    <div class="chip-group">
       {#each MIN_WORD_LENGTHS as length (length)}
-        <button type="button" class:selected={minWordLength === length} onclick={() => (minWordLength = length)}>
+        <button type="button" class="chip" class:selected={minWordLength === length} onclick={() => (minWordLength = length)}>
           {length}
         </button>
       {/each}
     </div>
-  </section>
+  </div>
 
-  <section>
-    <h2>Griglia</h2>
-    <div class="options">
+  <div class="section">
+    <p class="section-title">Griglia</p>
+    <div class="chip-group">
       {#each SIZES as s (s)}
-        <button type="button" class:selected={size === s} onclick={() => (size = s)}>
+        <button type="button" class="chip" class:selected={size === s} onclick={() => (size = s)}>
           {s}×{s}
         </button>
       {/each}
     </div>
-  </section>
+  </div>
 
-  <section>
-    <h2>Punteggio</h2>
-    <div class="options">
-      <button type="button" class:selected={pointMode === 'standard'} onclick={() => (pointMode = 'standard')}>
+  <div class="section">
+    <p class="section-title">Punteggio</p>
+    <div class="chip-group">
+      <button type="button" class="chip" class:selected={pointMode === 'standard'} onclick={() => (pointMode = 'standard')}>
         Standard
       </button>
-      <button type="button" class:selected={pointMode === 'speciale'} onclick={() => (pointMode = 'speciale')}>
+      <button type="button" class="chip" class:selected={pointMode === 'speciale'} onclick={() => (pointMode = 'speciale')}>
         Speciale
       </button>
     </div>
-  </section>
+  </div>
 
-  <section>
-    <h2>Bonus Posizione</h2>
-    <div class="options">
-      <button type="button" class:selected={!positionBonus} onclick={() => (positionBonus = false)}>No</button>
-      <button type="button" class:selected={positionBonus} onclick={() => (positionBonus = true)}>Sì</button>
+  <div class="section">
+    <p class="section-title">Bonus posizione</p>
+    <div class="chip-group">
+      <button type="button" class="chip" class:selected={!positionBonus} onclick={() => (positionBonus = false)}>No</button>
+      <button type="button" class="chip" class:selected={positionBonus} onclick={() => (positionBonus = true)}>Sì</button>
     </div>
-  </section>
+  </div>
 
   {#if pointMode === 'speciale' || positionBonus}
     <p class="hint">Con questa modalità di punteggio i match non contano per le statistiche.</p>
   {/if}
 
-  <section>
-    <h2>Modalità</h2>
-    <div class="options">
-      <button type="button" class="selected" disabled>Individuale</button>
-      <button type="button" disabled title="Disponibile più avanti">A squadre</button>
+  <div class="section">
+    <p class="section-title">Modalità</p>
+    <div class="chip-group">
+      <button type="button" class="chip selected" disabled>Individuale</button>
+      <button type="button" class="chip" disabled title="Disponibile più avanti">A squadre</button>
     </div>
-  </section>
+  </div>
 
-  <section>
-    <h2>Numero di giocatori</h2>
+  <div class="section">
+    <p class="section-title">Numero di giocatori</p>
     <div class="slider">
       <input type="range" min="2" max="8" step="1" bind:value={maxParticipants} />
       <span class="slider-value">{maxParticipants}</span>
     </div>
-  </section>
+  </div>
 
-  <section>
-    <h2>Numero di match</h2>
-    <div class="options">
+  <div class="section">
+    <p class="section-title">Numero di match</p>
+    <div class="chip-group">
       {#each [1, 3, 5] as n (n)}
-        <button type="button" class:selected={bestOf === n} onclick={() => (bestOf = n)}>{n}</button>
+        <button type="button" class="chip" class:selected={bestOf === n} onclick={() => (bestOf = n)}>{n}</button>
       {/each}
     </div>
-  </section>
+  </div>
 
   {#if error}
-    <p class="error">{error}</p>
+    <p class="error-text">{error}</p>
   {/if}
 
   <div class="actions">
-    <button type="button" class="secondary" onclick={onBack}>Indietro</button>
-    <button type="button" class="primary" disabled={submitting} onclick={handleSubmit}>
+    <button type="button" class="btn btn-secondary" onclick={onBack}>Indietro</button>
+    <button type="button" class="btn btn-primary" disabled={submitting} onclick={handleSubmit}>
       {submitting ? 'Creazione...' : 'Crea sfida'}
     </button>
   </div>
 </div>
 
 <style>
-  .create {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 16px;
-    width: min(90vw, 420px);
-  }
-
-  section {
-    width: 100%;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 8px;
-  }
-
-  h2 {
-    font-size: 1rem;
-    font-weight: 600;
-    margin: 0;
-  }
-
-  .options {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-    justify-content: center;
-  }
-
-  .options button {
-    font-size: 1rem;
-    padding: 8px 16px;
-    border-radius: var(--radius-md);
-    border: 2px solid var(--color-border);
-    background: var(--color-surface);
-    color: var(--color-ink);
-    cursor: pointer;
-  }
-
-  .options button.selected {
-    border-color: var(--color-accent);
-    background: var(--color-accent);
-    color: var(--color-accent-contrast);
-  }
-
-  .options button:disabled {
-    opacity: 0.5;
-    cursor: default;
-  }
-
   .hint {
     margin: 0;
-    font-size: 0.85rem;
+    font-size: 0.82rem;
+    font-weight: 600;
     text-align: center;
-    opacity: 0.75;
+    color: var(--color-ink-faint);
   }
 
   .slider {
@@ -207,47 +158,24 @@
 
   .slider input[type='range'] {
     flex: 1;
+    accent-color: var(--color-accent);
   }
 
   .slider-value {
     font-size: 1.1rem;
-    font-weight: 700;
+    font-weight: 800;
     color: var(--color-accent);
     min-width: 1.5em;
     text-align: center;
   }
 
-  .error {
-    color: var(--color-danger);
-  }
-
   .actions {
     display: flex;
-    gap: 12px;
-    margin-top: 12px;
+    gap: 10px;
+    margin-top: 4px;
   }
 
-  .actions button {
-    font-size: 1.1rem;
-    padding: 10px 20px;
-    border-radius: var(--radius-md);
-    border: none;
-    cursor: pointer;
-  }
-
-  .actions .primary {
-    background: var(--color-accent);
-    color: var(--color-accent-contrast);
-  }
-
-  .actions .primary:disabled {
-    background: var(--color-disabled);
-    color: var(--color-ink-soft);
-    cursor: default;
-  }
-
-  .actions .secondary {
-    background: var(--color-disabled);
-    color: var(--color-ink);
+  .actions .btn {
+    flex: 1;
   }
 </style>

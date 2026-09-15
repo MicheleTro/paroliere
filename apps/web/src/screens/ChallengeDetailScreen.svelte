@@ -176,71 +176,83 @@
   }
 </script>
 
-<div class="detail">
+<div class="page">
   <h1>Sfida</h1>
 
   {#if loading}
-    <p>Caricamento...</p>
+    <p class="empty-text">Caricamento...</p>
   {:else if error && !challenge}
-    <p class="error">{error}</p>
+    <p class="error-text">{error}</p>
   {:else if challenge}
-    <p class="summary">
-      {challenge.mode === 'individual' ? 'Individuale' : 'A squadre'} · al meglio di {challenge.bestOf} ·
-      {statusLabel(challenge.status)}
-    </p>
+    <div class="summary-row">
+      <span class="badge badge-accent">{challenge.mode === 'individual' ? 'Individuale' : 'A squadre'}</span>
+      <span class="badge">Al meglio di {challenge.bestOf}</span>
+      <span
+        class="badge"
+        class:badge-warning={challenge.status === 'in_progress'}
+        class:badge-success={challenge.status === 'completed'}
+      >
+        {statusLabel(challenge.status)}
+      </span>
+    </div>
 
-    <section>
-      <h2>Partecipanti</h2>
-      <ul>
-        {#each challenge.participants as participant (participant.id)}
-          <li>
-            {participant.username}{participant.userId === currentUserId ? ' (tu)' : ''}
-            {#if teamName(participant.teamId)}
-              — {teamName(participant.teamId)}
-            {/if}
-          </li>
-        {/each}
-      </ul>
-    </section>
+    <div class="section">
+      <p class="section-title">Partecipanti</p>
+      <div class="card participants">
+        <ul class="plain-list">
+          {#each challenge.participants as participant (participant.id)}
+            <li>
+              {participant.username}{participant.userId === currentUserId ? ' (tu)' : ''}
+              {#if teamName(participant.teamId)}
+                <span class="team-tag">{teamName(participant.teamId)}</span>
+              {/if}
+            </li>
+          {/each}
+        </ul>
+      </div>
+    </div>
 
     {#if !isParticipant && challenge.status === 'open'}
-      <section class="join">
-        <h2>Partecipa</h2>
-        {#if challenge.mode === 'team'}
-          <div class="options">
-            {#each challenge.teams as team (team.id)}
-              <button
-                type="button"
-                class:selected={selectedTeamId === team.id}
-                disabled={isTeamFull(team.id)}
-                onclick={() => (selectedTeamId = team.id)}
-              >
-                {team.name} ({teamParticipantCount(team.id)}/{challenge.playersPerTeam})
-              </button>
-            {/each}
-          </div>
-        {/if}
-        <button
-          type="button"
-          class="primary"
-          disabled={joining || (challenge.mode === 'team' && !selectedTeamId)}
-          onclick={handleJoin}
-        >
-          {joining ? 'Iscrizione...' : 'Partecipa'}
-        </button>
-      </section>
+      <div class="section">
+        <p class="section-title">Partecipa</p>
+        <div class="card join">
+          {#if challenge.mode === 'team'}
+            <div class="chip-group">
+              {#each challenge.teams as team (team.id)}
+                <button
+                  type="button"
+                  class="chip"
+                  class:selected={selectedTeamId === team.id}
+                  disabled={isTeamFull(team.id)}
+                  onclick={() => (selectedTeamId = team.id)}
+                >
+                  {team.name} ({teamParticipantCount(team.id)}/{challenge.playersPerTeam})
+                </button>
+              {/each}
+            </div>
+          {/if}
+          <button
+            type="button"
+            class="btn btn-primary btn-block"
+            disabled={joining || (challenge.mode === 'team' && !selectedTeamId)}
+            onclick={handleJoin}
+          >
+            {joining ? 'Iscrizione...' : 'Partecipa'}
+          </button>
+        </div>
+      </div>
     {/if}
 
     {#if error}
-      <p class="error">{error}</p>
+      <p class="error-text">{error}</p>
     {/if}
 
     {#if hasCompletedMatches}
-      <section>
-        <h2>Classifica</h2>
+      <div class="section">
+        <p class="section-title">Classifica</p>
         <ol class="leaderboard">
           {#each leaderboard as entry, i (entry.id)}
-            <li>
+            <li class="card">
               <div class="entry-row">
                 <span class="rank">{i + 1}</span>
                 <span class="label">{entry.label}</span>
@@ -256,34 +268,39 @@
             </li>
           {/each}
         </ol>
-      </section>
+      </div>
     {/if}
 
-    <section>
-      <h2>Match</h2>
-      <ul>
+    <div class="section">
+      <p class="section-title">Match</p>
+      <ul class="matches">
         {#each challenge.matches as match (match.id)}
-          <li class="match">
-            <span>Match {match.matchIndex + 1}</span>
+          <li class="match card">
+            <div class="match-head">
+              <span class="match-title">Match {match.matchIndex + 1}</span>
+              {#if match.status === 'completed'}
+                <span class="badge badge-success">Completato</span>
+              {/if}
+            </div>
             {#if match.status === 'waiting'}
-              <span class="status">In attesa</span>
               {#if isParticipant && challenge.status === 'in_progress' && match.submittedByMe}
-                <span class="status">Hai già giocato, in attesa degli altri</span>
+                <span class="status-text">Hai già giocato, in attesa degli altri</span>
               {:else if isParticipant && challenge.status === 'in_progress'}
-                <button type="button" class="secondary" onclick={() => handlePlay(match)}>
+                <button type="button" class="btn btn-secondary btn-sm" onclick={() => handlePlay(match)}>
                   {match.startedByMe ? 'Riprendi' : 'Gioca'}
                 </button>
               {:else if isParticipant}
-                <span class="status">In attesa di altri giocatori</span>
+                <span class="status-text">In attesa di altri giocatori</span>
+              {:else}
+                <span class="status-text">In attesa</span>
               {/if}
             {:else}
-              <span class="status completed">Completato</span>
               <ul class="scores">
                 {#each [...(match.scores ?? [])].sort((a, b) => (b.score ?? 0) - (a.score ?? 0)) as score (score.userId)}
-                  <li>{score.username ?? score.userId}: {score.score}</li>
+                  <li>{score.username ?? score.userId} <span>{score.score}</span></li>
                 {/each}
               </ul>
-              <button type="button" class="secondary expand" onclick={() => toggleMatchWords(match.id)}>
+              <button type="button" class="btn btn-ghost btn-sm expand" onclick={() => toggleMatchWords(match.id)}>
                 {expandedMatchIds.has(match.id) ? 'Nascondi parole' : 'Mostra parole'}
               </button>
               {#if expandedMatchIds.has(match.id)}
@@ -311,7 +328,7 @@
                       </tbody>
                     </table>
                   {:else}
-                    <p class="empty">Nessuna parola trovata</p>
+                    <p class="empty-text">Nessuna parola trovata</p>
                   {/if}
                 </div>
               {/if}
@@ -319,53 +336,39 @@
           </li>
         {/each}
       </ul>
-    </section>
+    </div>
 
     {#if challenge.creatorUserId === currentUserId && challenge.status !== 'cancelled'}
-      <button type="button" class="danger" disabled={cancelling} onclick={handleCancel}>
+      <button type="button" class="btn btn-danger btn-block" disabled={cancelling} onclick={handleCancel}>
         {cancelling ? 'Cancellazione...' : 'Cancella sfida'}
       </button>
     {/if}
   {/if}
 
-  <button type="button" class="secondary" onclick={onBack}>Indietro</button>
+  <button type="button" class="btn btn-secondary btn-block" onclick={onBack}>Indietro</button>
 </div>
 
 <style>
-  .detail {
+  .summary-row {
     display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 16px;
-    width: min(90vw, 420px);
+    gap: 6px;
+    flex-wrap: wrap;
   }
 
-  .summary {
-    opacity: 0.8;
-  }
-
-  section {
-    width: 100%;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 8px;
-  }
-
-  h2 {
-    font-size: 1rem;
-    font-weight: 600;
-    margin: 0;
-  }
-
-  ul {
+  .plain-list {
     list-style: none;
     padding: 0;
     margin: 0;
-    width: 100%;
     display: flex;
     flex-direction: column;
     gap: 8px;
+    font-weight: 600;
+  }
+
+  .team-tag {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--color-ink-faint);
   }
 
   .leaderboard {
@@ -375,13 +378,11 @@
     width: 100%;
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 8px;
   }
 
   .leaderboard > li {
-    padding: 8px 12px;
-    border-radius: var(--radius-md);
-    border: 2px solid var(--color-border);
+    padding: 12px 16px;
   }
 
   .entry-row {
@@ -391,106 +392,93 @@
   }
 
   .rank {
-    font-weight: 700;
-    opacity: 0.7;
+    font-weight: 800;
+    color: var(--color-ink-faint);
     width: 1.5em;
   }
 
   .label {
     flex: 1;
-    font-weight: 600;
+    font-weight: 700;
   }
 
   .total {
-    font-weight: 700;
+    font-weight: 800;
     color: var(--color-accent);
   }
 
   .members {
     list-style: none;
     padding: 0 0 0 2.3em;
-    margin: 4px 0 0;
+    margin: 6px 0 0;
     display: flex;
     flex-direction: column;
     gap: 2px;
-    font-size: 0.85rem;
-    opacity: 0.8;
+    font-size: 0.82rem;
+    color: var(--color-ink-soft);
+  }
+
+  .matches {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
   }
 
   .match {
     display: flex;
-    flex-wrap: wrap;
-    align-items: center;
+    flex-direction: column;
+    align-items: flex-start;
     gap: 8px;
-    padding: 8px 12px;
-    border-radius: var(--radius-md);
-    border: 2px solid var(--color-border);
+    padding: 14px 16px;
   }
 
-  .status {
+  .match-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+  }
+
+  .match-title {
+    font-weight: 700;
+  }
+
+  .status-text {
+    font-size: 0.85rem;
     font-weight: 600;
     color: var(--color-ink-soft);
   }
 
-  .status.completed {
-    color: var(--color-accent);
-  }
-
   .scores {
     width: 100%;
-    gap: 2px;
-    opacity: 0.8;
-  }
-
-  .options {
+    list-style: none;
+    padding: 0;
+    margin: 0;
     display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-    justify-content: center;
-  }
-
-  .options button,
-  .join .primary,
-  .secondary {
-    font-size: 1rem;
-    padding: 8px 16px;
-    border-radius: var(--radius-md);
-    border: 2px solid var(--color-border);
-    background: var(--color-surface);
-    color: var(--color-ink);
-    cursor: pointer;
-  }
-
-  .options button.selected {
-    border-color: var(--color-accent);
-    background: var(--color-accent);
-    color: var(--color-accent-contrast);
-  }
-
-  .options button:disabled {
-    opacity: 0.5;
-    cursor: default;
-  }
-
-  .join .primary {
-    border: none;
-    background: var(--color-accent);
-    color: var(--color-accent-contrast);
-  }
-
-  .join .primary:disabled {
-    background: var(--color-disabled);
-    color: var(--color-ink-soft);
-    cursor: default;
-  }
-
-  .error {
-    color: var(--color-danger);
-  }
-
-  .match .secondary {
-    padding: 6px 12px;
+    flex-direction: column;
+    gap: 2px;
     font-size: 0.9rem;
+  }
+
+  .scores li {
+    display: flex;
+    justify-content: space-between;
+    color: var(--color-ink-soft);
+  }
+
+  .scores li span {
+    font-weight: 700;
+    color: var(--color-ink);
+  }
+
+  .join {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
   }
 
   .word-breakdown {
@@ -505,48 +493,28 @@
   .word-table {
     border-collapse: collapse;
     font-size: 0.85rem;
+    width: 100%;
   }
 
   .word-table th,
   .word-table td {
-    padding: 4px 10px;
+    padding: 6px 10px;
     text-align: center;
     border-bottom: 1px solid var(--color-border);
   }
 
   .word-table thead th {
-    font-weight: 600;
-    opacity: 0.8;
+    font-weight: 700;
+    color: var(--color-ink-faint);
   }
 
   .word-table tbody th[scope='row'] {
     text-align: left;
-    font-weight: 400;
+    font-weight: 500;
   }
 
   .word-table td {
-    font-weight: 700;
+    font-weight: 800;
     color: var(--color-accent);
-  }
-
-  .word-breakdown .empty {
-    margin: 0;
-    font-size: 0.85rem;
-    opacity: 0.7;
-  }
-
-  .danger {
-    font-size: 1rem;
-    padding: 8px 16px;
-    border-radius: var(--radius-md);
-    border: 2px solid var(--color-danger);
-    background: transparent;
-    color: var(--color-danger);
-    cursor: pointer;
-  }
-
-  .danger:disabled {
-    opacity: 0.5;
-    cursor: default;
   }
 </style>

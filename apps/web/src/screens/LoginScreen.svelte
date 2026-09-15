@@ -37,45 +37,51 @@
 </script>
 
 <div class="auth">
-  <h1>Paroliere</h1>
-
-  <div class="tabs">
-    <button type="button" class:selected={mode === 'login'} onclick={() => switchMode('login')}>Accedi</button>
-    <button type="button" class:selected={mode === 'register'} onclick={() => switchMode('register')}>
-      Registrati
-    </button>
+  <div class="brand">
+    <span class="logo">🔤</span>
+    <h1>Paroliere</h1>
+    <p class="tagline">Trova tutte le parole, batti i tuoi amici</p>
   </div>
 
-  <form onsubmit={(event) => { event.preventDefault(); void handleSubmit(); }}>
-    {#if mode === 'login'}
-      <label>
-        Username o email
-        <input type="text" bind:value={identifier} autocomplete="username" required />
-      </label>
-    {:else}
-      <label>
-        Username
-        <input type="text" bind:value={username} autocomplete="username" required />
-      </label>
-      <label>
-        Email
-        <input type="email" bind:value={email} autocomplete="email" required />
-      </label>
-    {/if}
+  <div class="card">
+    <div class="tabs">
+      <button type="button" class:selected={mode === 'login'} onclick={() => switchMode('login')}>Accedi</button>
+      <button type="button" class:selected={mode === 'register'} onclick={() => switchMode('register')}>
+        Registrati
+      </button>
+    </div>
 
-    <label>
-      Password
-      <input type="password" bind:value={password} autocomplete="current-password" required />
-    </label>
+    <form onsubmit={(event) => { event.preventDefault(); void handleSubmit(); }}>
+      {#if mode === 'login'}
+        <label class="field">
+          Username o email
+          <input type="text" bind:value={identifier} autocomplete="username" required />
+        </label>
+      {:else}
+        <label class="field">
+          Username
+          <input type="text" bind:value={username} autocomplete="username" required />
+        </label>
+        <label class="field">
+          Email
+          <input type="email" bind:value={email} autocomplete="email" required />
+        </label>
+      {/if}
 
-    {#if error}
-      <p class="error">{error}</p>
-    {/if}
+      <label class="field">
+        Password
+        <input type="password" bind:value={password} autocomplete="current-password" required />
+      </label>
 
-    <button type="submit" class="primary" disabled={submitting}>
-      {submitting ? 'Attendere...' : mode === 'login' ? 'Accedi' : 'Registrati'}
-    </button>
-  </form>
+      {#if error}
+        <p class="error-text">{error}</p>
+      {/if}
+
+      <button type="submit" class="btn btn-primary btn-block" disabled={submitting}>
+        {submitting ? 'Attendere...' : mode === 'login' ? 'Accedi' : 'Registrati'}
+      </button>
+    </form>
+  </div>
 </div>
 
 <style>
@@ -83,74 +89,71 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 16px;
-    width: min(90vw, 360px);
+    gap: 22px;
+    width: min(90vw, 380px);
+    padding-top: 8vh;
+  }
+
+  .brand {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    text-align: center;
+  }
+
+  .logo {
+    font-size: 2.4rem;
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+
+  .brand h1 {
+    font-size: 1.8rem;
+  }
+
+  .tagline {
+    font-size: 0.9rem;
+    color: var(--color-ink-soft);
+    font-weight: 500;
+  }
+
+  .card {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
   }
 
   .tabs {
     display: flex;
-    gap: 8px;
+    gap: 6px;
+    padding: 4px;
+    border-radius: var(--radius-pill);
+    background: var(--color-surface-alt);
   }
 
   .tabs button {
-    font-size: 1rem;
-    padding: 8px 16px;
-    border-radius: var(--radius-md);
-    border: 2px solid var(--color-border);
-    background: var(--color-surface);
-    color: var(--color-ink);
+    flex: 1;
+    font-size: 0.92rem;
+    font-weight: 700;
+    padding: 9px 0;
+    border-radius: var(--radius-pill);
+    border: none;
+    background: transparent;
+    color: var(--color-ink-soft);
     cursor: pointer;
+    transition: all 0.12s ease;
   }
 
   .tabs button.selected {
-    border-color: var(--color-accent);
-    background: var(--color-accent);
-    color: var(--color-accent-contrast);
+    background: var(--color-surface);
+    color: var(--color-accent);
+    box-shadow: var(--shadow-float);
   }
 
   form {
     display: flex;
     flex-direction: column;
-    gap: 12px;
-    width: 100%;
-  }
-
-  label {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    font-size: 0.9rem;
-    color: var(--color-ink);
-  }
-
-  input {
-    font-size: 1rem;
-    padding: 8px 12px;
-    border-radius: var(--radius-md);
-    border: 2px solid var(--color-border);
-    background: var(--color-surface);
-    color: var(--color-ink);
-  }
-
-  .error {
-    color: var(--color-danger);
-    font-size: 0.9rem;
-    margin: 0;
-  }
-
-  button.primary {
-    font-size: 1.1rem;
-    padding: 10px 20px;
-    border-radius: var(--radius-md);
-    border: none;
-    background: var(--color-accent);
-    color: var(--color-accent-contrast);
-    cursor: pointer;
-  }
-
-  button.primary:disabled {
-    background: var(--color-disabled);
-    color: var(--color-ink-soft);
-    cursor: default;
+    gap: 14px;
   }
 </style>

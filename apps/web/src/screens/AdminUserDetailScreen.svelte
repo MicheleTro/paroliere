@@ -26,20 +26,20 @@
 
 <div class="detail">
   <div class="header">
-    <button type="button" class="secondary" onclick={onBack}>&larr; Utenti</button>
+    <button type="button" class="btn btn-secondary btn-sm" onclick={onBack}>&larr; Utenti</button>
     <h1>{user.username}</h1>
   </div>
   <p class="email">{user.email} · registrato il {new Date(user.createdAt).toLocaleDateString('it-IT')}</p>
 
   {#if error}
-    <p class="error">{error}</p>
+    <p class="error-text">{error}</p>
   {:else if loading}
-    <p>Caricamento...</p>
+    <p class="empty-text">Caricamento...</p>
   {:else if stats}
-    <section>
+    <section class="card">
       <h2>Statistiche per tipologia</h2>
       {#if stats.wordStats.length === 0}
-        <p class="empty">Nessuna partita registrata</p>
+        <p class="empty-text">Nessuna partita registrata</p>
       {:else}
         <table>
           <thead>
@@ -70,10 +70,10 @@
       {/if}
     </section>
 
-    <section>
+    <section class="card">
       <h2>Partite recenti</h2>
       {#if stats.recentGames.length === 0}
-        <p class="empty">Nessuna partita registrata</p>
+        <p class="empty-text">Nessuna partita registrata</p>
       {:else}
         <table>
           <thead>
@@ -109,7 +109,7 @@
     display: flex;
     flex-direction: column;
     align-items: stretch;
-    gap: 12px;
+    gap: 14px;
     width: min(90vw, 640px);
   }
 
@@ -119,20 +119,19 @@
     gap: 12px;
   }
 
-  h1 {
-    font-size: 1.2rem;
-    margin: 0;
-  }
-
   h2 {
     font-size: 1rem;
-    margin: 0 0 8px;
+    margin: 0 0 10px;
   }
 
   .email {
     font-size: 0.85rem;
-    opacity: 0.75;
+    color: var(--color-ink-faint);
     margin: 0;
+  }
+
+  section {
+    overflow-x: auto;
   }
 
   table {
@@ -144,27 +143,12 @@
   th,
   td {
     text-align: left;
-    padding: 6px 8px;
+    padding: 8px 10px;
     border-bottom: 1px solid var(--color-border);
   }
 
-  .empty {
-    opacity: 0.7;
-  }
-
-  .error {
-    color: var(--color-danger);
-    margin: 0;
-  }
-
-  .secondary {
-    font-size: 0.9rem;
-    padding: 6px 12px;
-    border-radius: var(--radius-md);
-    border: 2px solid var(--color-border);
-    background: var(--color-surface);
-    color: var(--color-ink);
-    cursor: pointer;
-    flex-shrink: 0;
+  th {
+    color: var(--color-ink-faint);
+    font-weight: 700;
   }
 </style>

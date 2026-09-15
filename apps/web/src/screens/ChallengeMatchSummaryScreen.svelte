@@ -17,7 +17,7 @@
   let { session, summary, typeStats, result, error, onBack }: Props = $props();
 </script>
 
-<div class="summary">
+<div class="page">
   <h1>{error ? 'Invio non riuscito' : 'Match inviato'}</h1>
 
   <GameStatsSummary
@@ -35,46 +35,37 @@
   />
 
   {#if error}
-    <p class="error">Il risultato non è stato registrato: {error}. Riprova dal dettaglio della sfida.</p>
+    <p class="notice notice-danger">Il risultato non è stato registrato: {error}. Riprova dal dettaglio della sfida.</p>
   {:else if result?.settled}
-    <p class="settled">Il match è concluso: tutti i partecipanti hanno giocato, il punteggio è disponibile.</p>
+    <p class="notice notice-success">Il match è concluso: tutti i partecipanti hanno giocato, il punteggio è disponibile.</p>
   {:else}
-    <p class="waiting">
+    <p class="notice">
       Risultato registrato. Il punteggio ufficiale sarà calcolato quando tutti i partecipanti avranno giocato questo
       match.
     </p>
   {/if}
 
-  <button type="button" class="primary" onclick={onBack}>Torna alla sfida</button>
+  <button type="button" class="btn btn-primary btn-block" onclick={onBack}>Torna alla sfida</button>
 </div>
 
 <style>
-  .summary {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 12px;
-    width: min(90vw, 420px);
-  }
-
-  .settled,
-  .waiting {
+  .notice {
     text-align: center;
-    opacity: 0.9;
-  }
-
-  .error {
-    text-align: center;
-    color: var(--color-danger);
-  }
-
-  .primary {
-    font-size: 1.1rem;
-    padding: 10px 20px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    padding: 12px 16px;
     border-radius: var(--radius-md);
-    border: none;
-    background: var(--color-accent);
-    color: var(--color-accent-contrast);
-    cursor: pointer;
+    background: var(--color-surface-alt);
+    color: var(--color-ink-soft);
+  }
+
+  .notice-success {
+    background: var(--color-success-wash);
+    color: var(--color-success);
+  }
+
+  .notice-danger {
+    background: var(--color-danger-wash);
+    color: var(--color-danger);
   }
 </style>

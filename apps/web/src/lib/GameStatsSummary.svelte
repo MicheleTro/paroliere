@@ -56,18 +56,17 @@
   .summary-card {
     display: flex;
     flex-direction: column;
-    gap: 14px;
+    gap: 16px;
     width: 100%;
-    padding: 16px 20px;
+    padding: 20px 22px;
     border-radius: var(--radius-lg);
     background: var(--color-surface);
-    border: 2px solid var(--color-border);
     box-shadow: var(--shadow-card);
   }
 
   .headline {
     display: flex;
-    gap: 20px;
+    gap: 12px;
     justify-content: center;
     flex-wrap: wrap;
   }
@@ -80,11 +79,16 @@
     min-width: 90px;
   }
 
+  .headline .stat.main {
+    padding: 10px 18px;
+    border-radius: var(--radius-md);
+    background: var(--color-accent-wash);
+  }
+
   .stat.main .value {
-    font-size: 1.6rem;
-    font-weight: 700;
+    font-size: 1.7rem;
+    font-weight: 800;
     color: var(--color-accent);
-    font-family: var(--font-heading);
   }
 
   .stat .value {
@@ -96,47 +100,48 @@
   .of {
     font-size: 1rem;
     font-weight: 400;
-    opacity: 0.7;
+    opacity: 0.6;
   }
 
   .stat .label {
-    font-size: 0.75rem;
+    font-size: 0.72rem;
+    font-weight: 600;
     text-align: center;
-    opacity: 0.75;
+    color: var(--color-ink-faint);
   }
 
   .type-stats {
     display: flex;
     flex-direction: column;
-    gap: 8px;
-    padding-top: 12px;
+    gap: 10px;
+    padding-top: 14px;
     border-top: 1px solid var(--color-border);
   }
 
   .type-title {
     margin: 0;
     text-align: center;
-    font-size: 0.85rem;
-    font-weight: 600;
+    font-size: 0.8rem;
+    font-weight: 700;
     color: var(--color-ink-soft);
   }
 
   .games-count {
-    font-weight: 400;
-    opacity: 0.8;
+    font-weight: 500;
+    color: var(--color-ink-faint);
   }
 
   .tiles {
     display: flex;
     justify-content: center;
-    gap: 12px;
+    gap: 10px;
     flex-wrap: wrap;
   }
 
   .tiles .stat {
-    padding: 8px 12px;
-    border-radius: var(--radius-sm);
+    padding: 10px 14px;
+    border-radius: var(--radius-md);
     background: var(--color-surface-alt);
-    min-width: 110px;
+    min-width: 108px;
   }
 </style>

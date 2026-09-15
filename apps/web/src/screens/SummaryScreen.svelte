@@ -30,7 +30,7 @@
   const missedByLength = $derived(groupByLength(summary.missedWords));
 </script>
 
-<div class="summary">
+<div class="page">
   <h1>Riepilogo</h1>
 
   <GameStatsSummary
@@ -49,65 +49,65 @@
   />
 
   <div class="word-lists">
-    <section>
-      <h2>Trovate</h2>
+    <div class="card word-card">
+      <h2>✅ Trovate</h2>
       {#each [...foundByLength] as [length, words] (length)}
         <p class="length-label">{length} lettere</p>
         <ul>
           {#each words as found (found.word)}
             <li>
-              <button type="button" onclick={() => (selectedPath = found.path)}>
-                {found.word} (+{found.points})
+              <button type="button" class="word-chip found" onclick={() => (selectedPath = found.path)}>
+                {found.word} <span>+{found.points}</span>
               </button>
             </li>
           {/each}
         </ul>
       {/each}
-    </section>
+    </div>
 
-    <section>
-      <h2>Mancate</h2>
+    <div class="card word-card">
+      <h2>✖️ Mancate</h2>
       {#each [...missedByLength] as [length, words] (length)}
         <p class="length-label">{length} lettere</p>
         <ul>
           {#each words as missed (missed.word)}
             <li>
-              <button type="button" onclick={() => (selectedPath = missed.path)}>
+              <button type="button" class="word-chip missed" onclick={() => (selectedPath = missed.path)}>
                 {missed.word}
               </button>
             </li>
           {/each}
         </ul>
       {/each}
-    </section>
+    </div>
   </div>
 
   <div class="actions">
-    <button type="button" onclick={onNewGame}>Nuova partita</button>
-    <button type="button" class="secondary" onclick={onHome}>Home</button>
+    <button type="button" class="btn btn-secondary" onclick={onHome}>Home</button>
+    <button type="button" class="btn btn-primary" onclick={onNewGame}>Nuova partita</button>
   </div>
 </div>
 
 <style>
-  .summary {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 12px;
-    width: min(92vw, 480px);
-  }
-
   .word-lists {
     display: flex;
-    gap: 24px;
-    flex-wrap: wrap;
-    justify-content: center;
+    flex-direction: column;
+    gap: 12px;
+    width: 100%;
+  }
+
+  .word-card {
+    padding: 16px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
   }
 
   .length-label {
     margin: 8px 0 2px;
-    font-weight: 600;
-    opacity: 0.7;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--color-ink-faint);
   }
 
   ul {
@@ -119,28 +119,39 @@
     gap: 6px;
   }
 
-  button {
+  .word-chip {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    padding: 6px 12px;
+    border-radius: var(--radius-pill);
+    border: none;
     cursor: pointer;
+  }
+
+  .word-chip.found {
+    background: var(--color-success-wash);
+    color: var(--color-success);
+  }
+
+  .word-chip.found span {
+    color: var(--color-stamp);
+  }
+
+  .word-chip.missed {
+    background: var(--color-surface-alt);
+    color: var(--color-ink-faint);
   }
 
   .actions {
     display: flex;
-    gap: 12px;
-    margin-top: 12px;
+    gap: 10px;
+    margin-top: 4px;
   }
 
-  .actions button {
-    font-size: 1.1rem;
-    padding: 10px 20px;
-    border-radius: var(--radius-md);
-    border: none;
-    background: var(--color-accent);
-    color: var(--color-accent-contrast);
-    cursor: pointer;
-  }
-
-  .actions .secondary {
-    background: var(--color-disabled);
-    color: var(--color-ink);
+  .actions .btn {
+    flex: 1;
   }
 </style>

@@ -29,71 +29,71 @@
   let positionBonus = $state(false);
 </script>
 
-<div class="config">
+<div class="page">
   <h1>Nuova partita</h1>
 
-  <section>
-    <h2>Durata</h2>
-    <div class="options">
+  <div class="section">
+    <p class="section-title">Durata</p>
+    <div class="chip-group">
       {#each DURATIONS_MS as ms (ms)}
-        <button type="button" class:selected={durationMs === ms} onclick={() => (durationMs = ms)}>
+        <button type="button" class="chip" class:selected={durationMs === ms} onclick={() => (durationMs = ms)}>
           {formatDuration(ms)}
         </button>
       {/each}
     </div>
-  </section>
+  </div>
 
-  <section>
-    <h2>Lunghezza minima parola</h2>
-    <div class="options">
+  <div class="section">
+    <p class="section-title">Lunghezza minima parola</p>
+    <div class="chip-group">
       {#each MIN_WORD_LENGTHS as length (length)}
-        <button type="button" class:selected={minWordLength === length} onclick={() => (minWordLength = length)}>
+        <button type="button" class="chip" class:selected={minWordLength === length} onclick={() => (minWordLength = length)}>
           {length}
         </button>
       {/each}
     </div>
-  </section>
+  </div>
 
-  <section>
-    <h2>Griglia</h2>
-    <div class="options">
+  <div class="section">
+    <p class="section-title">Griglia</p>
+    <div class="chip-group">
       {#each SIZES as s (s)}
-        <button type="button" class:selected={size === s} onclick={() => (size = s)}>
+        <button type="button" class="chip" class:selected={size === s} onclick={() => (size = s)}>
           {s}×{s}
         </button>
       {/each}
     </div>
-  </section>
+  </div>
 
-  <section>
-    <h2>Punteggio</h2>
-    <div class="options">
-      <button type="button" class:selected={pointMode === 'standard'} onclick={() => (pointMode = 'standard')}>
+  <div class="section">
+    <p class="section-title">Punteggio</p>
+    <div class="chip-group">
+      <button type="button" class="chip" class:selected={pointMode === 'standard'} onclick={() => (pointMode = 'standard')}>
         Standard
       </button>
-      <button type="button" class:selected={pointMode === 'speciale'} onclick={() => (pointMode = 'speciale')}>
+      <button type="button" class="chip" class:selected={pointMode === 'speciale'} onclick={() => (pointMode = 'speciale')}>
         Speciale
       </button>
     </div>
-  </section>
+  </div>
 
-  <section>
-    <h2>Bonus Posizione</h2>
-    <div class="options">
-      <button type="button" class:selected={!positionBonus} onclick={() => (positionBonus = false)}>No</button>
-      <button type="button" class:selected={positionBonus} onclick={() => (positionBonus = true)}>Sì</button>
+  <div class="section">
+    <p class="section-title">Bonus posizione</p>
+    <div class="chip-group">
+      <button type="button" class="chip" class:selected={!positionBonus} onclick={() => (positionBonus = false)}>No</button>
+      <button type="button" class="chip" class:selected={positionBonus} onclick={() => (positionBonus = true)}>Sì</button>
     </div>
-  </section>
+  </div>
 
   {#if pointMode === 'speciale' || positionBonus}
     <p class="hint">Con questa modalità di punteggio la partita non conta per le statistiche.</p>
   {/if}
 
   <div class="actions">
-    <button type="button" class="secondary" onclick={onBack}>Indietro</button>
+    <button type="button" class="btn btn-secondary" onclick={onBack}>Indietro</button>
     <button
       type="button"
-      class="primary"
+      class="btn btn-primary"
       onclick={() => onStart({ durationMs, minWordLength, size, pointMode, positionBonus })}
     >
       Inizia
@@ -102,79 +102,21 @@
 </div>
 
 <style>
-  .config {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 16px;
-    width: min(90vw, 400px);
-  }
-
-  section {
-    width: 100%;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 8px;
-  }
-
-  h2 {
-    font-size: 1rem;
-    font-weight: 600;
-    margin: 0;
-  }
-
-  .options {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-    justify-content: center;
-  }
-
-  .options button {
-    font-size: 1rem;
-    padding: 8px 16px;
-    border-radius: var(--radius-md);
-    border: 2px solid var(--color-border);
-    background: var(--color-surface);
-    color: var(--color-ink);
-    cursor: pointer;
-  }
-
-  .options button.selected {
-    border-color: var(--color-accent);
-    background: var(--color-accent);
-    color: var(--color-accent-contrast);
-  }
-
   .hint {
     margin: 0;
-    font-size: 0.85rem;
+    font-size: 0.82rem;
+    font-weight: 600;
     text-align: center;
-    opacity: 0.75;
+    color: var(--color-ink-faint);
   }
 
   .actions {
     display: flex;
-    gap: 12px;
-    margin-top: 12px;
+    gap: 10px;
+    margin-top: 4px;
   }
 
-  .actions button {
-    font-size: 1.1rem;
-    padding: 10px 20px;
-    border-radius: var(--radius-md);
-    border: none;
-    cursor: pointer;
-  }
-
-  .actions .primary {
-    background: var(--color-accent);
-    color: var(--color-accent-contrast);
-  }
-
-  .actions .secondary {
-    background: var(--color-disabled);
-    color: var(--color-ink);
+  .actions .btn {
+    flex: 1;
   }
 </style>

@@ -41,7 +41,8 @@
 <div class="play">
   <div class="top-row">
     <p class="timer" class:urgent>{formatDuration(timeLeft)}</p>
-    <button type="button" class="mute" aria-label={muted ? 'Attiva audio' : 'Disattiva audio'} onclick={toggleMute}>
+    <p class="score">{score} <span>pt</span></p>
+    <button type="button" class="btn-icon" aria-label={muted ? 'Attiva audio' : 'Disattiva audio'} onclick={toggleMute}>
       {muted ? '🔇' : '🔊'}
     </button>
   </div>
@@ -54,10 +55,9 @@
     positionBonus={session.config.positionBonus}
   />
   <p class="current-word">{currentWord || ' '}</p>
-  <p class="score">Punteggio: {score}</p>
   <ul class="found-words">
     {#each session.foundWords as found (found.word)}
-      <li>{found.word} (+{found.points})</li>
+      <li>{found.word} <span>+{found.points}</span></li>
     {/each}
   </ul>
 </div>
@@ -67,32 +67,43 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 12px;
+    gap: 14px;
+    width: min(94vw, 440px);
   }
 
   .top-row {
     display: flex;
     align-items: center;
-    gap: 12px;
+    justify-content: center;
+    gap: 10px;
+    width: 100%;
   }
 
-  .timer {
-    font-size: 1.6rem;
-    font-weight: 700;
+  .timer,
+  .score {
+    display: flex;
+    align-items: baseline;
+    gap: 4px;
+    font-size: 1.15rem;
+    font-weight: 800;
     font-variant-numeric: tabular-nums;
+    padding: 8px 16px;
+    border-radius: var(--radius-pill);
+    background: var(--color-surface);
+    box-shadow: var(--shadow-card);
+    color: var(--color-ink);
   }
 
-  .mute {
-    font-size: 1.1rem;
-    padding: 4px 8px;
-    border-radius: var(--radius-sm);
-    border: 2px solid var(--color-border);
-    background: var(--color-surface);
-    cursor: pointer;
+  .score span {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--color-ink-faint);
+    text-transform: uppercase;
   }
 
   .timer.urgent {
     color: var(--color-danger);
+    background: var(--color-danger-wash);
     animation: pulse 1s ease-in-out infinite;
   }
 
@@ -102,28 +113,43 @@
       opacity: 1;
     }
     50% {
-      opacity: 0.5;
+      opacity: 0.55;
     }
   }
 
   .current-word {
     font-size: 1.3rem;
-    font-weight: 600;
+    font-weight: 700;
     min-height: 1.6em;
+    letter-spacing: 0.04em;
     text-transform: uppercase;
-  }
-
-  .score {
-    font-size: 1.2rem;
-    font-weight: 600;
+    color: var(--color-accent);
   }
 
   .found-words {
     list-style: none;
     padding: 0;
+    margin: 0;
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
     justify-content: center;
+  }
+
+  .found-words li {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    padding: 6px 12px;
+    border-radius: var(--radius-pill);
+    background: var(--color-surface);
+    box-shadow: var(--shadow-card);
+  }
+
+  .found-words li span {
+    color: var(--color-stamp);
+    font-weight: 700;
   }
 </style>
