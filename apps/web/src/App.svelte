@@ -101,6 +101,22 @@
     });
   }
 
+  function repeatGame(): void {
+    if (!session) return;
+    const config = session.config;
+    requestNewGame({
+      seed: randomSeed(),
+      size: config.size,
+      durationMs: config.durationMs,
+      minWordLength: config.minWordLength,
+      minWords: config.minWords,
+      scoring: config.scoring,
+      pointMode: config.pointMode,
+      positionBonus: config.positionBonus,
+      generatorVersion: config.generatorVersion,
+    });
+  }
+
   function goToChallenges(): void {
     screen = 'challenges';
   }
@@ -261,7 +277,7 @@
   void checkSession();
 </script>
 
-<main>
+<main class:play-mode={screen === 'playing' && !!session}>
   {#if adminAuth.loggedIn}
     <AdminScreen />
   {:else if auth.status === 'checking'}
@@ -277,7 +293,7 @@
       {:else if screen === 'config'}
         <ConfigScreen onStart={startNewGame} onBack={goHome} />
       {:else if screen === 'summary' && session && summary}
-        <SummaryScreen {session} {summary} {typeStats} onNewGame={goToConfig} onHome={goHome} />
+        <SummaryScreen {session} {summary} {typeStats} onNewGame={goToConfig} onRepeat={repeatGame} onHome={goHome} />
       {:else if screen === 'challenges'}
         <ChallengesScreen
           currentUserId={auth.user?.id ?? ''}
@@ -315,5 +331,13 @@
     width: 100%;
     min-height: 100vh;
     padding: calc(16px + env(safe-area-inset-top, 0px)) 16px calc(16px + env(safe-area-inset-bottom, 0px));
+  }
+
+  main.play-mode {
+    height: 100dvh;
+    min-height: 100dvh;
+    max-height: 100dvh;
+    overflow: hidden;
+    padding: calc(10px + env(safe-area-inset-top, 0px)) 12px calc(10px + env(safe-area-inset-bottom, 0px));
   }
 </style>

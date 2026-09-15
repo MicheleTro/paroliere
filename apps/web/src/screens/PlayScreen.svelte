@@ -1,10 +1,13 @@
 <script lang="ts">
+  import { onDestroy } from 'svelte';
   import { remainingMs, type GameSession } from '@paroliere/core';
   import GridView from '../lib/GridView.svelte';
   import WordPopup from '../lib/WordPopup.svelte';
   import type { WordPopupData } from '../lib/word-popup.js';
   import { formatDuration } from '../lib/format.js';
-  import { isSoundMuted, playPathTone, setSoundMuted } from '../lib/sound.js';
+  import { isSoundMuted, playCountdownTick, playGong, playPathTone, setSoundMuted } from '../lib/sound.js';
+
+  const COUNTDOWN_MS = 3000;
 
   interface Props {
     session: GameSession;
@@ -18,13 +21,34 @@
   let currentPath: number[] = $state([]);
   let muted = $state(isSoundMuted());
   let lastPathLength = 0;
+  let countdownStarted = false;
+  const countdownTimeouts: ReturnType<typeof setTimeout>[] = [];
 
   const currentWord = $derived(currentPath.map((i) => session.grid.tiles[i]).join(''));
 
   const score = $derived(session.foundWords.reduce((sum, f) => sum + f.points, 0));
 
+  const recentFoundWords = $derived([...session.foundWords].reverse());
+
   const timeLeft = $derived(remainingMs(session, now));
   const urgent = $derived(timeLeft <= 10_000);
+  const critical = $derived(timeLeft <= COUNTDOWN_MS && timeLeft > 0);
+
+  $effect(() => {
+    if (countdownStarted || timeLeft > COUNTDOWN_MS || timeLeft <= 0) return;
+    countdownStarted = true;
+    const remaining = timeLeft;
+    playCountdownTick();
+    for (const mark of [2000, 1000]) {
+      const delay = remaining - mark;
+      if (delay > 0) countdownTimeouts.push(setTimeout(() => playCountdownTick(), delay));
+    }
+    countdownTimeouts.push(setTimeout(() => playGong(), Math.max(0, remaining)));
+  });
+
+  onDestroy(() => {
+    for (const id of countdownTimeouts) clearTimeout(id);
+  });
 
   function handlePathChange(path: number[]): void {
     currentPath = path;
@@ -39,6 +63,9 @@
 </script>
 
 <div class="play">
+  {#if critical}
+    <div class="danger-overlay" aria-hidden="true"></div>
+  {/if}
   <div class="top-row">
     <p class="timer" class:urgent>{formatDuration(timeLeft)}</p>
     <p class="score">{score} <span>pt</span></p>
@@ -46,17 +73,21 @@
       {muted ? '🔇' : '🔊'}
     </button>
   </div>
-  <WordPopup {popup} />
-  <GridView
-    grid={session.grid}
-    {onSubmit}
-    onPathChange={handlePathChange}
-    pointMode={session.config.pointMode}
-    positionBonus={session.config.positionBonus}
-  />
+  <div class="popup-wrap">
+    <WordPopup {popup} />
+  </div>
+  <div class="grid-wrap">
+    <GridView
+      grid={session.grid}
+      {onSubmit}
+      onPathChange={handlePathChange}
+      pointMode={session.config.pointMode}
+      positionBonus={session.config.positionBonus}
+    />
+  </div>
   <p class="current-word">{currentWord || ' '}</p>
   <ul class="found-words">
-    {#each session.foundWords as found (found.word)}
+    {#each recentFoundWords as found (found.word)}
       <li>{found.word} <span>+{found.points}</span></li>
     {/each}
   </ul>
@@ -67,8 +98,10 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 14px;
+    gap: 10px;
     width: min(94vw, 440px);
+    height: 100%;
+    min-height: 0;
   }
 
   .top-row {
@@ -77,6 +110,7 @@
     justify-content: center;
     gap: 10px;
     width: 100%;
+    flex-shrink: 0;
   }
 
   .timer,
@@ -99,6 +133,31 @@
     font-weight: 700;
     color: var(--color-ink-faint);
     text-transform: uppercase;
+  }
+
+  .popup-wrap,
+  .grid-wrap {
+    flex-shrink: 0;
+  }
+
+  .danger-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 5;
+    pointer-events: none;
+    background: var(--color-danger);
+    opacity: 0;
+    animation: danger-pulse 1s ease-in-out infinite;
+  }
+
+  @keyframes danger-pulse {
+    0%,
+    100% {
+      opacity: 0;
+    }
+    50% {
+      opacity: 0.16;
+    }
   }
 
   .timer.urgent {
@@ -124,16 +183,23 @@
     letter-spacing: 0.04em;
     text-transform: uppercase;
     color: var(--color-accent);
+    flex-shrink: 0;
   }
 
   .found-words {
     list-style: none;
-    padding: 0;
+    padding: 2px 2px 4px;
     margin: 0;
     display: flex;
     flex-wrap: wrap;
+    align-content: flex-start;
     gap: 8px;
     justify-content: center;
+    width: 100%;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
   }
 
   .found-words li {

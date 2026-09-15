@@ -110,8 +110,8 @@
     display: grid;
     grid-template-columns: repeat(var(--size), 1fr);
     grid-template-rows: repeat(var(--size), 1fr);
-    width: min(90vw, 400px);
-    height: min(90vw, 400px);
+    width: min(90vw, 62dvh, 400px);
+    height: min(90vw, 62dvh, 400px);
     gap: 7px;
     touch-action: none;
     user-select: none;

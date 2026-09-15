@@ -9,10 +9,11 @@
     summary: SessionSummary;
     typeStats?: WordStats;
     onNewGame: () => void;
+    onRepeat: () => void;
     onHome: () => void;
   }
 
-  let { session, summary, typeStats, onNewGame, onHome }: Props = $props();
+  let { session, summary, typeStats, onNewGame, onRepeat, onHome }: Props = $props();
 
   let selectedPath: number[] = $state([]);
 
@@ -84,6 +85,7 @@
 
   <div class="actions">
     <button type="button" class="btn btn-secondary" onclick={onHome}>Home</button>
+    <button type="button" class="btn btn-secondary" onclick={onRepeat}>Ripeti</button>
     <button type="button" class="btn btn-primary" onclick={onNewGame}>Nuova partita</button>
   </div>
 </div>
@@ -147,11 +149,13 @@
 
   .actions {
     display: flex;
+    flex-wrap: wrap;
     gap: 10px;
     margin-top: 4px;
   }
 
   .actions .btn {
-    flex: 1;
+    flex: 1 1 auto;
+    min-width: 100px;
   }
 </style>

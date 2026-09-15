@@ -10,6 +10,8 @@
 
 <script lang="ts">
   import { formatDuration } from '../lib/format.js';
+  import InfoPopover from '../lib/InfoPopover.svelte';
+  import ScoringInfoContent from '../lib/ScoringInfoContent.svelte';
 
   interface Props {
     onStart: (settings: GameSettings) => void;
@@ -68,12 +70,22 @@
   <div class="section">
     <p class="section-title">Punteggio</p>
     <div class="chip-group">
-      <button type="button" class="chip" class:selected={pointMode === 'standard'} onclick={() => (pointMode = 'standard')}>
-        Standard
-      </button>
-      <button type="button" class="chip" class:selected={pointMode === 'speciale'} onclick={() => (pointMode = 'speciale')}>
-        Speciale
-      </button>
+      <span class="chip-with-info">
+        <button type="button" class="chip" class:selected={pointMode === 'standard'} onclick={() => (pointMode = 'standard')}>
+          Standard
+        </button>
+        <InfoPopover label="Punteggio standard">
+          <ScoringInfoContent kind="standard" />
+        </InfoPopover>
+      </span>
+      <span class="chip-with-info">
+        <button type="button" class="chip" class:selected={pointMode === 'speciale'} onclick={() => (pointMode = 'speciale')}>
+          Speciale
+        </button>
+        <InfoPopover label="Punteggio speciale">
+          <ScoringInfoContent kind="speciale" />
+        </InfoPopover>
+      </span>
     </div>
   </div>
 
@@ -81,7 +93,12 @@
     <p class="section-title">Bonus posizione</p>
     <div class="chip-group">
       <button type="button" class="chip" class:selected={!positionBonus} onclick={() => (positionBonus = false)}>No</button>
-      <button type="button" class="chip" class:selected={positionBonus} onclick={() => (positionBonus = true)}>Sì</button>
+      <span class="chip-with-info">
+        <button type="button" class="chip" class:selected={positionBonus} onclick={() => (positionBonus = true)}>Sì</button>
+        <InfoPopover label="Bonus posizione">
+          <ScoringInfoContent kind="position-bonus" />
+        </InfoPopover>
+      </span>
     </div>
   </div>
 

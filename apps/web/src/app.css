@@ -244,6 +244,12 @@ input {
   cursor: default;
 }
 
+.chip-with-info {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
 /* Status badges */
 
 .badge {

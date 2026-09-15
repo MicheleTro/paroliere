@@ -152,6 +152,23 @@ export function playWordAccepted(wordLength: number): void {
   }
 }
 
+/** Tick del countdown negli ultimi secondi di partita. */
+export function playCountdownTick(): void {
+  if (isSoundMuted()) return;
+  tone(1100, { duration: 0.09, type: 'square', gain: 0.16 });
+  tone(700, { duration: 0.06, type: 'square', gain: 0.08, delay: 0.02 });
+}
+
+/** Gong finale allo scadere del tempo. */
+export function playGong(): void {
+  if (isSoundMuted()) return;
+  const ctx = getContext();
+  noiseBurst(ctx, { duration: 0.08, delay: 0, gain: 0.2, filterFreq: 800, filterType: 'lowpass' });
+  tone(196, { duration: 1.4, type: 'sine', gain: 0.22 });
+  tone(196 * 2.01, { duration: 1.1, type: 'sine', gain: 0.1, delay: 0.01 });
+  tone(196 * 2.98, { duration: 0.9, type: 'sine', gain: 0.06, delay: 0.02 });
+}
+
 /** Parola già trovata: tono neutro, né premio né errore. */
 export function playAlreadyFound(): void {
   tone(220, { duration: 0.15, type: 'triangle', gain: 0.1 });
