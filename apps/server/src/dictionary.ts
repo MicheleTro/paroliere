@@ -29,7 +29,7 @@ export function loadDictionary(): LoadedDictionary {
   if (cached) return cached;
   const manifest = JSON.parse(readFileSync(join(dictionaryDir, 'manifest.json'), 'utf-8')) as Manifest;
   const text = readFileSync(join(dictionaryDir, manifest.file), 'utf-8');
-  const words = text.split('\n').filter((w) => w.length > 0);
+  const words = text.split(/\r?\n/).filter((w) => w.length > 0);
   cached = { index: buildWordIndex(words), dictionaryVersion: manifest.version };
   return cached;
 }

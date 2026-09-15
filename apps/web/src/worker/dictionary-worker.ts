@@ -20,7 +20,7 @@ let dictionaryVersion: string | undefined;
 async function init(): Promise<void> {
   const manifest = (await fetch('/dictionary/manifest.json').then((r) => r.json())) as Manifest;
   const text = await fetch(`/dictionary/${manifest.file}`).then((r) => r.text());
-  const words = text.split('\n').filter((w) => w.length > 0);
+  const words = text.split(/\r?\n/).filter((w) => w.length > 0);
 
   wordIndex = buildWordIndex(words);
   dictionaryVersion = manifest.version;
