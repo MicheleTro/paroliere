@@ -13,6 +13,7 @@ export const pointModeEnum = pgEnum('point_mode', ['standard', 'speciale']);
 export const challengeModeEnum = pgEnum('challenge_mode', ['individual', 'team']);
 export const challengeStatusEnum = pgEnum('challenge_status', ['open', 'in_progress', 'completed', 'cancelled']);
 export const gameSourceEnum = pgEnum('game_source', ['local', 'challenge']);
+export const reportedWordStatusEnum = pgEnum('reported_word_status', ['pending', 'approved', 'rejected']);
 
 export const gameConfigs = pgTable('game_configs', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -133,6 +134,23 @@ export const games = pgTable('games', {
   score: integer('score').notNull(),
   words: jsonb('words').notNull().$type<GameWordEntry[]>(),
   source: gameSourceEnum('source').notNull(),
+});
+
+/**
+ * Parole segnalate dai giocatori come "da aggiungere al dizionario" (RF
+ * segnalazione parole mancanti). `word` è unica: segnalazioni ripetute della
+ * stessa parola incrementano `reportCount` invece di creare righe duplicate.
+ */
+export const reportedWords = pgTable('reported_words', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  word: varchar('word', { length: 64 }).notNull().unique(),
+  status: reportedWordStatusEnum('status').notNull().default('pending'),
+  reportCount: integer('report_count').notNull().default(1),
+  firstReportedByUserId: uuid('first_reported_by_user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  decidedAt: timestamp('decided_at', { withTimezone: true }),
 });
 
 /**

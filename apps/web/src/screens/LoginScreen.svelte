@@ -40,7 +40,7 @@
   <div class="brand">
     <span class="logo">🔤</span>
     <h1>Paroliere</h1>
-    <p class="tagline">Trova tutte le parole, batti i tuoi amici</p>
+    <p class="tagline">by Mic</p>
   </div>
 
   <div class="card">

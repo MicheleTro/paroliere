@@ -2,6 +2,7 @@
   import type { GameSession, SessionSummary } from '@paroliere/core';
   import GameStatsSummary from '../lib/GameStatsSummary.svelte';
   import GridView from '../lib/GridView.svelte';
+  import { reportWord } from '../lib/reports.js';
   import type { WordStats } from '../lib/stats.js';
 
   interface Props {
@@ -29,6 +30,27 @@
 
   const foundByLength = $derived(groupByLength(summary.foundWords));
   const missedByLength = $derived(groupByLength(summary.missedWords));
+
+  let segnalaExpanded = $state(false);
+  let reportedWords = $state(new Set<string>());
+  let reportingWord: string | undefined = $state();
+  let reportError: string | undefined = $state();
+
+  async function handleReport(word: string): Promise<void> {
+    if (reportedWords.has(word) || reportingWord) return;
+    if (!confirm(`Vuoi segnalare l'aggiunta di questa parola? "${word}"`)) return;
+
+    reportError = undefined;
+    reportingWord = word;
+    try {
+      await reportWord(word);
+      reportedWords = new Set(reportedWords).add(word);
+    } catch (err) {
+      reportError = err instanceof Error ? err.message : 'Errore imprevisto';
+    } finally {
+      reportingWord = undefined;
+    }
+  }
 </script>
 
 <div class="page">
@@ -64,6 +86,38 @@
           {/each}
         </ul>
       {/each}
+    </div>
+
+    <div class="card word-card">
+      <button type="button" class="segnala-toggle" onclick={() => (segnalaExpanded = !segnalaExpanded)}>
+        <h2>🚩 Segnala ({session.rejectedWords.length})</h2>
+        <span class="chevron" class:open={segnalaExpanded}>⌄</span>
+      </button>
+      {#if segnalaExpanded}
+        {#if session.rejectedWords.length === 0}
+          <p class="empty-text">Nessuna parola non riconosciuta in questo match.</p>
+        {:else}
+          <ul>
+            {#each session.rejectedWords as rejected (rejected.word)}
+              <li>
+                <button
+                  type="button"
+                  class="word-chip rejectable"
+                  class:reported={reportedWords.has(rejected.word)}
+                  disabled={reportingWord === rejected.word}
+                  onclick={() => handleReport(rejected.word)}
+                >
+                  {rejected.word}
+                  {#if reportedWords.has(rejected.word)}<span>segnalata</span>{/if}
+                </button>
+              </li>
+            {/each}
+          </ul>
+        {/if}
+        {#if reportError}
+          <p class="error-text">{reportError}</p>
+        {/if}
+      {/if}
     </div>
 
     <div class="card word-card">
@@ -145,6 +199,49 @@
   .word-chip.missed {
     background: var(--color-surface-alt);
     color: var(--color-ink-faint);
+  }
+
+  .segnala-toggle {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border: none;
+    background: none;
+    padding: 0;
+    cursor: pointer;
+    text-align: left;
+  }
+
+  .chevron {
+    font-size: 1rem;
+    color: var(--color-ink-faint);
+    transition: transform 0.15s ease;
+  }
+
+  .chevron.open {
+    transform: rotate(180deg);
+  }
+
+  .word-chip.rejectable {
+    background: var(--color-surface-alt);
+    color: var(--color-ink-faint);
+  }
+
+  .word-chip.rejectable:disabled {
+    opacity: 0.6;
+    cursor: default;
+  }
+
+  .word-chip.rejectable.reported {
+    background: var(--color-warning-wash);
+    color: var(--color-warning);
+  }
+
+  .word-chip.rejectable span {
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
   }
 
   .actions {

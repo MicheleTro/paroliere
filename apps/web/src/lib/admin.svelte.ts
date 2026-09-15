@@ -99,3 +99,23 @@ export interface AdminUserStats {
 export function getUserStats(id: string): Promise<AdminUserStats> {
   return adminRequest(`/admin/users/${id}/stats`);
 }
+
+export interface AdminReportedWord {
+  id: string;
+  word: string;
+  status: 'pending' | 'approved' | 'rejected';
+  reportCount: number;
+  createdAt: string;
+}
+
+export function listReportedWords(): Promise<AdminReportedWord[]> {
+  return adminRequest('/admin/reported-words');
+}
+
+export function approveReportedWord(id: string): Promise<void> {
+  return adminRequest(`/admin/reported-words/${id}/approve`, { method: 'POST', body: '{}' });
+}
+
+export function discardReportedWord(id: string): Promise<void> {
+  return adminRequest(`/admin/reported-words/${id}/discard`, { method: 'POST', body: '{}' });
+}

@@ -9,12 +9,18 @@ export interface FoundWord {
   points: number;
 }
 
+export interface RejectedWord {
+  word: string;
+  path: number[];
+}
+
 export interface GameSession {
   readonly config: GameConfig;
   readonly grid: Grid;
   readonly allSolutions: readonly Solution[];
   readonly startedAt: number;
   readonly foundWords: readonly FoundWord[];
+  readonly rejectedWords: readonly RejectedWord[];
   readonly solutionsByWord: ReadonlyMap<string, Solution>;
 }
 
@@ -45,6 +51,7 @@ export function createSession(
     allSolutions: solutions,
     startedAt,
     foundWords: [],
+    rejectedWords: [],
     solutionsByWord,
   };
 }
@@ -110,7 +117,11 @@ export function submitPath(
 
   const solution = session.solutionsByWord.get(word);
   if (!solution) {
-    return { session, result: { kind: 'not_in_dictionary' } };
+    const alreadyRejected = session.rejectedWords.some((r) => r.word === word);
+    const nextSession: GameSession = alreadyRejected
+      ? session
+      : { ...session, rejectedWords: [...session.rejectedWords, { word, path }] };
+    return { session: nextSession, result: { kind: 'not_in_dictionary' } };
   }
 
   const scoringRule = getScoringRule(session.config.scoring);

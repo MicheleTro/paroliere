@@ -92,6 +92,44 @@ describe('submitPath — ordine dei controlli (SPEC.md §5.8)', () => {
   });
 });
 
+describe('rejectedWords — parole not_in_dictionary tentate', () => {
+  const config: GameConfig = {
+    seed: 1,
+    size: 4,
+    durationMs: 1000,
+    minWordLength: 3,
+    minWords: 1,
+    scoring: 'classic',
+    pointMode: 'standard',
+    positionBonus: false,
+    generatorVersion: 1,
+    dictionaryVersion: 'test',
+  };
+  const grid: Grid = { size: 4, tiles: ['c', 'a', 's', 'a', 'r', 'e', 't', 'e', 'p', 'o', 'r', 't', 'a', 'l', 'e', 'n'] };
+  const solutions: Solution[] = [{ word: 'casa', path: [0, 1, 2, 3] }];
+
+  it('registra una parola not_in_dictionary con il suo percorso', () => {
+    const session = createSession(config, grid, solutions, 0);
+    const { session: next, result } = submitPath(session, [8, 9, 10, 11], 10);
+    expect(result.kind).toBe('not_in_dictionary');
+    expect(next.rejectedWords).toEqual([{ word: 'port', path: [8, 9, 10, 11] }]);
+  });
+
+  it('non duplica la stessa parola rifiutata più volte', () => {
+    let session = createSession(config, grid, solutions, 0);
+    session = submitPath(session, [8, 9, 10, 11], 10).session;
+    session = submitPath(session, [8, 9, 10, 11], 20).session;
+    expect(session.rejectedWords).toHaveLength(1);
+  });
+
+  it('non registra parole accettate o troppo corte', () => {
+    let session = createSession(config, grid, solutions, 0);
+    session = submitPath(session, [0, 1, 2, 3], 10).session;
+    session = submitPath(session, [0, 1], 20).session;
+    expect(session.rejectedWords).toEqual([]);
+  });
+});
+
 describe('remainingMs / isOver', () => {
   const config: GameConfig = {
     seed: 1,
