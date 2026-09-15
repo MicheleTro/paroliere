@@ -17,6 +17,8 @@ export function runGrid(argv: string[]): void {
     minWordLength: 3,
     minWords,
     scoring: 'classic',
+    pointMode: 'standard',
+    positionBonus: false,
     generatorVersion: 1,
     dictionaryVersion,
   };
@@ -45,6 +47,6 @@ export function runGrid(argv: string[]): void {
     console.log(`  ${length}: ${words.length} (${words.join(', ')})`);
   }
 
-  const maxScore = solutions.reduce((sum, s) => sum + classicScoring.scoreWord(s.word, s.path, grid), 0);
+  const maxScore = solutions.reduce((sum, s) => sum + classicScoring.scoreWord(s.word, s.path, grid, config), 0);
   console.log(`\nPunteggio massimo: ${maxScore}`);
 }

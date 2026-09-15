@@ -3,6 +3,8 @@
     durationMs: number;
     minWordLength: number;
     size: 4 | 5 | 6;
+    pointMode: 'standard' | 'speciale';
+    positionBonus: boolean;
   }
 </script>
 
@@ -23,6 +25,8 @@
   let durationMs = $state(90_000);
   let minWordLength = $state(3);
   let size: 4 | 5 | 6 = $state(5);
+  let pointMode: 'standard' | 'speciale' = $state('standard');
+  let positionBonus = $state(false);
 </script>
 
 <div class="config">
@@ -61,9 +65,37 @@
     </div>
   </section>
 
+  <section>
+    <h2>Punteggio</h2>
+    <div class="options">
+      <button type="button" class:selected={pointMode === 'standard'} onclick={() => (pointMode = 'standard')}>
+        Standard
+      </button>
+      <button type="button" class:selected={pointMode === 'speciale'} onclick={() => (pointMode = 'speciale')}>
+        Speciale
+      </button>
+    </div>
+  </section>
+
+  <section>
+    <h2>Bonus Posizione</h2>
+    <div class="options">
+      <button type="button" class:selected={!positionBonus} onclick={() => (positionBonus = false)}>No</button>
+      <button type="button" class:selected={positionBonus} onclick={() => (positionBonus = true)}>Sì</button>
+    </div>
+  </section>
+
+  {#if pointMode === 'speciale' || positionBonus}
+    <p class="hint">Con questa modalità di punteggio la partita non conta per le statistiche.</p>
+  {/if}
+
   <div class="actions">
     <button type="button" class="secondary" onclick={onBack}>Indietro</button>
-    <button type="button" class="primary" onclick={() => onStart({ durationMs, minWordLength, size })}>
+    <button
+      type="button"
+      class="primary"
+      onclick={() => onStart({ durationMs, minWordLength, size, pointMode, positionBonus })}
+    >
       Inizia
     </button>
   </div>
@@ -113,6 +145,13 @@
     border-color: var(--color-accent);
     background: var(--color-accent);
     color: var(--color-accent-contrast);
+  }
+
+  .hint {
+    margin: 0;
+    font-size: 0.85rem;
+    text-align: center;
+    opacity: 0.75;
   }
 
   .actions {

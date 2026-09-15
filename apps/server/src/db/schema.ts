@@ -1,4 +1,4 @@
-import { bigint, integer, jsonb, pgEnum, pgTable, timestamp, unique, uuid, varchar } from 'drizzle-orm/pg-core';
+import { bigint, boolean, integer, jsonb, pgEnum, pgTable, timestamp, unique, uuid, varchar } from 'drizzle-orm/pg-core';
 
 export const users = pgTable('users', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -9,6 +9,7 @@ export const users = pgTable('users', {
 });
 
 export const scoringEnum = pgEnum('scoring', ['classic', 'versus']);
+export const pointModeEnum = pgEnum('point_mode', ['standard', 'speciale']);
 export const challengeModeEnum = pgEnum('challenge_mode', ['individual', 'team']);
 export const challengeStatusEnum = pgEnum('challenge_status', ['open', 'in_progress', 'completed', 'cancelled']);
 export const gameSourceEnum = pgEnum('game_source', ['local', 'challenge']);
@@ -20,6 +21,8 @@ export const gameConfigs = pgTable('game_configs', {
   minWordLength: integer('min_word_length').notNull(),
   minWords: integer('min_words').notNull(),
   scoring: scoringEnum('scoring').notNull(),
+  pointMode: pointModeEnum('point_mode').notNull().default('standard'),
+  positionBonus: boolean('position_bonus').notNull().default(false),
   generatorVersion: integer('generator_version').notNull(),
   dictionaryVersion: varchar('dictionary_version', { length: 64 }).notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),

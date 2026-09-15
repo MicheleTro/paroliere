@@ -46,7 +46,13 @@
     </button>
   </div>
   <WordPopup {popup} />
-  <GridView grid={session.grid} {onSubmit} onPathChange={handlePathChange} />
+  <GridView
+    grid={session.grid}
+    {onSubmit}
+    onPathChange={handlePathChange}
+    pointMode={session.config.pointMode}
+    positionBonus={session.config.positionBonus}
+  />
   <p class="current-word">{currentWord || ' '}</p>
   <p class="score">Punteggio: {score}</p>
   <ul class="found-words">

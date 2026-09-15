@@ -46,6 +46,8 @@ describe('generateGrid — determinismo e vincoli', () => {
     minWordLength: 3,
     minWords: 5,
     scoring: 'classic',
+    pointMode: 'standard',
+    positionBonus: false,
     generatorVersion: 1,
     dictionaryVersion: 'test',
   };

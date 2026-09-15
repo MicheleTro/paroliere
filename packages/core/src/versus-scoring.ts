@@ -1,14 +1,15 @@
-import { baseWordValue } from './scoring.js';
-
 /**
  * Una riga per partecipante: `groupId` è l'unità con cui si valuta
  * l'unicità di una parola (RF-24) — coincide con `participantId` in
  * modalità individuale, con l'id della squadra in modalità a squadre.
+ * `words` mappa ogni parola trovata al suo valore base (già calcolato con
+ * `wordValue`, quindi coerente con la configurazione di punteggio della
+ * sfida — standard/speciale, Bonus Posizione).
  */
 export interface VersusEntry {
   participantId: string;
   groupId: string;
-  words: readonly string[];
+  words: ReadonlyMap<string, number>;
 }
 
 /**
@@ -21,7 +22,7 @@ export function wordGroupCounts(entries: readonly VersusEntry[]): Map<string, nu
   const wordsByGroup = new Map<string, Set<string>>();
   for (const entry of entries) {
     const words = wordsByGroup.get(entry.groupId) ?? new Set<string>();
-    for (const word of entry.words) words.add(word);
+    for (const word of entry.words.keys()) words.add(word);
     wordsByGroup.set(entry.groupId, words);
   }
 
@@ -35,8 +36,8 @@ export function wordGroupCounts(entries: readonly VersusEntry[]): Map<string, nu
 }
 
 /** RF-24: doppio del valore base se la parola è di un solo gruppo, altrimenti il valore base. */
-export function versusWordValue(word: string, groupCount: number): number {
-  return groupCount === 1 ? baseWordValue(word) * 2 : baseWordValue(word);
+export function versusWordValue(baseValue: number, groupCount: number): number {
+  return groupCount === 1 ? baseValue * 2 : baseValue;
 }
 
 /**
@@ -52,8 +53,8 @@ export function computeVersusScores(entries: readonly VersusEntry[]): Record<str
   const scores: Record<string, number> = {};
   for (const entry of entries) {
     let total = 0;
-    for (const word of new Set(entry.words)) {
-      total += versusWordValue(word, groupCountByWord.get(word) ?? 0);
+    for (const [word, baseValue] of entry.words) {
+      total += versusWordValue(baseValue, groupCountByWord.get(word) ?? 0);
     }
     scores[entry.participantId] = total;
   }

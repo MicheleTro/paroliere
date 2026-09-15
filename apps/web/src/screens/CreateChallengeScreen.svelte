@@ -16,6 +16,8 @@
   let durationMs = $state(90_000);
   let minWordLength = $state(3);
   let size: 4 | 5 | 6 = $state(5);
+  let pointMode: 'standard' | 'speciale' = $state('standard');
+  let positionBonus = $state(false);
   const mode: ChallengeMode = 'individual';
   let bestOf = $state(1);
   let maxParticipants = $state(2);
@@ -27,7 +29,7 @@
     submitting = true;
     try {
       const result = await createChallenge({
-        config: { size, durationMs, minWordLength, minWords: 50, scoring: 'versus' },
+        config: { size, durationMs, minWordLength, minWords: 50, scoring: 'versus', pointMode, positionBonus },
         mode,
         bestOf,
         maxParticipants,
@@ -76,6 +78,30 @@
       {/each}
     </div>
   </section>
+
+  <section>
+    <h2>Punteggio</h2>
+    <div class="options">
+      <button type="button" class:selected={pointMode === 'standard'} onclick={() => (pointMode = 'standard')}>
+        Standard
+      </button>
+      <button type="button" class:selected={pointMode === 'speciale'} onclick={() => (pointMode = 'speciale')}>
+        Speciale
+      </button>
+    </div>
+  </section>
+
+  <section>
+    <h2>Bonus Posizione</h2>
+    <div class="options">
+      <button type="button" class:selected={!positionBonus} onclick={() => (positionBonus = false)}>No</button>
+      <button type="button" class:selected={positionBonus} onclick={() => (positionBonus = true)}>Sì</button>
+    </div>
+  </section>
+
+  {#if pointMode === 'speciale' || positionBonus}
+    <p class="hint">Con questa modalità di punteggio i match non contano per le statistiche.</p>
+  {/if}
 
   <section>
     <h2>Modalità</h2>
@@ -163,6 +189,13 @@
   .options button:disabled {
     opacity: 0.5;
     cursor: default;
+  }
+
+  .hint {
+    margin: 0;
+    font-size: 0.85rem;
+    text-align: center;
+    opacity: 0.75;
   }
 
   .slider {

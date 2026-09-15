@@ -3,6 +3,7 @@ import { apiRequest } from './api.js';
 export type ChallengeMode = 'individual' | 'team';
 export type ChallengeStatus = 'open' | 'in_progress' | 'completed' | 'cancelled';
 export type Scoring = 'classic' | 'versus';
+export type PointMode = 'standard' | 'speciale';
 
 export interface ChallengeConfigInput {
   size: 4 | 5 | 6;
@@ -10,6 +11,8 @@ export interface ChallengeConfigInput {
   minWordLength: number;
   minWords: number;
   scoring: Scoring;
+  pointMode: PointMode;
+  positionBonus: boolean;
 }
 
 export interface CreateChallengeInput {
@@ -50,6 +53,8 @@ export interface ChallengeSummary {
     durationMs: number;
     minWordLength: number;
     scoring: Scoring;
+    pointMode: PointMode;
+    positionBonus: boolean;
   };
 }
 

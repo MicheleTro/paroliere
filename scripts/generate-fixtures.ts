@@ -78,6 +78,8 @@ const GENERATE_CONFIGS: GameConfig[] = Array.from({ length: 10 }, (_, i) => ({
   minWordLength: 3,
   minWords: 5,
   scoring: 'classic' as const,
+  pointMode: 'standard' as const,
+  positionBonus: false,
   generatorVersion: 1 as const,
   dictionaryVersion: 'fixture-dict-small',
 }));
@@ -96,7 +98,7 @@ function buildScoringFixture() {
   return wordsByLength.map((word) => ({
     word,
     path: word.split('').map((_, i) => i),
-    points: classicScoring.scoreWord(word, [], { size: 4, tiles: [] }),
+    points: classicScoring.scoreWord(word, [], { size: 4, tiles: [] }, { pointMode: 'standard', positionBonus: false }),
   }));
 }
 
@@ -109,6 +111,8 @@ function buildSessionFixture() {
     minWordLength: 3,
     minWords: 5,
     scoring: 'classic',
+    pointMode: 'standard',
+    positionBonus: false,
     generatorVersion: 1,
     dictionaryVersion: 'fixture-dict-small',
   };

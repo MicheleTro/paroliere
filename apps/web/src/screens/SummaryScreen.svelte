@@ -39,7 +39,14 @@
     {typeStats}
   />
 
-  <GridView grid={session.grid} interactive={false} highlightPath={selectedPath} onSubmit={() => {}} />
+  <GridView
+    grid={session.grid}
+    interactive={false}
+    highlightPath={selectedPath}
+    onSubmit={() => {}}
+    pointMode={session.config.pointMode}
+    positionBonus={session.config.positionBonus}
+  />
 
   <div class="word-lists">
     <section>

@@ -22,7 +22,8 @@ function isValidPath(path: number[], grid: Grid): boolean {
 /**
  * Rivalida i percorsi grezzi ricevuti dal client rigenerando la griglia dal
  * seed del match (RF-22): il client non decide mai il proprio punteggio.
- * `points` è sempre il valore base RF-12 — per 'versus' il punteggio
+ * `points` è sempre il valore base secondo la configurazione della sfida
+ * (RF-12 + eventuale "speciale"/Bonus Posizione) — per 'versus' il punteggio
  * ufficiale si calcola a parte con computeVersusScores.
  */
 export function gradeSubmission(config: GameConfig, index: WordIndex, paths: readonly number[][]): GradedWord[] {
@@ -34,7 +35,7 @@ export function gradeSubmission(config: GameConfig, index: WordIndex, paths: rea
     if (!isValidPath(path, grid)) continue;
     const word = path.map((i) => grid.tiles[i]).join('');
     if (found.has(word) || !solutionsByWord.has(word)) continue;
-    found.set(word, { word, path, points: classicScoring.scoreWord(word, path, grid) });
+    found.set(word, { word, path, points: classicScoring.scoreWord(word, path, grid, config) });
   }
 
   return [...found.values()];

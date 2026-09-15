@@ -2,6 +2,7 @@ import { randomInt } from 'node:crypto';
 
 import {
   computeVersusScores,
+  countsTowardStats,
   versusWordValue,
   wordGroupCounts,
   type GameConfig,
@@ -29,6 +30,8 @@ const gameConfigInputSchema = z.object({
   minWordLength: z.number().int().min(1),
   minWords: z.number().int().min(1),
   scoring: z.enum(['classic', 'versus']),
+  pointMode: z.enum(['standard', 'speciale']).default('standard'),
+  positionBonus: z.boolean().default(false),
 });
 
 const createChallengeSchema = z.object({
@@ -63,6 +66,8 @@ function toGameConfig(row: GameConfigRow, seed: number): GameConfig {
     minWordLength: row.minWordLength,
     minWords: row.minWords,
     scoring: row.scoring,
+    pointMode: row.pointMode,
+    positionBonus: row.positionBonus,
     generatorVersion: 1,
     dictionaryVersion: row.dictionaryVersion,
   };
@@ -105,7 +110,7 @@ async function trySettleMatch(
     const entries: VersusEntry[] = [...gradedByUser.entries()].map(([userId, graded]) => ({
       participantId: userId,
       groupId: teamIdByUser.get(userId) ?? userId,
-      words: graded.map((g) => g.word),
+      words: new Map(graded.map((g) => [g.word, g.points])),
     }));
     scoreByUser = new Map(Object.entries(computeVersusScores(entries)));
   } else {
@@ -128,7 +133,9 @@ async function trySettleMatch(
         words: graded,
         source: 'challenge',
       });
-      await updatePlayerWordStats(tx, result.userId, configRow.size, configRow.durationMs, graded, result.submittedAt);
+      if (countsTowardStats(configRow)) {
+        await updatePlayerWordStats(tx, result.userId, configRow.size, configRow.durationMs, graded, result.submittedAt);
+      }
     }
 
     await tx.update(schema.challengeMatches).set({ settledAt: new Date() }).where(eq(schema.challengeMatches.id, match.id));
@@ -170,7 +177,7 @@ function buildMatchWordBreakdown(
     const entries: VersusEntry[] = [...gradedByUser.entries()].map(([userId, graded]) => ({
       participantId: userId,
       groupId: teamIdByUser.get(userId) ?? userId,
-      words: graded.map((g) => g.word),
+      words: new Map(graded.map((g) => [g.word, g.points])),
     }));
     groupCounts = wordGroupCounts(entries);
   }
@@ -180,7 +187,7 @@ function buildMatchWordBreakdown(
     const words = graded
       .map((g) => ({
         word: g.word,
-        points: groupCounts ? versusWordValue(g.word, groupCounts.get(g.word) ?? 1) : g.points,
+        points: groupCounts ? versusWordValue(g.points, groupCounts.get(g.word) ?? 1) : g.points,
       }))
       .sort((a, b) => b.word.length - a.word.length || a.word.localeCompare(b.word));
     breakdown.set(userId, words);
@@ -628,6 +635,8 @@ export function registerChallengeRoutes(app: FastifyInstance): void {
           durationMs: schema.gameConfigs.durationMs,
           minWordLength: schema.gameConfigs.minWordLength,
           scoring: schema.gameConfigs.scoring,
+          pointMode: schema.gameConfigs.pointMode,
+          positionBonus: schema.gameConfigs.positionBonus,
         },
       })
       .from(schema.challenges)

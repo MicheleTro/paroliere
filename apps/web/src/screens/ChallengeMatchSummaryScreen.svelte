@@ -25,7 +25,14 @@
     {typeStats}
   />
 
-  <GridView grid={session.grid} interactive={false} highlightPath={[]} onSubmit={() => {}} />
+  <GridView
+    grid={session.grid}
+    interactive={false}
+    highlightPath={[]}
+    onSubmit={() => {}}
+    pointMode={session.config.pointMode}
+    positionBonus={session.config.positionBonus}
+  />
 
   {#if error}
     <p class="error">Il risultato non è stato registrato: {error}. Riprova dal dettaglio della sfida.</p>

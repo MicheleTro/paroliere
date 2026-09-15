@@ -2,6 +2,8 @@ import { desc, eq } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 
+import { countsTowardStats } from '@paroliere/core';
+
 import { requireAuth } from '../auth/require-auth.js';
 import { db } from '../db/client.js';
 import * as schema from '../db/schema.js';
@@ -20,6 +22,10 @@ const gameConfigSchema = z.object({
   minWordLength: z.number().int().min(1),
   minWords: z.number().int().min(1),
   scoring: z.enum(['classic', 'versus']),
+  // Default: partite salvate offline prima dell'introduzione di questi campi
+  // (IndexedDB, PWA offline-first) non li hanno mai avuti.
+  pointMode: z.enum(['standard', 'speciale']).default('standard'),
+  positionBonus: z.boolean().default(false),
   generatorVersion: z.literal(1),
   dictionaryVersion: z.string().min(1),
 });
@@ -66,7 +72,7 @@ export function registerHistoryRoutes(app: FastifyInstance): void {
           })
           .onConflictDoNothing({ target: schema.games.id })
           .returning();
-        if (inserted.length > 0) {
+        if (inserted.length > 0 && countsTowardStats(game.config)) {
           await updatePlayerWordStats(tx, request.userId!, game.config.size, game.config.durationMs, game.foundWords, startedAt);
         }
       });

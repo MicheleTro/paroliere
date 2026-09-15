@@ -48,6 +48,31 @@ export const TILE_WEIGHTS: ReadonlyArray<readonly [Tile, number]> = [
 
 export const TOTAL_TILE_WEIGHT: number = TILE_WEIGHTS.reduce((sum, [, w]) => sum + w, 0);
 
+/** Valore in punti di ogni lettera per la modalità di punteggio "speciale". */
+export const TILE_VALUES: Record<Tile, number> = {
+  a: 1,
+  b: 4,
+  c: 2,
+  d: 3,
+  e: 2,
+  f: 5,
+  g: 4,
+  h: 10,
+  i: 2,
+  l: 3,
+  m: 3,
+  n: 2,
+  o: 2,
+  p: 3,
+  qu: 9,
+  r: 1,
+  s: 2,
+  t: 1,
+  u: 5,
+  v: 4,
+  z: 8,
+};
+
 /** Numero di lettere di una casella: `qu` conta come 2 (RF-02). */
 export function tileLetterCount(tile: Tile): number {
   return tile === 'qu' ? 2 : 1;

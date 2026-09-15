@@ -14,6 +14,26 @@ const NEIGHBOR_OFFSETS: ReadonlyArray<readonly [number, number]> = [
   [1, 1],
 ];
 
+export type CellPosition = 'center' | 'edge' | 'corner';
+
+/** Moltiplicatore del "Bonus Posizione" per posizione della cella nella griglia. */
+export const POSITION_MULTIPLIER: Record<CellPosition, number> = {
+  center: 1,
+  edge: 2,
+  corner: 3,
+};
+
+/** Classifica una cella come centrale, laterale o d'angolo in base alla griglia. */
+export function cellPosition(index: number, size: number): CellPosition {
+  const row = Math.floor(index / size);
+  const col = index % size;
+  const rowOnEdge = row === 0 || row === size - 1;
+  const colOnEdge = col === 0 || col === size - 1;
+  if (rowOnEdge && colOnEdge) return 'corner';
+  if (rowOnEdge || colOnEdge) return 'edge';
+  return 'center';
+}
+
 export function neighbors(index: number, size: number): number[] {
   const row = Math.floor(index / size);
   const col = index % size;

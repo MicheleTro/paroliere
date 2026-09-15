@@ -78,6 +78,11 @@
   function scoringLabel(scoring: ChallengeSummary['config']['scoring']): string {
     return scoring === 'classic' ? 'Classico' : 'Versus';
   }
+
+  function pointModeLabel(config: ChallengeSummary['config']): string {
+    const base = config.pointMode === 'speciale' ? 'Speciale' : 'Standard';
+    return config.positionBonus ? `${base} + Bonus Posizione` : base;
+  }
 </script>
 
 <div class="challenges">
@@ -113,7 +118,8 @@
             <span class="creator">Creata da {challenge.creatorUsername} · {playersLabel(challenge)}</span>
             <span class="config">
               {challenge.config.size}×{challenge.config.size} · {formatDuration(challenge.config.durationMs)} · min
-              {challenge.config.minWordLength} lettere · {scoringLabel(challenge.config.scoring)} · al meglio di {challenge.bestOf}
+              {challenge.config.minWordLength} lettere · {scoringLabel(challenge.config.scoring)} · {pointModeLabel(challenge.config)} · al
+              meglio di {challenge.bestOf}
             </span>
           </button>
           {#if challenge.creatorUserId === currentUserId}

@@ -95,6 +95,8 @@
       minWordLength: settings.minWordLength,
       minWords: 50,
       scoring: 'classic',
+      pointMode: settings.pointMode,
+      positionBonus: settings.positionBonus,
       generatorVersion: 1,
     });
   }
@@ -125,6 +127,8 @@
       minWordLength: challenge.config.minWordLength,
       minWords: challenge.config.minWords,
       scoring: challenge.config.scoring,
+      pointMode: challenge.config.pointMode,
+      positionBonus: challenge.config.positionBonus,
       generatorVersion: 1,
     });
   }

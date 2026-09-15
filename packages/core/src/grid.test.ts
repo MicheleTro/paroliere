@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { neighbors, drawTile, drawGrid } from './grid.js';
+import { cellPosition, neighbors, drawTile, drawGrid } from './grid.js';
 import { createRng } from './rng.js';
 import { TOTAL_TILE_WEIGHT } from './tile.js';
 
@@ -52,5 +52,34 @@ describe('drawGrid', () => {
     const grid = drawGrid(createRng(5), 4);
     expect(grid.tiles).toHaveLength(16);
     expect(grid.size).toBe(4);
+  });
+});
+
+describe('cellPosition — Bonus Posizione', () => {
+  it.each([
+    [0, 'corner'],
+    [3, 'corner'],
+    [12, 'corner'],
+    [15, 'corner'],
+  ] as const)('indice %i (angolo di una griglia 4x4) -> %s', (index, expected) => {
+    expect(cellPosition(index, 4)).toBe(expected);
+  });
+
+  it.each([
+    [1, 'edge'],
+    [4, 'edge'],
+    [11, 'edge'],
+    [14, 'edge'],
+  ] as const)('indice %i (lato di una griglia 4x4) -> %s', (index, expected) => {
+    expect(cellPosition(index, 4)).toBe(expected);
+  });
+
+  it.each([
+    [5, 'center'],
+    [6, 'center'],
+    [9, 'center'],
+    [10, 'center'],
+  ] as const)('indice %i (centro di una griglia 4x4) -> %s', (index, expected) => {
+    expect(cellPosition(index, 4)).toBe(expected);
   });
 });

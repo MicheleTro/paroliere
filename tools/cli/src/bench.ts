@@ -47,6 +47,8 @@ export function runBench(argv: string[]): void {
       minWordLength: 3,
       minWords,
       scoring: 'classic',
+      pointMode: 'standard',
+      positionBonus: false,
       generatorVersion: 1,
       dictionaryVersion,
     };

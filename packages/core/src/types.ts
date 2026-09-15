@@ -7,6 +7,8 @@ export interface GameConfig {
   minWordLength: number;
   minWords: number;
   scoring: 'classic' | 'versus';
+  pointMode: 'standard' | 'speciale';
+  positionBonus: boolean;
   generatorVersion: 1;
   dictionaryVersion: string;
 }

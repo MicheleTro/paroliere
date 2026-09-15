@@ -114,7 +114,7 @@ export function submitPath(
   }
 
   const scoringRule = getScoringRule(session.config.scoring);
-  const points = scoringRule.scoreWord(word, path, session.grid);
+  const points = scoringRule.scoreWord(word, path, session.grid, session.config);
   const foundWord: FoundWord = { word, path, points };
 
   const nextSession: GameSession = {
@@ -140,7 +140,7 @@ export function summarize(session: GameSession): SessionSummary {
   const foundWordSet = new Set(session.foundWords.map((f) => f.word));
   const missedWords = session.allSolutions.filter((s) => !foundWordSet.has(s.word));
   const maxScore = session.allSolutions.reduce(
-    (sum, s) => sum + scoringRule.scoreWord(s.word, s.path, session.grid),
+    (sum, s) => sum + scoringRule.scoreWord(s.word, s.path, session.grid, session.config),
     0,
   );
   const totalWords = session.allSolutions.length;

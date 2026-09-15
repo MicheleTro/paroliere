@@ -52,6 +52,8 @@ describe('submitPath — ordine dei controlli (SPEC.md §5.8)', () => {
     minWordLength: 3,
     minWords: 1,
     scoring: 'classic',
+    pointMode: 'standard',
+    positionBonus: false,
     generatorVersion: 1,
     dictionaryVersion: 'test',
   };
@@ -98,6 +100,8 @@ describe('remainingMs / isOver', () => {
     minWordLength: 3,
     minWords: 1,
     scoring: 'classic',
+    pointMode: 'standard',
+    positionBonus: false,
     generatorVersion: 1,
     dictionaryVersion: 'test',
   };
@@ -126,6 +130,8 @@ describe('summarize', () => {
     minWordLength: 3,
     minWords: 1,
     scoring: 'classic',
+    pointMode: 'standard',
+    positionBonus: false,
     generatorVersion: 1,
     dictionaryVersion: 'test',
   };

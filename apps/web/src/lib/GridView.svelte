@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { neighbors, type Grid } from '@paroliere/core';
+  import { cellPosition, neighbors, TILE_VALUES, type Grid } from '@paroliere/core';
   import { hitTestCell } from './grid-geometry.js';
 
   interface Props {
@@ -8,9 +8,19 @@
     interactive?: boolean;
     highlightPath?: number[];
     onPathChange?: (path: number[]) => void;
+    pointMode?: 'standard' | 'speciale';
+    positionBonus?: boolean;
   }
 
-  let { grid, onSubmit, interactive = true, highlightPath = [], onPathChange }: Props = $props();
+  let {
+    grid,
+    onSubmit,
+    interactive = true,
+    highlightPath = [],
+    onPathChange,
+    pointMode = 'standard',
+    positionBonus = false,
+  }: Props = $props();
 
   let containerEl: HTMLDivElement | undefined;
   let path: number[] = $state([]);
@@ -81,8 +91,16 @@
   onpointercancel={endTracking}
 >
   {#each grid.tiles as tile, index (index)}
-    <div class="cell" class:selected={displayedPath.includes(index)}>
+    <div
+      class="cell"
+      class:selected={displayedPath.includes(index)}
+      class:position-edge={positionBonus && cellPosition(index, grid.size) === 'edge'}
+      class:position-corner={positionBonus && cellPosition(index, grid.size) === 'corner'}
+    >
       {tile === 'qu' ? 'Qu' : tile.toUpperCase()}
+      {#if pointMode === 'speciale'}
+        <span class="letter-value">{TILE_VALUES[tile]}</span>
+      {/if}
     </div>
   {/each}
 </div>
@@ -105,6 +123,7 @@
   }
 
   .cell {
+    position: relative;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -123,5 +142,29 @@
     border-color: var(--color-stamp);
     color: var(--color-accent-contrast);
     transform: scale(0.96);
+  }
+
+  .cell.position-edge {
+    background: #f1d896;
+  }
+
+  .cell.position-corner {
+    background: #cbb3ee;
+  }
+
+  .cell.position-edge.selected,
+  .cell.position-corner.selected {
+    background: var(--color-stamp);
+  }
+
+  .letter-value {
+    position: absolute;
+    left: 4px;
+    bottom: 2px;
+    font-family: var(--font-body, sans-serif);
+    font-size: 0.7rem;
+    font-weight: 700;
+    line-height: 1;
+    opacity: 0.7;
   }
 </style>
