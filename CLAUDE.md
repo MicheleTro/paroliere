@@ -25,6 +25,8 @@ Aggiunta: il creatore di una sfida può cancellarla in qualsiasi stato (`POST /c
 
 Bug corretto: in modalità a squadre, un match si "settlava" (e la sfida poteva concludersi) appena un solo giocatore per squadra aveva inviato il risultato, invece di aspettare tutti i membri di ogni squadra — in una sfida 2 contro 2, dopo che un giocatore per squadra giocava il match risultava già concluso e gli altri due non potevano più contribuire. Fix: `trySettleMatch` ora richiede sempre che ogni singolo partecipante (individuale o a squadre) abbia inviato un risultato.
 
+Aggiunta: modalità offline (build-time) `VITE_OFFLINE_MODE=true` in `apps/web/.env` (letta in `src/lib/config.ts` come `OFFLINE_MODE`). Senza backend né DB: niente login/admin, sfide, sync e statistiche per tipologia, segnalazione parole né account nell'header; restano Allenamento e Storico locale (IndexedDB, tile "Storico" in Home → `HistoryScreen`). Con il flag a `false` (default) il comportamento è invariato. Il server non è coinvolto. Verificata con smoke test Playwright (`pnpm --filter @paroliere/web exec playwright test`, `apps/web/e2e/offline.e2e.ts`): nessuna richiesta al server, allenamento e storico funzionanti.
+
 Ancora non fatto (Passo 4, non bloccante): test PWA su device reali Android e hosting con brotli.
 
 ## Passo 5 — Backend e sfide (design completo, implementazione in corso)
@@ -57,4 +59,5 @@ Backend Node/TS in `apps/server`, riusa `@paroliere/core`, Postgres+Drizzle (gi�
 - Passo 1 (solo dev): `typescript`, `tsx`, `vitest`, `@types/node`, `eslint`, `typescript-eslint`, `prettier`.
 - Passo 2: `svelte`, `vite`, `@sveltejs/vite-plugin-svelte`.
 - Passo 4: `idb`, `vite-plugin-pwa`.
+- Modalità offline (`apps/web`, solo dev): `@playwright/test`.
 - Passo 5a (`apps/server`): `fastify`, `@fastify/cors`, `drizzle-orm`, `drizzle-kit` (dev), `postgres`, `argon2`, `jose`, `zod`.

@@ -2,10 +2,11 @@
   interface Props {
     ready: boolean;
     onNewGame: () => void;
-    onChallenges: () => void;
+    onChallenges?: () => void;
+    onHistory?: () => void;
   }
 
-  let { ready, onNewGame, onChallenges }: Props = $props();
+  let { ready, onNewGame, onChallenges, onHistory }: Props = $props();
 </script>
 
 <div class="page home">
@@ -15,11 +16,21 @@
     <span class="hint">Partita rapida in singolo</span>
   </button>
 
-  <button type="button" class="tile tile-secondary" onclick={onChallenges}>
-    <span class="icon">⚔️</span>
-    <span class="label">Sfide</span>
-    <span class="hint">Gioca contro amici e squadre</span>
-  </button>
+  {#if onChallenges}
+    <button type="button" class="tile tile-secondary" onclick={onChallenges}>
+      <span class="icon">⚔️</span>
+      <span class="label">Sfide</span>
+      <span class="hint">Gioca contro amici e squadre</span>
+    </button>
+  {/if}
+
+  {#if onHistory}
+    <button type="button" class="tile tile-secondary" onclick={onHistory}>
+      <span class="icon">📜</span>
+      <span class="label">Storico</span>
+      <span class="hint">Le tue partite su questo dispositivo</span>
+    </button>
+  {/if}
 </div>
 
 <style>

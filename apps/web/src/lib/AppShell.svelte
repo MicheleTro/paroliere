@@ -2,16 +2,16 @@
   import type { Snippet } from 'svelte';
 
   interface Props {
-    username: string;
+    username?: string;
     showHome: boolean;
     onHome: () => void;
-    onLogout: () => void;
+    onLogout?: () => void;
     children: Snippet;
   }
 
   let { username, showHome, onHome, onLogout, children }: Props = $props();
 
-  const initial = $derived(username.charAt(0).toUpperCase() || '?');
+  const initial = $derived(username?.charAt(0).toUpperCase() || '?');
 </script>
 
 <div class="shell">
@@ -24,11 +24,13 @@
         <h1>Paroliere</h1>
       {/if}
     </div>
-    <div class="account">
-      <span class="avatar">{initial}</span>
-      <span class="username">{username}</span>
-      <button type="button" class="btn-icon logout" aria-label="Esci" onclick={onLogout}>⏻</button>
-    </div>
+    {#if username !== undefined && onLogout}
+      <div class="account">
+        <span class="avatar">{initial}</span>
+        <span class="username">{username}</span>
+        <button type="button" class="btn-icon logout" aria-label="Esci" onclick={onLogout}>⏻</button>
+      </div>
+    {/if}
   </header>
 
   <div class="content">

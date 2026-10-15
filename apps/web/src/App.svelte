@@ -23,6 +23,8 @@
   import { saveGame, syncGame } from './lib/history.js';
   import { getWordStats, type WordStats } from './lib/stats.js';
   import { playAlreadyFound, playRejected, playWordAccepted } from './lib/sound.js';
+  import HistoryScreen from './screens/HistoryScreen.svelte';
+  import { OFFLINE_MODE } from './lib/config.js';
   import { adminAuth } from './lib/admin.svelte.js';
   import { auth, checkSession, logout } from './lib/auth.svelte.js';
   import { submitMatchResult, type ChallengeDetail, type ChallengeMatch, type SubmitResultResponse } from './lib/challenges.js';
@@ -36,6 +38,7 @@
     | 'config'
     | 'playing'
     | 'summary'
+    | 'history'
     | 'challenges'
     | 'challenge-create'
     | 'challenge-detail'
@@ -204,6 +207,10 @@
     }
 
     screen = 'summary';
+    if (OFFLINE_MODE) {
+      saveGame(session.config, summary, Date.now()).catch((err) => console.error('Salvataggio partita non riuscito', err));
+      return;
+    }
     saveGame(session.config, summary, Date.now())
       .then((record) => syncGame(record))
       .then(() => getWordStats(size, durationMs))
@@ -274,22 +281,34 @@
   });
 
   navigator.storage?.persist?.().catch(() => {});
-  void checkSession();
+  if (!OFFLINE_MODE) void checkSession();
 </script>
 
 <main class:play-mode={screen === 'playing' && !!session}>
-  {#if adminAuth.loggedIn}
+  {#if !OFFLINE_MODE && adminAuth.loggedIn}
     <AdminScreen />
-  {:else if auth.status === 'checking'}
+  {:else if !OFFLINE_MODE && auth.status === 'checking'}
     <p>Caricamento...</p>
-  {:else if auth.status === 'unauthenticated'}
+  {:else if !OFFLINE_MODE && auth.status === 'unauthenticated'}
     <LoginScreen />
   {:else if screen === 'playing' && session}
     <PlayScreen {session} {now} {popup} onSubmit={handleSubmit} />
   {:else}
-    <AppShell username={auth.user?.username ?? ''} showHome={screen !== 'home'} onHome={goHome} onLogout={logout}>
+    <AppShell
+      username={OFFLINE_MODE ? undefined : (auth.user?.username ?? '')}
+      showHome={screen !== 'home'}
+      onHome={goHome}
+      onLogout={OFFLINE_MODE ? undefined : logout}
+    >
       {#if screen === 'home'}
-        <HomeScreen {ready} onNewGame={goToConfig} onChallenges={goToChallenges} />
+        <HomeScreen
+          {ready}
+          onNewGame={goToConfig}
+          onChallenges={OFFLINE_MODE ? undefined : goToChallenges}
+          onHistory={OFFLINE_MODE ? () => (screen = 'history') : undefined}
+        />
+      {:else if screen === 'history'}
+        <HistoryScreen />
       {:else if screen === 'config'}
         <ConfigScreen onStart={startNewGame} onBack={goHome} />
       {:else if screen === 'summary' && session && summary}

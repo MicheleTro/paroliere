@@ -2,6 +2,7 @@
   import type { GameSession, SessionSummary } from '@paroliere/core';
   import GameStatsSummary from '../lib/GameStatsSummary.svelte';
   import GridView from '../lib/GridView.svelte';
+  import { OFFLINE_MODE } from '../lib/config.js';
   import { reportWord } from '../lib/reports.js';
   import type { WordStats } from '../lib/stats.js';
 
@@ -88,6 +89,7 @@
       {/each}
     </div>
 
+    {#if !OFFLINE_MODE}
     <div class="card word-card">
       <button type="button" class="segnala-toggle" onclick={() => (segnalaExpanded = !segnalaExpanded)}>
         <h2>🚩 Segnala ({session.rejectedWords.length})</h2>
@@ -119,6 +121,7 @@
         {/if}
       {/if}
     </div>
+    {/if}
 
     <div class="card word-card">
       <h2>✖️ Mancate</h2>
