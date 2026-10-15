@@ -37,6 +37,9 @@ services:
       # come sopra: aggiorna se il nome del servizio server cambia in dashboard.
       - key: VITE_API_URL
         value: https://paroliere-server.onrender.com
+      # true = build senza backend (solo allenamento e storico locale).
+      - key: VITE_OFFLINE_MODE
+        value: true
     routes:
       - type: rewrite
         source: /*
