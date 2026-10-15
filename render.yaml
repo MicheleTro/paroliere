@@ -1,32 +1,7 @@
-databases:
-  - name: paroliere-db
-    plan: free
-    region: frankfurt
-    postgresMajorVersion: 16
-
+# Versione OFFLINE (attiva): solo frontend statico, nessun server né database.
+# Per tornare alla versione con backend (login, sfide): sostituire il contenuto
+# di questo file con quello di render.with-backend.yaml.
 services:
-  - type: web
-    name: paroliere-server
-    runtime: node
-    plan: free
-    region: frankfurt
-    rootDir: .
-    buildCommand: pnpm install --frozen-lockfile
-    startCommand: pnpm --filter @paroliere/server exec tsx src/db/migrate.ts && pnpm --filter @paroliere/server exec tsx src/index.ts
-    envVars:
-      - key: DATABASE_URL
-        fromDatabase:
-          name: paroliere-db
-          property: connectionString
-      - key: JWT_SECRET
-        generateValue: true
-      - key: PORT
-        value: 3000
-      # URL assegnato di default da Render (<nome-servizio>.onrender.com); se in dashboard
-      # scegli un nome diverso da "paroliere-web" o un domain custom, aggiorna questo valore.
-      - key: CORS_ORIGIN
-        value: https://paroliere-web.onrender.com
-
   - type: web
     name: paroliere-web
     runtime: static
@@ -34,9 +9,6 @@ services:
     buildCommand: pnpm install --frozen-lockfile && pnpm --filter @paroliere/web run build
     staticPublishPath: apps/web/dist
     envVars:
-      # come sopra: aggiorna se il nome del servizio server cambia in dashboard.
-      - key: VITE_API_URL
-        value: https://paroliere-server.onrender.com
       # true = build senza backend (solo allenamento e storico locale).
       - key: VITE_OFFLINE_MODE
         value: true
