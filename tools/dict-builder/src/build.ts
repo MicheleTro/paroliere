@@ -65,7 +65,8 @@ export function buildDictionary(
     stats.push({ phase, count });
   };
 
-  const rawLines = readFileSync(sourcePath, 'utf-8').split('\n');
+  // Morph-it! è codificato ISO-8859-1: leggerlo come UTF-8 trasforma ogni lettera accentata in U+FFFD.
+  const rawLines = readFileSync(sourcePath, 'latin1').split('\n');
   const entries = rawLines.map(parseSourceLine).filter((e): e is SourceEntry => e !== null);
   record('forma flessa estratta', entries.length);
 

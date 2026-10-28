@@ -23,6 +23,11 @@ distribuire eventuali opere derivate con licenza identica.
 
 ### Formato
 
+Il file è codificato **ISO-8859-1** (non UTF-8): `buildDictionary` lo legge come
+`latin1`. Leggerlo come UTF-8 (bug presente nella prima versione) trasformava ogni
+lettera accentata in U+FFFD e faceva scartare tutte le forme con accenti
+(`città`, `verità`, `amò`…), circa 13.000 parole nel dizionario finale.
+
 Confermato contro il file reale (`morph-it_048.txt`, 505.074 righe non vuote):
 tre colonne separate da tabulazione — `forma_flessa\tlemma\ttag`, es.
 `gattini	gattino	NOUN-M:p`. Il tag è `CATEGORIA[-sottocategoria]:feature+feature`.
@@ -58,7 +63,7 @@ Il file sorgente e l'output generato **non sono committati** (vedi
 esplicita"). Chi clona il repository deve procurarsi il file Morph-it! e
 rilanciare la build.
 
-### Statistiche (run del 2026-09-12)
+### Statistiche (run del 2026-10-28)
 
 Conteggi per fase della pipeline:
 
@@ -68,23 +73,23 @@ Conteggi per fase della pipeline:
 | filtro per tag | 502.078 |
 | minuscolo | 502.078 |
 | NFD + rimozione diacritici | 502.078 |
-| scarto non `[a-z]+` | 477.527 |
-| scarto j/k/w/x/y | 475.817 |
-| scarto q non seguita da u | 475.817 |
-| scarto lunghezza < 3 o > 16 | 463.559 |
-| overrides (remove/add) | 463.560 |
-| deduplica e ordina | **367.482** |
+| scarto non `[a-z]+` | 496.769 |
+| scarto j/k/w/x/y | 495.043 |
+| scarto q non seguita da u | 495.043 |
+| scarto lunghezza < 3 o > 16 | 482.707 |
+| overrides (remove/add) | 482.708 |
+| deduplica e ordina | **380.284** |
 
-Dimensioni del dizionario finale (367.482 parole):
+Dimensioni del dizionario finale (380.284 parole):
 
-- raw: 4.287.999 byte (~4,1 MB)
-- gzip: 877.668 byte (~857 KB)
-- brotli: 601.289 byte (~587 KB)
+- raw: 4.423.940 byte (~4,2 MB)
+- gzip: 902.231 byte (~881 KB)
+- brotli: 614.996 byte (~601 KB)
 
-Distribuzione per lunghezza (estratto): 3 lettere → 269, 4 → 1.415,
-5 → 4.711, 6 → 10.244, 7 → 21.900, 8 → 34.473, 9 → 47.633, 10 → 56.279
-(picco), 11 → 54.853, 12 → 47.734, 13 → 35.912, 14 → 25.516, 15 → 16.499,
-16 → 10.044.
+Distribuzione per lunghezza (estratto): 3 lettere → 279, 4 → 1.455,
+5 → 4.821, 6 → 10.682, 7 → 23.151, 8 → 36.344, 9 → 50.309, 10 → 58.742
+(picco), 11 → 56.624, 12 → 48.834, 13 → 36.508, 14 → 25.805, 15 → 16.634,
+16 → 10.096.
 
 `manifest.json` generato accanto al file (versione `it-<sha256[:8]>`,
 conteggio parole, licenza, timestamp).

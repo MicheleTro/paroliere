@@ -14,9 +14,10 @@ afterEach(() => {
   rmSync(dir, { recursive: true, force: true });
 });
 
+/** La fonte Morph-it! reale è ISO-8859-1, quindi le fixture sono scritte in latin1. */
 function writeSource(lines: string[]): string {
   const path = join(dir, 'source.txt');
-  writeFileSync(path, lines.join('\n'), 'utf-8');
+  writeFileSync(path, lines.join('\n'), 'latin1');
   return path;
 }
 
@@ -52,6 +53,12 @@ describe('buildDictionary', () => {
     const source = writeSource(['Città\tcittà\tNOUN-F']);
     const { words } = buildDictionary(source, noOverrides);
     expect(words).toEqual(['citta']);
+  });
+
+  it('mantiene le parole con vocale accentata finale o interna (fonte latin1)', () => {
+    const source = writeSource(['verità\tverità\tNOUN-F', 'amò\tamare\tVER:ind+past', 'perché\tperché\tWH']);
+    const { words } = buildDictionary(source, noOverrides);
+    expect(words).toEqual(['amo', 'perche', 'verita']);
   });
 
   it('scarta apostrofi, trattini, spazi, cifre', () => {
