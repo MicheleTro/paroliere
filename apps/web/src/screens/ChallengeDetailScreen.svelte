@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { displayWord } from '../lib/display.js';
   import {
     cancelChallenge,
     getChallenge,
@@ -319,7 +320,7 @@
                       <tbody>
                         {#each table.rows as row (row.word)}
                           <tr>
-                            <th scope="row">{row.word}</th>
+                            <th scope="row">{displayWord(row.word)}</th>
                             {#each row.cells as points, i (table.players[i]!.userId)}
                               <td>{points ?? ''}</td>
                             {/each}

@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { GameSession, SessionSummary } from '@paroliere/core';
+  import { displayWord } from '../lib/display.js';
   import GameStatsSummary from '../lib/GameStatsSummary.svelte';
   import GridView from '../lib/GridView.svelte';
   import { OFFLINE_MODE } from '../lib/config.js';
@@ -81,7 +82,7 @@
           {#each words as found (found.word)}
             <li>
               <button type="button" class="word-chip found" onclick={() => (selectedPath = found.path)}>
-                {found.word} <span>+{found.points}</span>
+                {displayWord(found.word)} <span>+{found.points}</span>
               </button>
             </li>
           {/each}
@@ -131,7 +132,7 @@
           {#each words as missed (missed.word)}
             <li>
               <button type="button" class="word-chip missed" onclick={() => (selectedPath = missed.path)}>
-                {missed.word}
+                {displayWord(missed.word)}
               </button>
             </li>
           {/each}

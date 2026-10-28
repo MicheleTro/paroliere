@@ -29,6 +29,7 @@
   import { auth, checkSession, logout } from './lib/auth.svelte.js';
   import { submitMatchResult, type ChallengeDetail, type ChallengeMatch, type SubmitResultResponse } from './lib/challenges.js';
   import type { WordPopupData } from './lib/word-popup.js';
+  import { setDisplayForms } from './lib/display.js';
   import type { NewGameConfig, WorkerResponse } from './worker/dictionary-worker.js';
 
   const POPUP_DURATION_MS = 1500;
@@ -70,6 +71,7 @@
     const message = event.data;
     if (message.type === 'ready') {
       dictionaryVersion = message.dictionaryVersion;
+      setDisplayForms(message.display);
       ready = true;
       return;
     }

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { displayWord } from './display.js';
   import type { WordPopupData } from './word-popup.js';
 
   interface Props {
@@ -11,7 +12,7 @@
 <div class="slot">
   {#if popup}
     <div class="popup" class:green={popup.tone === 'green'} class:yellow={popup.tone === 'yellow'} class:red={popup.tone === 'red'}>
-      <span class="word">{popup.word.toUpperCase()}</span>
+      <span class="word">{displayWord(popup.word).toUpperCase()}</span>
       {#if popup.subtitle}
         <span class="subtitle">{popup.subtitle}</span>
       {/if}

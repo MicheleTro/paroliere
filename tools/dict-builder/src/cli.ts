@@ -42,19 +42,32 @@ function readWordSet(path: string): Set<string> {
   );
 }
 
+/** Righe `normalizzata:accentata` (es. `citta:città`) che forzano la forma da mostrare. */
+function readDisplayMap(path: string): Map<string, string> {
+  const map = new Map<string, string>();
+  if (!existsSync(path)) return map;
+  for (const line of readFileSync(path, 'utf-8').split('\n')) {
+    const [word, form] = line.trim().split(':');
+    if (word && form) map.set(word, form);
+  }
+  return map;
+}
+
 function main(): void {
   const args = parseArgs(process.argv.slice(2));
   const overrides = {
     remove: readWordSet(join(overridesDir, 'remove.txt')),
     add: readWordSet(join(overridesDir, 'add.txt')),
+    display: readDisplayMap(join(overridesDir, 'display.txt')),
   };
 
-  const { words, stats } = buildDictionary(args.source, overrides);
+  const { words, display, stats } = buildDictionary(args.source, overrides);
   for (const s of stats) {
     console.log(`${s.phase}: ${s.count}`);
   }
 
-  const content = words.join('\n') + '\n';
+  // Una riga per parola; `normalizzata:accentata` dove c'è una forma da mostrare (vedi parseDictionary in core).
+  const content = words.map((w) => (display.has(w) ? `${w}:${display.get(w)}` : w)).join('\n') + '\n';
   const version = 'it-' + sha256(content).slice(0, 8);
   const fileName = `${version}.txt`;
 
@@ -72,7 +85,7 @@ function main(): void {
   };
   writeFileSync(join(args.out, 'manifest.json'), JSON.stringify(manifest, null, 2) + '\n', 'utf-8');
 
-  const dictStats = computeStats(content);
+  const dictStats = computeStats(words.join('\n') + '\n');
   console.log('\nStatistiche:');
   console.log(`  parole totali: ${dictStats.wordCount}`);
   console.log(`  dimensione raw: ${dictStats.rawBytes} byte`);

@@ -4,6 +4,8 @@ import { readFileSync } from 'node:fs';
 export interface SourceEntry {
   /** Forma flessa (non il lemma). */
   form: string;
+  /** Lemma (seconda colonna). */
+  lemma: string;
   /** Tag grammaticale grezzo della fonte. */
   tag: string;
 }
@@ -18,9 +20,10 @@ export function parseSourceLine(line: string): SourceEntry | null {
   if (trimmed.length === 0) return null;
   const columns = trimmed.split('\t');
   const form = columns[0];
+  const lemma = columns[1] ?? '';
   const tag = columns[2];
   if (!form || !tag) return null;
-  return { form, tag };
+  return { form, lemma, tag };
 }
 
 /**
@@ -52,13 +55,34 @@ export interface BuildStats {
 }
 
 export interface BuildResult {
+  /** Parole normalizzate (solo a-z), ordinate e senza duplicati. */
   words: string[];
+  /** Solo visualizzazione: parola normalizzata -> forma accentata (vedi pickDisplayForm). */
+  display: Map<string, string>;
   stats: BuildStats[];
+}
+
+/**
+ * Sceglie la forma accentata da mostrare per una parola normalizzata, tra le
+ * varianti trovate nella fonte (tutte diverse dalla forma normalizzata).
+ * Meno accenti prima (decolleté su décolleté); a parità, "-ché" con accento
+ * acuto (perché, affinché), altrimenti ordine per code unit (grave prima: città, caffè).
+ */
+export function pickDisplayForm(variants: readonly string[]): string {
+  const accents = (w: string): number => w.length - w.normalize('NFD').replace(/[̀-ͯ]/g, '').length;
+  return [...variants].sort((a, b) => {
+    const byAccents = accents(a) - accents(b);
+    if (byAccents !== 0) return byAccents;
+    const aChe = a.endsWith('ché') ? 0 : 1;
+    const bChe = b.endsWith('ché') ? 0 : 1;
+    if (aChe !== bChe) return aChe - bChe;
+    return a < b ? -1 : a > b ? 1 : 0;
+  })[0]!;
 }
 
 export function buildDictionary(
   sourcePath: string,
-  overrides: { remove: Set<string>; add: Set<string> },
+  overrides: { remove: Set<string>; add: Set<string>; display: Map<string, string> },
 ): BuildResult {
   const stats: BuildStats[] = [];
   const record = (phase: string, count: number): void => {
@@ -73,39 +97,72 @@ export function buildDictionary(
   const afterTagFilter = entries.filter((e) => !isExcludedTag(e.tag));
   record('filtro per tag', afterTagFilter.length);
 
-  const lowercased = afterTagFilter.map((e) => e.form.toLowerCase());
+  const lowercased = afterTagFilter.map((e) => ({ form: e.form.toLowerCase(), lemma: e.lemma.toLowerCase() }));
   record('minuscolo', lowercased.length);
 
-  const stripped = lowercased.map(stripDiacritics);
+  // original: forma minuscola con accenti, conservata per la visualizzazione.
+  // strayAccentless: forma senza accento il cui lemma è accentato (es. cosi -> così): grafia errata, non una parola a sé.
+  const stripped = lowercased.map(({ form, lemma }) => ({
+    word: stripDiacritics(form),
+    original: form,
+    strayAccentless: lemma !== form && stripDiacritics(lemma) === form,
+  }));
   record('normalizzazione NFD e rimozione diacritici', stripped.length);
 
-  const onlyLetters = stripped.filter((w) => VALID_WORD_PATTERN.test(w));
+  const onlyLetters = stripped.filter((e) => VALID_WORD_PATTERN.test(e.word));
   record('scarto non [a-z]+', onlyLetters.length);
 
-  const withoutForbiddenLetters = onlyLetters.filter((w) => !FORBIDDEN_LETTERS_PATTERN.test(w));
+  const withoutForbiddenLetters = onlyLetters.filter((e) => !FORBIDDEN_LETTERS_PATTERN.test(e.word));
   record('scarto j k w x y', withoutForbiddenLetters.length);
 
-  const withoutLoneQ = withoutForbiddenLetters.filter((w) => !LONE_Q_PATTERN.test(w));
+  const withoutLoneQ = withoutForbiddenLetters.filter((e) => !LONE_Q_PATTERN.test(e.word));
   record('scarto q non seguita da u', withoutLoneQ.length);
 
-  const withValidLength = withoutLoneQ.filter((w) => w.length >= 3 && w.length <= 16);
+  const withValidLength = withoutLoneQ.filter((e) => e.word.length >= 3 && e.word.length <= 16);
   record('scarto lunghezza < 3 o > 16', withValidLength.length);
 
-  const withOverridesRemoved = withValidLength.filter((w) => !overrides.remove.has(w));
-  const withOverridesAdded = [...withOverridesRemoved, ...overrides.add].filter(
-    (w) =>
-      VALID_WORD_PATTERN.test(w) &&
-      !FORBIDDEN_LETTERS_PATTERN.test(w) &&
-      !LONE_Q_PATTERN.test(w) &&
-      w.length >= 3 &&
-      w.length <= 16,
+  const withOverridesRemoved = withValidLength.filter((e) => !overrides.remove.has(e.word));
+  const withOverridesAdded = [
+    ...withOverridesRemoved,
+    ...[...overrides.add].map((word) => ({ word, original: word, strayAccentless: false })),
+  ].filter(
+    (e) =>
+      VALID_WORD_PATTERN.test(e.word) &&
+      !FORBIDDEN_LETTERS_PATTERN.test(e.word) &&
+      !LONE_Q_PATTERN.test(e.word) &&
+      e.word.length >= 3 &&
+      e.word.length <= 16,
   );
   record('overrides (remove.txt / add.txt)', withOverridesAdded.length);
 
-  const deduped = [...new Set(withOverridesAdded)].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+  // Una parola ha forma da mostrare (overrides/display.txt a parte) solo se la sua variante senza accento non esiste
+  // come parola a sé (altrimenti "abbandono" verrebbe mostrata come "abbandonò").
+  const unaccented = new Set<string>();
+  const accentedVariants = new Map<string, Set<string>>();
+  for (const { word, original, strayAccentless } of withOverridesAdded) {
+    if (original === word) {
+      if (!strayAccentless) unaccented.add(word);
+      continue;
+    }
+    const variants = accentedVariants.get(word) ?? new Set<string>();
+    variants.add(original);
+    accentedVariants.set(word, variants);
+  }
+  const display = new Map<string, string>();
+  for (const [word, variants] of accentedVariants) {
+    if (!unaccented.has(word)) display.set(word, pickDisplayForm([...variants]));
+  }
+  const wordSet = new Set(withOverridesAdded.map((e) => e.word));
+  for (const [word, form] of overrides.display) {
+    if (wordSet.has(word)) display.set(word, form);
+  }
+
+  const deduped = [...new Set(withOverridesAdded.map((e) => e.word))].sort((a, b) =>
+    a < b ? -1 : a > b ? 1 : 0,
+  );
   record('deduplica e ordina', deduped.length);
 
-  return { words: deduped, stats };
+  return { words: deduped, display, stats };
 }
 
 export function sha256(content: string): string {

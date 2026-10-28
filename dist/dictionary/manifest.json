@@ -1,9 +1,9 @@
 {
-  "version": "it-5da4e948",
-  "file": "it-5da4e948.txt",
+  "version": "it-c1de2da8",
+  "file": "it-c1de2da8.txt",
   "wordCount": 380284,
-  "sha256": "5da4e94808f9bf54b4fd05ef3d695f6f7b907732c3809b42bf68066345d00bef",
+  "sha256": "c1de2da855e234451f67df0bcc51e9f76a21689ebb71766236b02dd68492867f",
   "source": "Morph-it! v0.4.8 (Baroni & Zanchetta, SSLMIT Univ. Bologna)",
   "sourceLicense": "CC BY-SA 2.0 / GNU LGPL — vedi docs/DICTIONARY.md",
-  "generatedAt": "2026-10-28T16:19:46.039Z"
+  "generatedAt": "2026-10-28T16:38:22.251Z"
 }

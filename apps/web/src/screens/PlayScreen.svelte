@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onDestroy } from 'svelte';
   import { remainingMs, type GameSession } from '@paroliere/core';
+  import { displayWord } from '../lib/display.js';
   import GridView from '../lib/GridView.svelte';
   import WordPopup from '../lib/WordPopup.svelte';
   import type { WordPopupData } from '../lib/word-popup.js';
@@ -88,7 +89,7 @@
   <p class="current-word">{currentWord || ' '}</p>
   <ul class="found-words">
     {#each recentFoundWords as found (found.word)}
-      <li>{found.word} <span>+{found.points}</span></li>
+      <li>{displayWord(found.word)} <span>+{found.points}</span></li>
     {/each}
   </ul>
 </div>

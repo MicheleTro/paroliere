@@ -1,4 +1,4 @@
-import { buildWordIndex, generateGrid } from '@paroliere/core';
+import { buildWordIndex, generateGrid, parseDictionary } from '@paroliere/core';
 import type { GameConfig, Grid, Solution, WordIndex } from '@paroliere/core';
 
 interface Manifest {
@@ -11,7 +11,7 @@ export type NewGameConfig = Omit<GameConfig, 'dictionaryVersion'>;
 export type WorkerRequest = { type: 'newGame'; config: NewGameConfig };
 
 export type WorkerResponse =
-  | { type: 'ready'; dictionaryVersion: string }
+  | { type: 'ready'; dictionaryVersion: string; display: [string, string][] }
   | { type: 'grid'; grid: Grid; solutions: Solution[]; attempts: number; dictionaryVersion: string };
 
 let wordIndex: WordIndex | undefined;
@@ -20,12 +20,12 @@ let dictionaryVersion: string | undefined;
 async function init(): Promise<void> {
   const manifest = (await fetch('/dictionary/manifest.json').then((r) => r.json())) as Manifest;
   const text = await fetch(`/dictionary/${manifest.file}`).then((r) => r.text());
-  const words = text.split(/\r?\n/).filter((w) => w.length > 0);
+  const { words, display } = parseDictionary(text);
 
   wordIndex = buildWordIndex(words);
   dictionaryVersion = manifest.version;
 
-  const response: WorkerResponse = { type: 'ready', dictionaryVersion };
+  const response: WorkerResponse = { type: 'ready', dictionaryVersion, display: [...display] };
   postMessage(response);
 }
 

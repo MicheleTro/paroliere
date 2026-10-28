@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { buildDictionary, isExcludedTag, sha256 } from './build.js';
+import { buildDictionary, isExcludedTag, pickDisplayForm, sha256 } from './build.js';
 
 let dir: string;
 
@@ -35,7 +35,7 @@ describe('isExcludedTag', () => {
 });
 
 describe('buildDictionary', () => {
-  const noOverrides = { remove: new Set<string>(), add: new Set<string>() };
+  const noOverrides = { remove: new Set<string>(), add: new Set<string>(), display: new Map<string, string>() };
 
   it('estrae la forma flessa, non il lemma', () => {
     const source = writeSource(['case\tcasa\tNOUN-F+PL']);
@@ -98,6 +98,7 @@ describe('buildDictionary', () => {
     const { words } = buildDictionary(source, {
       remove: new Set(['cane']),
       add: new Set(['gatto', "l'amico", 'jazz']),
+      display: new Map(),
     });
     expect(words).toEqual(['casa', 'gatto']);
   });
@@ -113,6 +114,44 @@ describe('buildDictionary', () => {
     const { stats } = buildDictionary(source, noOverrides);
     expect(stats.length).toBeGreaterThanOrEqual(9);
     expect(stats.every((s) => typeof s.count === 'number')).toBe(true);
+  });
+});
+
+describe('forme da mostrare (display)', () => {
+  const noOverrides = { remove: new Set<string>(), add: new Set<string>(), display: new Map<string, string>() };
+
+  it('associa la forma accentata alle parole che esistono solo accentate', () => {
+    const source = writeSource(['città\tcittà\tNOUN-F', 'verità\tverità\tNOUN-F', 'casa\tcasa\tNOUN-F']);
+    const { display } = buildDictionary(source, noOverrides);
+    expect([...display]).toEqual([
+      ['citta', 'città'],
+      ['verita', 'verità'],
+    ]);
+  });
+
+  it('non associa nulla se la forma senza accento è a sua volta una parola (abbandono/abbandonò)', () => {
+    const source = writeSource(['abbandono\tabbandonare\tVER', 'abbandonò\tabbandonare\tVER']);
+    const { words, display } = buildDictionary(source, noOverrides);
+    expect(words).toEqual(['abbandono']);
+    expect(display.size).toBe(0);
+  });
+
+  it('ignora la grafia senza accento il cui lemma è accentato (cosi -> così)', () => {
+    const source = writeSource(['cosi\tcosì\tADV', 'così\tcosì\tADV']);
+    const { display } = buildDictionary(source, noOverrides);
+    expect([...display]).toEqual([['cosi', 'così']]);
+  });
+
+  it('display.txt forza la forma da mostrare', () => {
+    const source = writeSource(['citta\tcitta\tNOUN-F', 'città\tcittà\tNOUN-F']);
+    const { display } = buildDictionary(source, { ...noOverrides, display: new Map([['citta', 'città']]) });
+    expect([...display]).toEqual([['citta', 'città']]);
+  });
+
+  it('pickDisplayForm preferisce meno accenti e "ché" acuto', () => {
+    expect(pickDisplayForm(['décolleté', 'decolleté'])).toBe('decolleté');
+    expect(pickDisplayForm(['perchè', 'perché'])).toBe('perché');
+    expect(pickDisplayForm(['caffé', 'caffè'])).toBe('caffè');
   });
 });
 

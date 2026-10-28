@@ -51,6 +51,27 @@ file usano uno spazio invece del tab come separatore — probabile refuso nella
 fonte del 2009. La forma "seppur" (valida) viene quindi persa dal parser;
 recuperata via `tools/dict-builder/overrides/add.txt`.
 
+### Forme accentate (solo visualizzazione)
+
+Gioco, indice e punteggi usano parole senza accenti (`citta`). Per mostrare la
+forma corretta (`città`) nel file dizionario le righe con una forma da mostrare
+sono `normalizzata:accentata` (`citta:città`); `parseDictionary` in
+`packages/core` separa le due cose e il client usa `displayWord()`
+(`apps/web/src/lib/display.ts`). Regole di `buildDictionary`:
+
+- se la forma senza accento esiste anche come parola a sé (`abbandono` /
+  `abbandonò`, `pero` / `però`) non si mostra l'accento, perché la griglia non
+  distingue i due casi;
+- una forma senza accento il cui lemma è accentato (`cosi` → `così`, `piu`,
+  `perche`) è una grafia errata della fonte e non conta come parola a sé;
+- tra più varianti: meno accenti, poi `-ché` acuto, poi ordine per code unit;
+- `tools/dict-builder/overrides/display.txt` (`normalizzata:accentata`) forza la
+  forma da mostrare (`citta`, `caffe`, presenti nella fonte come parole a sé).
+
+Circa 12.800 parole hanno una forma accentata. Le statistiche sotto
+(parole, byte, distribuzione) sono calcolate sulle sole parole normalizzate;
+il file effettivo è più grande (4.572.716 byte raw, 943.787 gzip).
+
 ### Come rigenerare
 
 ```

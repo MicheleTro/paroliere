@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { buildWordIndex, type WordIndex } from '@paroliere/core';
+import { buildWordIndex, parseDictionary, type WordIndex } from '@paroliere/core';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const dictionaryDir = join(__dirname, '..', '..', '..', 'dist', 'dictionary');
@@ -29,7 +29,7 @@ export function loadDictionary(): LoadedDictionary {
   if (cached) return cached;
   const manifest = JSON.parse(readFileSync(join(dictionaryDir, 'manifest.json'), 'utf-8')) as Manifest;
   const text = readFileSync(join(dictionaryDir, manifest.file), 'utf-8');
-  const words = text.split(/\r?\n/).filter((w) => w.length > 0);
+  const { words } = parseDictionary(text);
   cached = { index: buildWordIndex(words), dictionaryVersion: manifest.version };
   return cached;
 }

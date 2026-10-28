@@ -2,6 +2,7 @@ export * from './tile.js';
 export * from './rng.js';
 export * from './grid.js';
 export * from './word-index.js';
+export * from './dictionary-format.js';
 export * from './solver.js';
 export * from './generate.js';
 export * from './scoring.js';
