@@ -1,7 +1,8 @@
 import { apiRequest } from './api.js';
 
-export type ChallengeMode = 'individual' | 'team';
-export type ChallengeStatus = 'open' | 'in_progress' | 'completed' | 'cancelled';
+// Sfide 1 contro 1 su invito (decisione whoru #28): si lanciano solo contro un amico del portale, un solo match.
+
+export type DuelStatus = 'invited' | 'in_progress' | 'completed' | 'declined' | 'cancelled' | 'expired';
 export type Scoring = 'classic' | 'versus';
 export type PointMode = 'standard' | 'speciale';
 
@@ -15,105 +16,70 @@ export interface ChallengeConfigInput {
   positionBonus: boolean;
 }
 
-export interface CreateChallengeInput {
-  config: ChallengeConfigInput;
-  mode: ChallengeMode;
-  bestOf: number;
-  maxParticipants?: number;
-  playersPerTeam?: number;
-  teams?: { name: string }[];
-  creatorTeamIndex?: number;
-}
-
-export interface ChallengeRecord {
+export interface Person {
   id: string;
-  creatorUserId: string;
-  configId: string;
-  mode: ChallengeMode;
-  maxParticipants: number | null;
-  playersPerTeam: number | null;
-  bestOf: number;
-  status: ChallengeStatus;
-  createdAt: string;
+  username?: string;
 }
 
 export interface ChallengeSummary {
   id: string;
-  creatorUserId: string;
-  creatorUsername: string;
-  mode: ChallengeMode;
-  bestOf: number;
-  status: ChallengeStatus;
+  status: DuelStatus;
   createdAt: string;
-  maxParticipants: number | null;
-  playersPerTeam: number | null;
-  participantCount: number;
-  config: {
-    size: 4 | 5 | 6;
-    durationMs: number;
-    minWordLength: number;
-    scoring: Scoring;
-    pointMode: PointMode;
-    positionBonus: boolean;
-  };
-}
-
-export interface ChallengeTeam {
-  id: string;
-  challengeId: string;
-  name: string;
-}
-
-export interface ChallengeParticipant {
-  id: string;
-  challengeId: string;
-  userId: string;
-  username: string;
-  teamId: string | null;
-  joinedAt: string;
-}
-
-export interface ChallengeMatchWord {
-  word: string;
-  points: number;
-}
-
-export interface ChallengeMatchScore {
-  userId: string;
-  username?: string;
-  score: number | null;
-  words?: ChallengeMatchWord[];
-}
-
-export interface ChallengeMatch {
-  id: string;
-  matchIndex: number;
-  seed: number;
-  status: 'waiting' | 'completed';
-  scores?: ChallengeMatchScore[];
-  submittedByMe?: boolean;
-  startedByMe?: string | null;
+  iAmChallenger: boolean;
+  opponent: Person;
+  config?: Omit<ChallengeConfigInput, 'minWords'>;
+  submittedByMe: boolean;
+  opponentSubmitted: boolean;
+  myScore: number | null;
+  opponentScore: number | null;
 }
 
 export interface ChallengeConfig extends ChallengeConfigInput {
   id: string;
   generatorVersion: 1;
   dictionaryVersion: string;
-  createdAt: string;
+}
+
+export interface ChallengeWord {
+  word: string;
+  points: number;
+}
+
+export interface ChallengeScore {
+  userId: string;
+  username?: string;
+  score: number | null;
+  words: ChallengeWord[];
 }
 
 export interface ChallengeDetail {
   id: string;
-  creatorUserId: string;
-  mode: ChallengeMode;
-  status: ChallengeStatus;
-  bestOf: number;
-  maxParticipants: number | null;
-  playersPerTeam: number | null;
+  status: DuelStatus;
+  createdAt: string;
+  challenger: Person;
+  opponent: Person;
+  iAmChallenger: boolean;
   config: ChallengeConfig;
-  teams: ChallengeTeam[];
-  participants: ChallengeParticipant[];
-  matches: ChallengeMatch[];
+  /** Solo quando la sfida è giocabile. */
+  seed?: number;
+  startedByMe: string | null;
+  submittedByMe: boolean;
+  opponentSubmitted: boolean;
+  scores?: ChallengeScore[];
+}
+
+export interface Friend {
+  sub: string;
+  username: string;
+}
+
+export interface Notifications {
+  /** Inviti di sfida a cui devi rispondere. */
+  invites: number;
+  /** Sfide accettate che non hai ancora giocato. */
+  toPlay: number;
+  /** Richieste di amicizia ricevute (dal portale); null se il portale non risponde. */
+  friendRequests: number | null;
 }
 
 export interface SubmitResultResponse {
@@ -121,39 +87,52 @@ export interface SubmitResultResponse {
   settled: boolean;
 }
 
-export async function createChallenge(
-  input: CreateChallengeInput,
-): Promise<{ challenge: ChallengeRecord; config: ChallengeConfig; teams: ChallengeTeam[]; matches: ChallengeMatch[] }> {
-  return apiRequest('/challenges', { method: 'POST', body: JSON.stringify(input) });
+export function listFriends(): Promise<{ friends: Friend[]; incomingRequests: number }> {
+  return apiRequest('/friends');
 }
 
-export async function joinChallenge(challengeId: string, teamId?: string): Promise<ChallengeParticipant> {
-  return apiRequest(`/challenges/${challengeId}/join`, { method: 'POST', body: JSON.stringify({ teamId }) });
+export function getNotifications(): Promise<Notifications> {
+  return apiRequest('/notifications');
 }
 
-export async function getChallenge(challengeId: string): Promise<ChallengeDetail> {
-  return apiRequest(`/challenges/${challengeId}`);
+export function createChallenge(opponentId: string, config: ChallengeConfigInput): Promise<{ id: string }> {
+  return apiRequest('/challenges', { method: 'POST', body: JSON.stringify({ opponentId, config }) });
 }
 
-export async function submitMatchResult(
-  challengeId: string,
-  matchIndex: number,
-  paths: number[][],
-): Promise<SubmitResultResponse> {
-  return apiRequest(`/challenges/${challengeId}/matches/${matchIndex}/results`, {
-    method: 'POST',
-    body: JSON.stringify({ paths }),
-  });
-}
-
-export async function listChallenges(): Promise<ChallengeSummary[]> {
+export function listChallenges(): Promise<ChallengeSummary[]> {
   return apiRequest('/challenges');
 }
 
-export async function startMatch(challengeId: string, matchIndex: number): Promise<{ startedAt: string }> {
-  return apiRequest(`/challenges/${challengeId}/matches/${matchIndex}/start`, { method: 'POST', body: '{}' });
+export function getChallenge(id: string): Promise<ChallengeDetail> {
+  return apiRequest(`/challenges/${id}`);
 }
 
-export async function cancelChallenge(challengeId: string): Promise<void> {
-  await apiRequest(`/challenges/${challengeId}/cancel`, { method: 'POST', body: '{}' });
+export async function respondToChallenge(id: string, accept: boolean): Promise<void> {
+  await apiRequest(`/challenges/${id}/respond`, { method: 'POST', body: JSON.stringify({ accept }) });
+}
+
+export async function cancelChallenge(id: string): Promise<void> {
+  await apiRequest(`/challenges/${id}/cancel`, { method: 'POST', body: '{}' });
+}
+
+export function startChallenge(id: string): Promise<{ startedAt: string; seed: number }> {
+  return apiRequest(`/challenges/${id}/start`, { method: 'POST', body: '{}' });
+}
+
+export function submitChallengeResult(id: string, paths: number[][]): Promise<SubmitResultResponse> {
+  return apiRequest(`/challenges/${id}/results`, { method: 'POST', body: JSON.stringify({ paths }) });
+}
+
+export const STATUS_LABEL: Record<DuelStatus, string> = {
+  invited: 'In attesa di risposta',
+  in_progress: 'In corso',
+  completed: 'Conclusa',
+  declined: 'Rifiutata',
+  cancelled: 'Ritirata',
+  expired: 'Scaduta',
+};
+
+export function pointModeLabel(config: Pick<ChallengeConfigInput, 'pointMode' | 'positionBonus'>): string {
+  const base = config.pointMode === 'speciale' ? 'Speciale' : 'Standard';
+  return config.positionBonus ? `${base} + Bonus Posizione` : base;
 }

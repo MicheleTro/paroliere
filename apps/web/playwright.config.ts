@@ -1,17 +1,11 @@
 import { defineConfig } from '@playwright/test';
 
-const PORT = 5199;
-
+// I test e2e girano contro un'app GIÀ avviata (server con DEV_LOGIN=true + Vite, vedi CLAUDE.md):
+//   pnpm --filter @paroliere/server dev     e     pnpm --filter @paroliere/web dev
+// Indirizzo diverso con E2E_URL. Gli utenti sono quelli di sviluppo (/api/auth/dev?user=...).
 export default defineConfig({
   testDir: 'e2e',
   testMatch: '**/*.e2e.ts',
-  timeout: 90_000,
-  use: { baseURL: `http://localhost:${PORT}` },
-  webServer: {
-    command: `pnpm exec vite --port ${PORT} --strictPort`,
-    url: `http://localhost:${PORT}`,
-    env: { VITE_OFFLINE_MODE: 'true' },
-    reuseExistingServer: false,
-    timeout: 60_000,
-  },
+  timeout: 150_000,
+  use: { baseURL: process.env.E2E_URL ?? 'http://localhost:5173' },
 });

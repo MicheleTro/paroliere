@@ -13,8 +13,6 @@ export const users = pgTable('users', {
 
 export const scoringEnum = pgEnum('scoring', ['classic', 'versus']);
 export const pointModeEnum = pgEnum('point_mode', ['standard', 'speciale']);
-export const challengeModeEnum = pgEnum('challenge_mode', ['individual', 'team']);
-export const challengeStatusEnum = pgEnum('challenge_status', ['open', 'in_progress', 'completed', 'cancelled']);
 export const gameSourceEnum = pgEnum('game_source', ['local', 'challenge']);
 export const reportedWordStatusEnum = pgEnum('reported_word_status', ['pending', 'approved', 'rejected']);
 
@@ -31,92 +29,6 @@ export const gameConfigs = pgTable('game_configs', {
   dictionaryVersion: varchar('dictionary_version', { length: 64 }).notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
-
-export const challenges = pgTable('challenges', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  creatorUserId: varchar('creator_user_id', { length: 64 })
-    .notNull()
-    .references(() => users.id, { onDelete: 'cascade' }),
-  configId: uuid('config_id')
-    .notNull()
-    .references(() => gameConfigs.id),
-  mode: challengeModeEnum('mode').notNull(),
-  maxParticipants: integer('max_participants'),
-  playersPerTeam: integer('players_per_team'),
-  bestOf: integer('best_of').notNull(),
-  status: challengeStatusEnum('status').notNull().default('open'),
-  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-});
-
-export const teams = pgTable('teams', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  challengeId: uuid('challenge_id')
-    .notNull()
-    .references(() => challenges.id, { onDelete: 'cascade' }),
-  name: varchar('name', { length: 64 }).notNull(),
-});
-
-export const challengeParticipants = pgTable(
-  'challenge_participants',
-  {
-    id: uuid('id').primaryKey().defaultRandom(),
-    challengeId: uuid('challenge_id')
-      .notNull()
-      .references(() => challenges.id, { onDelete: 'cascade' }),
-    userId: varchar('user_id', { length: 64 })
-      .notNull()
-      .references(() => users.id, { onDelete: 'cascade' }),
-    teamId: uuid('team_id').references(() => teams.id, { onDelete: 'cascade' }),
-    joinedAt: timestamp('joined_at', { withTimezone: true }).notNull().defaultNow(),
-  },
-  (table) => [unique().on(table.challengeId, table.userId)],
-);
-
-export const challengeMatches = pgTable(
-  'challenge_matches',
-  {
-    id: uuid('id').primaryKey().defaultRandom(),
-    challengeId: uuid('challenge_id')
-      .notNull()
-      .references(() => challenges.id, { onDelete: 'cascade' }),
-    matchIndex: integer('match_index').notNull(),
-    seed: bigint('seed', { mode: 'number' }).notNull(),
-    settledAt: timestamp('settled_at', { withTimezone: true }),
-  },
-  (table) => [unique().on(table.challengeId, table.matchIndex)],
-);
-
-export const matchResults = pgTable(
-  'match_results',
-  {
-    id: uuid('id').primaryKey().defaultRandom(),
-    challengeMatchId: uuid('challenge_match_id')
-      .notNull()
-      .references(() => challengeMatches.id, { onDelete: 'cascade' }),
-    userId: varchar('user_id', { length: 64 })
-      .notNull()
-      .references(() => users.id, { onDelete: 'cascade' }),
-    paths: jsonb('paths').notNull().$type<number[][]>(),
-    score: integer('score'),
-    submittedAt: timestamp('submitted_at', { withTimezone: true }).notNull().defaultNow(),
-  },
-  (table) => [unique().on(table.challengeMatchId, table.userId)],
-);
-
-export const challengeMatchStarts = pgTable(
-  'challenge_match_starts',
-  {
-    id: uuid('id').primaryKey().defaultRandom(),
-    challengeMatchId: uuid('challenge_match_id')
-      .notNull()
-      .references(() => challengeMatches.id, { onDelete: 'cascade' }),
-    userId: varchar('user_id', { length: 64 })
-      .notNull()
-      .references(() => users.id, { onDelete: 'cascade' }),
-    startedAt: timestamp('started_at', { withTimezone: true }).notNull().defaultNow(),
-  },
-  (table) => [unique().on(table.challengeMatchId, table.userId)],
-);
 
 export interface GameWordEntry {
   word: string;
@@ -180,4 +92,71 @@ export const playerWordStats = pgTable(
     lastPlayedAt: timestamp('last_played_at', { withTimezone: true }),
   },
   (table) => [unique().on(table.userId, table.gridSize, table.durationMs)],
+);
+
+export const duelStatusEnum = pgEnum('duel_status', [
+  'invited', // l'avversario non ha ancora risposto
+  'in_progress', // accettata: ognuno gioca quando vuole
+  'completed', // giocata da entrambi, punteggio calcolato
+  'declined', // rifiutata dall'avversario
+  'cancelled', // ritirata da chi l'ha lanciata (solo prima della risposta)
+  'expired', // nessuna risposta o nessuna partita entro la scadenza
+]);
+
+/**
+ * Sfida 1 contro 1 su invito (decisione whoru #28): un solo match, un solo seed. Si lancia solo contro un amico
+ * del portale (il server lo verifica col portale). Tutti e due giocano la stessa griglia quando vogliono; il
+ * punteggio si calcola quando hanno giocato entrambi.
+ */
+export const duels = pgTable('duels', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  challengerId: varchar('challenger_id', { length: 64 })
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  opponentId: varchar('opponent_id', { length: 64 })
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  configId: uuid('config_id')
+    .notNull()
+    .references(() => gameConfigs.id),
+  seed: bigint('seed', { mode: 'number' }).notNull(),
+  status: duelStatusEnum('status').notNull().default('invited'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  /** Quando l'avversario ha risposto (accettando o rifiutando). */
+  respondedAt: timestamp('responded_at', { withTimezone: true }),
+  settledAt: timestamp('settled_at', { withTimezone: true }),
+});
+
+/** Quando un giocatore ha iniziato (il tempo lo decide il server: ricaricare la pagina non rimette a zero il timer). */
+export const duelStarts = pgTable(
+  'duel_starts',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    duelId: uuid('duel_id')
+      .notNull()
+      .references(() => duels.id, { onDelete: 'cascade' }),
+    userId: varchar('user_id', { length: 64 })
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    startedAt: timestamp('started_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [unique().on(table.duelId, table.userId)],
+);
+
+/** Percorsi grezzi inviati (il server rifà il punteggio dal seed, non si fida del client: RF-22). */
+export const duelResults = pgTable(
+  'duel_results',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    duelId: uuid('duel_id')
+      .notNull()
+      .references(() => duels.id, { onDelete: 'cascade' }),
+    userId: varchar('user_id', { length: 64 })
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    paths: jsonb('paths').notNull().$type<number[][]>(),
+    score: integer('score'),
+    submittedAt: timestamp('submitted_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [unique().on(table.duelId, table.userId)],
 );

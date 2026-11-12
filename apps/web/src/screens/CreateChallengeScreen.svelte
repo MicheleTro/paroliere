@@ -1,52 +1,85 @@
 <script lang="ts">
-  import { createChallenge, type ChallengeMode } from '../lib/challenges.js';
+  import { createChallenge, listFriends, type Friend } from '../lib/challenges.js';
   import { formatDuration } from '../lib/format.js';
   import InfoPopover from '../lib/InfoPopover.svelte';
   import ScoringInfoContent from '../lib/ScoringInfoContent.svelte';
 
   interface Props {
+    portalUrl: string;
     onCreated: (challengeId: string) => void;
     onBack: () => void;
   }
 
-  let { onCreated, onBack }: Props = $props();
+  let { portalUrl, onCreated, onBack }: Props = $props();
 
   const DURATIONS_MS = [30_000, 60_000, 90_000, 120_000, 150_000];
   const MIN_WORD_LENGTHS = [3, 4, 5];
   const SIZES = [4, 5, 6] as const;
+
+  let friends: Friend[] = $state([]);
+  let loadingFriends = $state(true);
+  let friendsError: string | undefined = $state();
+  let opponentId: string | undefined = $state();
 
   let durationMs = $state(90_000);
   let minWordLength = $state(3);
   let size: 4 | 5 | 6 = $state(5);
   let pointMode: 'standard' | 'speciale' = $state('standard');
   let positionBonus = $state(false);
-  const mode: ChallengeMode = 'individual';
-  let bestOf = $state(1);
-  let maxParticipants = $state(2);
+
   let submitting = $state(false);
   let error: string | undefined = $state();
 
-  async function handleSubmit(): Promise<void> {
-    error = undefined;
+  listFriends()
+    .then((result) => (friends = result.friends))
+    .catch((err) => (friendsError = err instanceof Error ? err.message : 'Amici non disponibili'))
+    .finally(() => (loadingFriends = false));
+
+  async function submit(): Promise<void> {
+    if (!opponentId) return;
     submitting = true;
+    error = undefined;
     try {
-      const result = await createChallenge({
-        config: { size, durationMs, minWordLength, minWords: 50, scoring: 'versus', pointMode, positionBonus },
-        mode,
-        bestOf,
-        maxParticipants,
+      const { id } = await createChallenge(opponentId, {
+        size,
+        durationMs,
+        minWordLength,
+        minWords: 50,
+        scoring: 'versus',
+        pointMode,
+        positionBonus,
       });
-      onCreated(result.challenge.id);
+      onCreated(id);
     } catch (err) {
       error = err instanceof Error ? err.message : 'Errore imprevisto';
-    } finally {
       submitting = false;
     }
   }
 </script>
 
 <div class="page">
-  <h1>Nuova sfida</h1>
+  <h1>Sfida un amico</h1>
+
+  <div class="section">
+    <p class="section-title">Chi sfidi</p>
+    {#if loadingFriends}
+      <p class="empty-text">Caricamento...</p>
+    {:else if friendsError}
+      <p class="error-text">{friendsError}</p>
+    {:else if friends.length === 0}
+      <p class="empty-text">
+        Non hai ancora amici. Aggiungili dal <a href={portalUrl}>portale</a> (sezione Amici), poi torna qui.
+      </p>
+    {:else}
+      <div class="chip-group">
+        {#each friends as friend (friend.sub)}
+          <button type="button" class="chip" class:selected={opponentId === friend.sub} onclick={() => (opponentId = friend.sub)}>
+            {friend.username}
+          </button>
+        {/each}
+      </div>
+    {/if}
+  </div>
 
   <div class="section">
     <p class="section-title">Durata</p>
@@ -74,9 +107,7 @@
     <p class="section-title">Griglia</p>
     <div class="chip-group">
       {#each SIZES as s (s)}
-        <button type="button" class="chip" class:selected={size === s} onclick={() => (size = s)}>
-          {s}×{s}
-        </button>
+        <button type="button" class="chip" class:selected={size === s} onclick={() => (size = s)}>{s}×{s}</button>
       {/each}
     </div>
   </div>
@@ -88,17 +119,13 @@
         <button type="button" class="chip" class:selected={pointMode === 'standard'} onclick={() => (pointMode = 'standard')}>
           Standard
         </button>
-        <InfoPopover label="Punteggio standard">
-          <ScoringInfoContent kind="standard" />
-        </InfoPopover>
+        <InfoPopover label="Punteggio standard"><ScoringInfoContent kind="standard" /></InfoPopover>
       </span>
       <span class="chip-with-info">
         <button type="button" class="chip" class:selected={pointMode === 'speciale'} onclick={() => (pointMode = 'speciale')}>
           Speciale
         </button>
-        <InfoPopover label="Punteggio speciale">
-          <ScoringInfoContent kind="speciale" />
-        </InfoPopover>
+        <InfoPopover label="Punteggio speciale"><ScoringInfoContent kind="speciale" /></InfoPopover>
       </span>
     </div>
   </div>
@@ -109,41 +136,12 @@
       <button type="button" class="chip" class:selected={!positionBonus} onclick={() => (positionBonus = false)}>No</button>
       <span class="chip-with-info">
         <button type="button" class="chip" class:selected={positionBonus} onclick={() => (positionBonus = true)}>Sì</button>
-        <InfoPopover label="Bonus posizione">
-          <ScoringInfoContent kind="position-bonus" />
-        </InfoPopover>
+        <InfoPopover label="Bonus posizione"><ScoringInfoContent kind="position-bonus" /></InfoPopover>
       </span>
     </div>
   </div>
 
-  {#if pointMode === 'speciale' || positionBonus}
-    <p class="hint">Con questa modalità di punteggio i match non contano per le statistiche.</p>
-  {/if}
-
-  <div class="section">
-    <p class="section-title">Modalità</p>
-    <div class="chip-group">
-      <button type="button" class="chip selected" disabled>Individuale</button>
-      <button type="button" class="chip" disabled title="Disponibile più avanti">A squadre</button>
-    </div>
-  </div>
-
-  <div class="section">
-    <p class="section-title">Numero di giocatori</p>
-    <div class="slider">
-      <input type="range" min="2" max="8" step="1" bind:value={maxParticipants} />
-      <span class="slider-value">{maxParticipants}</span>
-    </div>
-  </div>
-
-  <div class="section">
-    <p class="section-title">Numero di match</p>
-    <div class="chip-group">
-      {#each [1, 3, 5] as n (n)}
-        <button type="button" class="chip" class:selected={bestOf === n} onclick={() => (bestOf = n)}>{n}</button>
-      {/each}
-    </div>
-  </div>
+  <p class="hint">Nella sfida, una parola trovata solo da uno dei due vale il doppio.</p>
 
   {#if error}
     <p class="error-text">{error}</p>
@@ -151,8 +149,8 @@
 
   <div class="actions">
     <button type="button" class="btn btn-secondary" onclick={onBack}>Indietro</button>
-    <button type="button" class="btn btn-primary" disabled={submitting} onclick={handleSubmit}>
-      {submitting ? 'Creazione...' : 'Crea sfida'}
+    <button type="button" class="btn btn-primary" disabled={!opponentId || submitting} onclick={submit}>
+      {submitting ? 'Invio…' : 'Lancia la sfida'}
     </button>
   </div>
 </div>
@@ -164,26 +162,6 @@
     font-weight: 600;
     text-align: center;
     color: var(--color-ink-faint);
-  }
-
-  .slider {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    width: 100%;
-  }
-
-  .slider input[type='range'] {
-    flex: 1;
-    accent-color: var(--color-accent);
-  }
-
-  .slider-value {
-    font-size: 1.1rem;
-    font-weight: 800;
-    color: var(--color-accent);
-    min-width: 1.5em;
-    text-align: center;
   }
 
   .actions {

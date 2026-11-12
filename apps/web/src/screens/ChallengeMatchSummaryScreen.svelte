@@ -18,7 +18,7 @@
 </script>
 
 <div class="page">
-  <h1>{error ? 'Invio non riuscito' : 'Match inviato'}</h1>
+  <h1>{error ? 'Invio non riuscito' : 'Partita inviata'}</h1>
 
   <GameStatsSummary
     wordsFound={{ found: summary.foundWords.length, total: summary.totalWords, percentage: summary.foundPercentage }}
@@ -37,11 +37,10 @@
   {#if error}
     <p class="notice notice-danger">Il risultato non è stato registrato: {error}. Riprova dal dettaglio della sfida.</p>
   {:else if result?.settled}
-    <p class="notice notice-success">Il match è concluso: tutti i partecipanti hanno giocato, il punteggio è disponibile.</p>
+    <p class="notice notice-success">La sfida è conclusa: hanno giocato entrambi, il punteggio è nel dettaglio.</p>
   {:else}
     <p class="notice">
-      Risultato registrato. Il punteggio ufficiale sarà calcolato quando tutti i partecipanti avranno giocato questo
-      match.
+      Risultato registrato. Il punteggio ufficiale sarà calcolato quando avrà giocato anche il tuo avversario.
     </p>
   {/if}
 

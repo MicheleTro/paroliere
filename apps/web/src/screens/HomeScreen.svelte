@@ -1,5 +1,8 @@
 <script lang="ts">
+  import { getNotifications, type Notifications } from '../lib/challenges.js';
+
   interface Props {
+    portalUrl?: string;
     ready: boolean;
     onNewGame: () => void;
     onChallenges?: () => void;
@@ -7,7 +10,15 @@
     onAdmin?: () => void;
   }
 
-  let { ready, onNewGame, onChallenges, onHistory, onAdmin }: Props = $props();
+  let { ready, portalUrl, onNewGame, onChallenges, onHistory, onAdmin }: Props = $props();
+
+  // Da fare: inviti, partite da giocare, richieste di amicizia. Se il server non risponde, nessun avviso.
+  let notifications: Notifications | undefined = $state();
+  getNotifications()
+    .then((result) => (notifications = result))
+    .catch(() => {});
+  const toDo = $derived((notifications?.invites ?? 0) + (notifications?.toPlay ?? 0));
+  const friendRequests = $derived(notifications?.friendRequests ?? 0);
 </script>
 
 <div class="page home">
@@ -20,9 +31,22 @@
   {#if onChallenges}
     <button type="button" class="tile tile-secondary" onclick={onChallenges}>
       <span class="icon">⚔️</span>
-      <span class="label">Sfide</span>
-      <span class="hint">Gioca contro amici e squadre</span>
+      <span class="label">Sfide{#if toDo > 0} <span class="count" aria-label="{toDo} da fare">{toDo}</span>{/if}</span>
+      <span class="hint">
+        {#if notifications && notifications.invites > 0}
+          {notifications.invites} {notifications.invites === 1 ? 'invito' : 'inviti'} da accettare
+        {:else if notifications && notifications.toPlay > 0}
+          {notifications.toPlay} {notifications.toPlay === 1 ? 'sfida' : 'sfide'} da giocare
+        {:else}
+          Sfida un tuo amico
+        {/if}
+      </span>
     </button>
+    {#if friendRequests > 0 && portalUrl}
+      <a class="friend-requests" href={portalUrl}>
+        {friendRequests} {friendRequests === 1 ? 'richiesta di amicizia' : 'richieste di amicizia'} nel portale
+      </a>
+    {/if}
   {/if}
 
   {#if onAdmin}
@@ -43,6 +67,30 @@
 </div>
 
 <style>
+  .count {
+    display: inline-block;
+    min-width: 1.4em;
+    margin-left: 6px;
+    padding: 0 6px;
+    border-radius: var(--radius-pill);
+    background: var(--color-stamp);
+    color: var(--color-ink);
+    font-size: 0.85rem;
+    text-align: center;
+  }
+
+  .friend-requests {
+    margin-top: -6px;
+    padding: 10px 16px;
+    border-radius: var(--radius-md);
+    background: var(--color-accent-wash);
+    color: var(--color-accent);
+    font-size: 0.9rem;
+    font-weight: 700;
+    text-align: center;
+    text-decoration: none;
+  }
+
   .home {
     gap: 14px;
     margin-top: 12px;

@@ -8,6 +8,20 @@
       "when": 1794498924811,
       "tag": "0000_great_slyde",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1794515577886,
+      "tag": "0001_rimuovi_sfide_vecchie",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1794515602094,
+      "tag": "0002_sfide_uno_contro_uno",
+      "breakpoints": true
     }
   ]
 }

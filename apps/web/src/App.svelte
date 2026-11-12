@@ -25,7 +25,7 @@
   import HistoryScreen from './screens/HistoryScreen.svelte';
   import { adminAuth } from './lib/admin.svelte.js';
   import { auth, checkSession, logout, watchPortalSession } from './lib/auth.svelte.js';
-  import { submitMatchResult, type ChallengeDetail, type ChallengeMatch, type SubmitResultResponse } from './lib/challenges.js';
+  import { submitChallengeResult, type ChallengeDetail, type SubmitResultResponse } from './lib/challenges.js';
   import type { WordPopupData } from './lib/word-popup.js';
   import { setDisplayForms } from './lib/display.js';
   import type { NewGameConfig, WorkerResponse } from './worker/dictionary-worker.js';
@@ -57,7 +57,7 @@
   let rafId: number | undefined;
 
   let selectedChallengeId: string | undefined = $state();
-  let challengeMatchContext: { challengeId: string; matchIndex: number } | undefined;
+  let challengeMatchContext: { challengeId: string } | undefined;
   let challengeResult: SubmitResultResponse | undefined = $state();
   let challengeSubmitError: string | undefined = $state();
 
@@ -133,14 +133,14 @@
     screen = 'challenge-detail';
   }
 
-  function playChallengeMatch(challenge: ChallengeDetail, match: ChallengeMatch, remainingMs: number): void {
+  function playChallenge(challenge: ChallengeDetail, seed: number, remainingMs: number): void {
     if (challenge.config.dictionaryVersion !== dictionaryVersion) {
       alert('Il dizionario locale non corrisponde a quello del server: ricarica la pagina e riprova.');
       return;
     }
-    challengeMatchContext = { challengeId: challenge.id, matchIndex: match.matchIndex };
+    challengeMatchContext = { challengeId: challenge.id };
     requestNewGame({
-      seed: match.seed,
+      seed,
       size: challenge.config.size,
       durationMs: remainingMs,
       minWordLength: challenge.config.minWordLength,
@@ -185,11 +185,11 @@
     const { size, durationMs } = session.config;
 
     if (challengeMatchContext) {
-      const { challengeId, matchIndex } = challengeMatchContext;
+      const { challengeId } = challengeMatchContext;
       const paths = session.foundWords.map((f) => f.path);
       challengeResult = undefined;
       challengeSubmitError = undefined;
-      submitMatchResult(challengeId, matchIndex, paths)
+      submitChallengeResult(challengeId, paths)
         .then((result) => {
           challengeResult = result;
           return getWordStats(size, durationMs);
@@ -301,6 +301,7 @@
         <HomeScreen
           {ready}
           onNewGame={goToConfig}
+          portalUrl={auth.user?.portalUrl}
           onChallenges={goToChallenges}
           onHistory={() => (screen = 'history')}
           onAdmin={auth.user?.isAdmin ? () => (adminAuth.open = true) : undefined}
@@ -312,20 +313,11 @@
       {:else if screen === 'summary' && session && summary}
         <SummaryScreen {session} {summary} {typeStats} onNewGame={goToConfig} onRepeat={repeatGame} onHome={goHome} />
       {:else if screen === 'challenges'}
-        <ChallengesScreen
-          currentUserId={auth.user?.id ?? ''}
-          onOpen={openChallenge}
-          onCreate={() => (screen = 'challenge-create')}
-        />
+        <ChallengesScreen onOpen={openChallenge} onCreate={() => (screen = 'challenge-create')} />
       {:else if screen === 'challenge-create'}
-        <CreateChallengeScreen onCreated={openChallenge} onBack={goToChallenges} />
+        <CreateChallengeScreen portalUrl={auth.user?.portalUrl ?? '/'} onCreated={openChallenge} onBack={goToChallenges} />
       {:else if screen === 'challenge-detail' && selectedChallengeId}
-        <ChallengeDetailScreen
-          challengeId={selectedChallengeId}
-          currentUserId={auth.user?.id ?? ''}
-          onPlayMatch={playChallengeMatch}
-          onBack={goToChallenges}
-        />
+        <ChallengeDetailScreen challengeId={selectedChallengeId} onPlay={playChallenge} onBack={goToChallenges} />
       {:else if screen === 'challenge-match-summary' && session && summary && (challengeResult || challengeSubmitError)}
         <ChallengeMatchSummaryScreen
           {session}

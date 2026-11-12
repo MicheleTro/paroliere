@@ -9,6 +9,8 @@ const envSchema = z.object({
   PORTAL_URL: z.string().url().default('https://slothymic.com'),
   /** Identificatore di questo servizio nel registro del portale: deve coincidere con `aud` del token. */
   SERVICE_ID: z.string().min(1).default('paroliere'),
+  /** Token con cui questo servizio chiama le API amici del portale (stesso valore di SERVICE_TOKEN_PAROLIERE sul portale). */
+  PORTAL_SERVICE_TOKEN: z.string().min(32).optional(),
   /** Solo sviluppo: abilita /api/auth/dev per entrare senza portale. Ignorato in produzione. */
   DEV_LOGIN: z
     .string()

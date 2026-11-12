@@ -9,7 +9,7 @@ import {
   type VersusEntry,
   type WordIndex,
 } from '@paroliere/core';
-import { and, desc, eq, isNull } from 'drizzle-orm';
+import { and, desc, eq, inArray, or } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 
@@ -18,47 +18,39 @@ import { db } from '../db/client.js';
 import { isUniqueViolation } from '../db/errors.js';
 import * as schema from '../db/schema.js';
 import { loadDictionary } from '../dictionary.js';
+import { checkFriend, listFriends, PortalUnavailableError } from '../portal/friends.js';
 import { updatePlayerWordStats } from '../stats/word-stats.js';
 import { gradeSubmission } from './grading.js';
 
+// Sfide 1 contro 1 su invito (decisione whoru #28): un solo match, lanciate solo contro un amico del portale.
+
 const MAX_SEED = 2 ** 31 - 1;
 const MATCH_TIMEOUT_MARGIN_MS = 15_000;
+const DUEL_TTL_MS = 7 * 24 * 60 * 60 * 1000; // senza risposta o senza partite entro 7 giorni la sfida scade
+const MAX_ACTIVE_AS_CHALLENGER = 10;
 
 const gameConfigInputSchema = z.object({
   size: z.union([z.literal(4), z.literal(5), z.literal(6)]),
-  durationMs: z.number().int().positive(),
-  minWordLength: z.number().int().min(1),
-  minWords: z.number().int().min(1),
+  durationMs: z.number().int().positive().max(10 * 60_000),
+  minWordLength: z.number().int().min(1).max(10),
+  minWords: z.number().int().min(1).max(500),
   scoring: z.enum(['classic', 'versus']),
   pointMode: z.enum(['standard', 'speciale']).default('standard'),
   positionBonus: z.boolean().default(false),
 });
 
-const createChallengeSchema = z.object({
+const createSchema = z.object({
+  opponentId: z.string().min(1).max(64),
   config: gameConfigInputSchema,
-  mode: z.enum(['individual', 'team']),
-  maxParticipants: z.number().int().min(2).optional(),
-  playersPerTeam: z.number().int().min(2).optional(),
-  bestOf: z.number().int().min(1).max(20),
-  teams: z.array(z.object({ name: z.string().min(1).max(64) })).optional(),
-  creatorTeamIndex: z.number().int().min(0).optional(),
 });
+const respondSchema = z.object({ accept: z.boolean() });
+const submitSchema = z.object({ paths: z.array(z.array(z.number().int().nonnegative())) });
+const idParams = z.object({ id: z.string().uuid() });
 
-const joinSchema = z.object({ teamId: z.string().uuid().optional() });
+type DuelRow = typeof schema.duels.$inferSelect;
+type ConfigRow = typeof schema.gameConfigs.$inferSelect;
 
-const submitResultsSchema = z.object({
-  paths: z.array(z.array(z.number().int().nonnegative())),
-});
-
-const idParamsSchema = z.object({ id: z.string().uuid() });
-const matchParamsSchema = z.object({ id: z.string().uuid(), matchIndex: z.coerce.number().int().min(0) });
-
-type ChallengeRow = typeof schema.challenges.$inferSelect;
-type ChallengeMatchRow = typeof schema.challengeMatches.$inferSelect;
-type GameConfigRow = typeof schema.gameConfigs.$inferSelect;
-type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
-
-function toGameConfig(row: GameConfigRow, seed: number): GameConfig {
+function toGameConfig(row: ConfigRow, seed: number): GameConfig {
   return {
     seed,
     size: row.size as 4 | 5 | 6,
@@ -73,61 +65,67 @@ function toGameConfig(row: GameConfigRow, seed: number): GameConfig {
   };
 }
 
-/**
- * Prova a settlare un match: scatta solo quando tutti i partecipanti (anche
- * in modalità a squadre, ogni membro di ogni squadra) hanno inviato un
- * risultato (SPEC.md §9). Nessun meccanismo di abbandono: un partecipante
- * che non gioca mai blocca la sfida a tempo indefinito (RF-23), per scelta
- * esplicita.
- */
-async function trySettleMatch(
-  challenge: ChallengeRow,
-  match: ChallengeMatchRow,
-  configRow: GameConfigRow,
+const isParticipant = (duel: DuelRow, userId: string) => duel.challengerId === userId || duel.opponentId === userId;
+
+async function getDuel(id: string): Promise<DuelRow | undefined> {
+  const [row] = await db.select().from(schema.duels).where(eq(schema.duels.id, id)).limit(1);
+  return row;
+}
+
+async function getConfig(id: string): Promise<ConfigRow> {
+  const [row] = await db.select().from(schema.gameConfigs).where(eq(schema.gameConfigs.id, id)).limit(1);
+  if (!row) throw new Error('Configurazione della sfida mancante');
+  return row;
+}
+
+/** Punteggi dei due giocatori dalle parole valide di ciascuno (versus: la parola in comune vale la base, quella unica il doppio). */
+function scoreResults(
+  configRow: ConfigRow,
   index: WordIndex,
-): Promise<boolean> {
-  if (match.settledAt) return false;
-
-  const participants = await db
-    .select()
-    .from(schema.challengeParticipants)
-    .where(eq(schema.challengeParticipants.challengeId, challenge.id));
-  const results = await db.select().from(schema.matchResults).where(eq(schema.matchResults.challengeMatchId, match.id));
-
-  if (participants.length === 0) return false;
-
-  const submittedUserIds = new Set(results.map((r) => r.userId));
-  const ready = participants.every((p) => submittedUserIds.has(p.userId));
-
-  if (!ready) return false;
-
-  const gameConfig = toGameConfig(configRow, match.seed);
+  seed: number,
+  results: (typeof schema.duelResults.$inferSelect)[],
+) {
+  const gameConfig = toGameConfig(configRow, seed);
   const gradedByUser = new Map(results.map((r) => [r.userId, gradeSubmission(gameConfig, index, r.paths)]));
-  const teamIdByUser = new Map(participants.map((p) => [p.userId, p.teamId]));
+  const entries: VersusEntry[] = [...gradedByUser.entries()].map(([userId, graded]) => ({
+    participantId: userId,
+    groupId: userId,
+    words: new Map(graded.map((g) => [g.word, g.points])),
+  }));
+  const counts = configRow.scoring === 'versus' ? wordGroupCounts(entries) : undefined;
+  const scoreByUser =
+    configRow.scoring === 'versus'
+      ? new Map(Object.entries(computeVersusScores(entries)))
+      : new Map([...gradedByUser.entries()].map(([userId, graded]) => [userId, graded.reduce((sum, g) => sum + g.points, 0)]));
+  return { gradedByUser, scoreByUser, counts };
+}
 
-  let scoreByUser: Map<string, number>;
-  if (configRow.scoring === 'versus') {
-    const entries: VersusEntry[] = [...gradedByUser.entries()].map(([userId, graded]) => ({
-      participantId: userId,
-      groupId: teamIdByUser.get(userId) ?? userId,
-      words: new Map(graded.map((g) => [g.word, g.points])),
-    }));
-    scoreByUser = new Map(Object.entries(computeVersusScores(entries)));
-  } else {
-    scoreByUser = new Map(
-      [...gradedByUser.entries()].map(([userId, graded]) => [userId, graded.reduce((sum, g) => sum + g.points, 0)]),
-    );
-  }
+/** Chiude la sfida quando hanno giocato entrambi: punteggi, partite nello storico, statistiche. */
+async function trySettle(duel: DuelRow, configRow: ConfigRow, index: WordIndex): Promise<boolean> {
+  if (duel.status !== 'in_progress') return false;
+  const results = await db.select().from(schema.duelResults).where(eq(schema.duelResults.duelId, duel.id));
+  const submitted = new Set(results.map((r) => r.userId));
+  if (!submitted.has(duel.challengerId) || !submitted.has(duel.opponentId)) return false;
+
+  const { gradedByUser, scoreByUser } = scoreResults(configRow, index, duel.seed, results);
 
   await db.transaction(async (tx) => {
+    // Condizione sullo stato: se due invii arrivano insieme, chiude solo il primo
+    const closed = await tx
+      .update(schema.duels)
+      .set({ status: 'completed', settledAt: new Date() })
+      .where(and(eq(schema.duels.id, duel.id), eq(schema.duels.status, 'in_progress')))
+      .returning({ id: schema.duels.id });
+    if (closed.length === 0) return;
+
     for (const result of results) {
       const score = scoreByUser.get(result.userId) ?? 0;
       const graded = gradedByUser.get(result.userId) ?? [];
-      await tx.update(schema.matchResults).set({ score }).where(eq(schema.matchResults.id, result.id));
+      await tx.update(schema.duelResults).set({ score }).where(eq(schema.duelResults.id, result.id));
       await tx.insert(schema.games).values({
         userId: result.userId,
-        configId: challenge.configId,
-        seed: match.seed,
+        configId: duel.configId,
+        seed: duel.seed,
         startedAt: result.submittedAt,
         score,
         words: graded,
@@ -137,527 +135,333 @@ async function trySettleMatch(
         await updatePlayerWordStats(tx, result.userId, configRow.size, configRow.durationMs, graded, result.submittedAt);
       }
     }
-
-    await tx.update(schema.challengeMatches).set({ settledAt: new Date() }).where(eq(schema.challengeMatches.id, match.id));
-
-    const allMatches = await tx
-      .select()
-      .from(schema.challengeMatches)
-      .where(eq(schema.challengeMatches.challengeId, challenge.id));
-    const allSettled = allMatches.every((m) => m.id === match.id || m.settledAt !== null);
-    if (allSettled) {
-      await tx.update(schema.challenges).set({ status: 'completed' }).where(eq(schema.challenges.id, challenge.id));
-    }
   });
-
   return true;
 }
 
 /**
- * Ricostruisce, per un match già concluso, le parole trovate da ciascun
- * partecipante con il punteggio effettivo (per 'versus', già raddoppiato o
- * dimezzato secondo RF-24), ordinate per lunghezza decrescente — usato per
- * il riepilogo espandibile della sfida completata. Ricalcola dai `paths`
- * grezzi già salvati in `match_results` (nessuna parola testuale persistita
- * separatamente, vedi grading.ts).
+ * Controlli "pigri" (nessun job in background), eseguiti quando una sfida viene letta o aggiornata:
+ *  - chi ha iniziato ma non ha inviato entro la durata + margine prende zero punti (come chi ricarica la pagina per riavviare il timer);
+ *  - una sfida senza risposta o senza partite da più di 7 giorni scade.
  */
-function buildMatchWordBreakdown(
-  configRow: GameConfigRow,
-  index: WordIndex,
-  match: ChallengeMatchRow,
-  results: (typeof schema.matchResults.$inferSelect)[],
-  participants: (typeof schema.challengeParticipants.$inferSelect)[],
-): Map<string, { word: string; points: number }[]> {
-  const gameConfig = toGameConfig(configRow, match.seed);
-  const gradedByUser = new Map(results.map((r) => [r.userId, gradeSubmission(gameConfig, index, r.paths)]));
+async function refreshDuel(duel: DuelRow): Promise<DuelRow> {
+  if (duel.status !== 'invited' && duel.status !== 'in_progress') return duel;
 
-  let groupCounts: Map<string, number> | undefined;
-  if (configRow.scoring === 'versus') {
-    const teamIdByUser = new Map(participants.map((p) => [p.userId, p.teamId]));
-    const entries: VersusEntry[] = [...gradedByUser.entries()].map(([userId, graded]) => ({
-      participantId: userId,
-      groupId: teamIdByUser.get(userId) ?? userId,
-      words: new Map(graded.map((g) => [g.word, g.points])),
-    }));
-    groupCounts = wordGroupCounts(entries);
+  const reference = duel.status === 'invited' ? duel.createdAt : (duel.respondedAt ?? duel.createdAt);
+  if (Date.now() - reference.getTime() > DUEL_TTL_MS) {
+    await db
+      .update(schema.duels)
+      .set({ status: 'expired' })
+      .where(and(eq(schema.duels.id, duel.id), eq(schema.duels.status, duel.status)));
+    return { ...duel, status: 'expired' };
   }
+  if (duel.status !== 'in_progress') return duel;
 
-  const breakdown = new Map<string, { word: string; points: number }[]>();
-  for (const [userId, graded] of gradedByUser) {
-    const words = graded
-      .map((g) => ({
-        word: g.word,
-        points: groupCounts ? versusWordValue(g.points, groupCounts.get(g.word) ?? 1) : g.points,
-      }))
-      .sort((a, b) => b.word.length - a.word.length || a.word.localeCompare(b.word));
-    breakdown.set(userId, words);
-  }
-  return breakdown;
-}
-
-/**
- * Fa partire la sfida (open -> in_progress) quando il numero di giocatori
- * richiesto in fase di creazione è stato raggiunto: tutti i partecipanti in
- * modalità individuale, oppure ogni squadra piena in modalità a squadre.
- * Prima di questo passaggio i match non sono giocabili (evita che una sfida
- * si concluda con un solo giocatore su due).
- */
-async function maybeStartChallenge(tx: Tx, challenge: ChallengeRow): Promise<void> {
-  if (challenge.status !== 'open') return;
-
-  const participants = await tx
-    .select()
-    .from(schema.challengeParticipants)
-    .where(eq(schema.challengeParticipants.challengeId, challenge.id));
-
-  let ready: boolean;
-  if (challenge.mode === 'team') {
-    const teamRows = await tx.select().from(schema.teams).where(eq(schema.teams.challengeId, challenge.id));
-    ready = teamRows.every(
-      (team) => participants.filter((p) => p.teamId === team.id).length >= challenge.playersPerTeam!,
-    );
-  } else {
-    ready = participants.length >= challenge.maxParticipants!;
-  }
-
-  if (ready) {
-    await tx.update(schema.challenges).set({ status: 'in_progress' }).where(eq(schema.challenges.id, challenge.id));
-  }
-}
-
-/**
- * Un match che un giocatore ha iniziato (POST .../start) ma non ha mai
- * inviato scade dopo durationMs + margine: gli viene assegnato un risultato
- * a zero punti (nessuna parola trovata), così il match può settlare senza
- * aspettare all'infinito chi ha abbandonato o ricaricato la pagina per
- * ricominciare il timer da capo. Il controllo è pigro (eseguito quando la
- * sfida viene letta o quando arriva un invio), non un job in background.
- */
-async function expireStaleMatchStarts(challenge: ChallengeRow): Promise<void> {
-  if (challenge.status !== 'in_progress') return;
-
-  const [configRow] = await db.select().from(schema.gameConfigs).where(eq(schema.gameConfigs.id, challenge.configId)).limit(1);
-  if (!configRow) return;
-
-  const matches = await db
-    .select()
-    .from(schema.challengeMatches)
-    .where(and(eq(schema.challengeMatches.challengeId, challenge.id), isNull(schema.challengeMatches.settledAt)));
-
-  for (const match of matches) {
-    const starts = await db
-      .select()
-      .from(schema.challengeMatchStarts)
-      .where(eq(schema.challengeMatchStarts.challengeMatchId, match.id));
-    if (starts.length === 0) continue;
-
-    const results = await db.select().from(schema.matchResults).where(eq(schema.matchResults.challengeMatchId, match.id));
-    const submittedUserIds = new Set(results.map((r) => r.userId));
-    const deadline = configRow.durationMs + MATCH_TIMEOUT_MARGIN_MS;
-
-    for (const start of starts) {
-      if (submittedUserIds.has(start.userId)) continue;
-      if (Date.now() - start.startedAt.getTime() < deadline) continue;
-
-      try {
-        await db.insert(schema.matchResults).values({ challengeMatchId: match.id, userId: start.userId, paths: [], score: 0 });
-      } catch (error) {
-        if (!isUniqueViolation(error)) throw error;
-      }
+  const configRow = await getConfig(duel.configId);
+  const starts = await db.select().from(schema.duelStarts).where(eq(schema.duelStarts.duelId, duel.id));
+  const results = await db.select().from(schema.duelResults).where(eq(schema.duelResults.duelId, duel.id));
+  const submitted = new Set(results.map((r) => r.userId));
+  for (const start of starts) {
+    if (submitted.has(start.userId)) continue;
+    if (Date.now() - start.startedAt.getTime() < configRow.durationMs + MATCH_TIMEOUT_MARGIN_MS) continue;
+    try {
+      await db.insert(schema.duelResults).values({ duelId: duel.id, userId: start.userId, paths: [], score: 0 });
+    } catch (error) {
+      if (!isUniqueViolation(error)) throw error;
     }
   }
+  await trySettle(duel, configRow, loadDictionary().index);
+  return (await getDuel(duel.id)) ?? duel;
+}
 
-  const { index } = loadDictionary();
-  for (const match of matches) {
-    await trySettleMatch(challenge, match, configRow, index);
-  }
+async function usernames(ids: string[]): Promise<Map<string, string>> {
+  if (ids.length === 0) return new Map();
+  const rows = await db.select().from(schema.users).where(inArray(schema.users.id, ids));
+  return new Map(rows.map((u) => [u.id, u.username]));
 }
 
 export function registerChallengeRoutes(app: FastifyInstance): void {
-  app.post('/challenges', { preHandler: requireAuth }, async (request, reply) => {
-    const body = createChallengeSchema.safeParse(request.body);
-    if (!body.success) {
-      return reply.code(400).send({ error: body.error.flatten() });
+  // Amici dell'utente (per scegliere l'avversario) e richieste di amicizia da leggere, dal portale
+  app.get('/friends', { preHandler: requireAuth }, async (request, reply) => {
+    try {
+      return reply.header('Cache-Control', 'no-store').send(await listFriends(request.userId!));
+    } catch (error) {
+      if (error instanceof PortalUnavailableError) return reply.code(503).send({ error: 'Amici non disponibili al momento' });
+      throw error;
     }
-    const { config, mode, maxParticipants, playersPerTeam, bestOf, teams, creatorTeamIndex } = body.data;
+  });
 
-    if (mode === 'team' && (!teams || teams.length < 2)) {
-      return reply.code(400).send({ error: 'Una sfida a squadre richiede almeno 2 squadre' });
+  // Da fare per te: inviti ricevuti, partite da giocare, richieste di amicizia (best effort: dal portale)
+  app.get('/notifications', { preHandler: requireAuth }, async (request, reply) => {
+    const me = request.userId!;
+    const rows = await db
+      .select()
+      .from(schema.duels)
+      .where(and(or(eq(schema.duels.challengerId, me), eq(schema.duels.opponentId, me)), inArray(schema.duels.status, ['invited', 'in_progress'])));
+    const mine = await Promise.all(rows.map(refreshDuel));
+    const active = mine.filter((d) => d.status === 'invited' || d.status === 'in_progress');
+    const invites = active.filter((d) => d.status === 'invited' && d.opponentId === me).length;
+
+    let toPlay = 0;
+    for (const duel of active.filter((d) => d.status === 'in_progress')) {
+      const [done] = await db
+        .select({ id: schema.duelResults.id })
+        .from(schema.duelResults)
+        .where(and(eq(schema.duelResults.duelId, duel.id), eq(schema.duelResults.userId, me)))
+        .limit(1);
+      if (!done) toPlay++;
     }
-    if (mode === 'individual' && teams) {
-      return reply.code(400).send({ error: 'teams non è valido in modalità individuale' });
+
+    let friendRequests: number | null = null;
+    try {
+      friendRequests = (await listFriends(me)).incomingRequests;
+    } catch {
+      // il portale non risponde: le notifiche di gioco restano valide
     }
-    if (mode === 'individual' && maxParticipants === undefined) {
-      return reply.code(400).send({ error: 'maxParticipants obbligatorio in modalità individuale' });
+    return reply.header('Cache-Control', 'no-store').send({ invites, toPlay, friendRequests });
+  });
+
+  app.post('/challenges', { preHandler: requireAuth }, async (request, reply) => {
+    const body = createSchema.safeParse(request.body);
+    if (!body.success) return reply.code(400).send({ error: body.error.flatten() });
+    const me = request.userId!;
+    const { opponentId, config } = body.data;
+    if (opponentId === me) return reply.code(400).send({ error: 'Non puoi sfidare te stesso' });
+
+    // Solo gli amici (lo dice il portale, non il browser)
+    let friend;
+    try {
+      friend = await checkFriend(me, opponentId);
+    } catch (error) {
+      if (error instanceof PortalUnavailableError) return reply.code(503).send({ error: 'Amici non disponibili al momento' });
+      throw error;
     }
-    if (mode === 'team' && playersPerTeam === undefined) {
-      return reply.code(400).send({ error: 'playersPerTeam obbligatorio in modalità a squadre' });
+    if (!friend) return reply.code(403).send({ error: 'Puoi sfidare solo i tuoi amici' });
+
+    // Anti-spam: una sola sfida in attesa di risposta per coppia, e un numero massimo di sfide attive lanciate
+    const open = await db
+      .select()
+      .from(schema.duels)
+      .where(and(eq(schema.duels.challengerId, me), inArray(schema.duels.status, ['invited', 'in_progress'])));
+    if (open.length >= MAX_ACTIVE_AS_CHALLENGER) {
+      return reply.code(409).send({ error: 'Hai già troppe sfide in corso: aspetta che si concludano' });
     }
-    if (mode === 'team' && (creatorTeamIndex === undefined || creatorTeamIndex >= teams!.length)) {
-      return reply.code(400).send({ error: 'creatorTeamIndex non valido' });
+    if (open.some((d) => d.opponentId === opponentId && d.status === 'invited')) {
+      return reply.code(409).send({ error: 'Hai già invitato questo amico: aspetta la sua risposta' });
     }
 
     const { dictionaryVersion } = loadDictionary();
-
     const created = await db.transaction(async (tx) => {
+      // L'amico può non aver mai aperto il gioco: il suo nome arriva dal portale
+      await tx
+        .insert(schema.users)
+        .values({ id: friend.sub, username: friend.username })
+        .onConflictDoUpdate({ target: schema.users.id, set: { username: friend.username } });
       const [configRow] = await tx
         .insert(schema.gameConfigs)
         .values({ ...config, generatorVersion: 1, dictionaryVersion })
         .returning();
-
-      const [challengeRow] = await tx
-        .insert(schema.challenges)
-        .values({
-          creatorUserId: request.userId!,
-          configId: configRow!.id,
-          mode,
-          maxParticipants: mode === 'individual' ? maxParticipants : null,
-          playersPerTeam: mode === 'team' ? playersPerTeam : null,
-          bestOf,
-        })
+      const [duel] = await tx
+        .insert(schema.duels)
+        .values({ challengerId: me, opponentId, configId: configRow!.id, seed: randomInt(0, MAX_SEED) })
         .returning();
-
-      const teamRows =
-        mode === 'team'
-          ? await tx
-              .insert(schema.teams)
-              .values(teams!.map((team) => ({ challengeId: challengeRow!.id, name: team.name })))
-              .returning()
-          : [];
-
-      const matchRows = await tx
-        .insert(schema.challengeMatches)
-        .values(
-          Array.from({ length: bestOf }, (_, matchIndex) => ({
-            challengeId: challengeRow!.id,
-            matchIndex,
-            seed: randomInt(0, MAX_SEED),
-          })),
-        )
-        .returning();
-
-      await tx.insert(schema.challengeParticipants).values({
-        challengeId: challengeRow!.id,
-        userId: request.userId!,
-        teamId: mode === 'team' ? teamRows[creatorTeamIndex!]!.id : null,
-      });
-
-      await maybeStartChallenge(tx, challengeRow!);
-
-      return { challenge: challengeRow!, config: configRow!, teams: teamRows, matches: matchRows };
+      return duel!;
     });
-
-    return reply.code(201).send(created);
+    return reply.code(201).send({ id: created.id, status: created.status });
   });
 
-  app.post('/challenges/:id/join', { preHandler: requireAuth }, async (request, reply) => {
-    const params = idParamsSchema.safeParse(request.params);
-    if (!params.success) return reply.code(400).send({ error: 'id non valido' });
-    const body = joinSchema.safeParse(request.body ?? {});
-    if (!body.success) return reply.code(400).send({ error: body.error.flatten() });
+  // L'amico sfidato accetta o rifiuta
+  app.post('/challenges/:id/respond', { preHandler: requireAuth }, async (request, reply) => {
+    const params = idParams.safeParse(request.params);
+    const body = respondSchema.safeParse(request.body);
+    if (!params.success || !body.success) return reply.code(400).send({ error: 'Richiesta non valida' });
 
-    const [challenge] = await db.select().from(schema.challenges).where(eq(schema.challenges.id, params.data.id)).limit(1);
-    if (!challenge) return reply.code(404).send({ error: 'Sfida non trovata' });
-    if (challenge.status !== 'open') return reply.code(409).send({ error: 'Sfida non più aperta' });
+    const duel = await getDuel(params.data.id);
+    if (!duel || duel.opponentId !== request.userId) return reply.code(404).send({ error: 'Sfida non trovata' });
+    const fresh = await refreshDuel(duel);
+    if (fresh.status !== 'invited') return reply.code(409).send({ error: 'La sfida non è più in attesa di risposta' });
 
-    if (challenge.mode === 'team') {
-      if (!body.data.teamId) return reply.code(400).send({ error: 'teamId obbligatorio per una sfida a squadre' });
-      const [team] = await db
-        .select()
-        .from(schema.teams)
-        .where(and(eq(schema.teams.id, body.data.teamId), eq(schema.teams.challengeId, challenge.id)))
-        .limit(1);
-      if (!team) return reply.code(400).send({ error: 'Squadra non valida per questa sfida' });
-
-      const teamParticipants = await db
-        .select()
-        .from(schema.challengeParticipants)
-        .where(eq(schema.challengeParticipants.teamId, team.id));
-      if (teamParticipants.length >= challenge.playersPerTeam!) {
-        return reply.code(409).send({ error: 'Squadra al completo' });
-      }
-    } else if (body.data.teamId) {
-      return reply.code(400).send({ error: 'teamId non valido in modalità individuale' });
-    } else {
-      const existing = await db
-        .select()
-        .from(schema.challengeParticipants)
-        .where(eq(schema.challengeParticipants.challengeId, challenge.id));
-      if (existing.length >= challenge.maxParticipants!) return reply.code(409).send({ error: 'Sfida al completo' });
-    }
-
-    try {
-      const participant = await db.transaction(async (tx) => {
-        const [inserted] = await tx
-          .insert(schema.challengeParticipants)
-          .values({ challengeId: challenge.id, userId: request.userId!, teamId: body.data.teamId ?? null })
-          .returning();
-        await maybeStartChallenge(tx, challenge);
-        return inserted!;
-      });
-      return reply.code(201).send(participant);
-    } catch (error) {
-      if (isUniqueViolation(error)) return reply.code(409).send({ error: 'Hai già aderito a questa sfida' });
-      throw error;
-    }
+    const status = body.data.accept ? 'in_progress' : 'declined';
+    const updated = await db
+      .update(schema.duels)
+      .set({ status, respondedAt: new Date() })
+      .where(and(eq(schema.duels.id, duel.id), eq(schema.duels.status, 'invited')))
+      .returning({ id: schema.duels.id });
+    if (updated.length === 0) return reply.code(409).send({ error: 'La sfida non è più in attesa di risposta' });
+    return reply.send({ status });
   });
 
-  app.post('/challenges/:id/matches/:matchIndex/start', { preHandler: requireAuth }, async (request, reply) => {
-    const params = matchParamsSchema.safeParse(request.params);
-    if (!params.success) return reply.code(400).send({ error: 'Parametri non validi' });
-
-    const [challenge] = await db.select().from(schema.challenges).where(eq(schema.challenges.id, params.data.id)).limit(1);
-    if (!challenge) return reply.code(404).send({ error: 'Sfida non trovata' });
-    if (challenge.status !== 'in_progress') {
-      return reply.code(409).send({ error: 'La sfida non è ancora iniziata: mancano ancora giocatori' });
-    }
-
-    const [participant] = await db
-      .select()
-      .from(schema.challengeParticipants)
-      .where(and(eq(schema.challengeParticipants.challengeId, challenge.id), eq(schema.challengeParticipants.userId, request.userId!)))
-      .limit(1);
-    if (!participant) return reply.code(403).send({ error: 'Non partecipi a questa sfida' });
-
-    const [match] = await db
-      .select()
-      .from(schema.challengeMatches)
-      .where(and(eq(schema.challengeMatches.challengeId, challenge.id), eq(schema.challengeMatches.matchIndex, params.data.matchIndex)))
-      .limit(1);
-    if (!match) return reply.code(404).send({ error: 'Match non trovato' });
-    if (match.settledAt) return reply.code(409).send({ error: 'Match già concluso' });
-
-    const [existingResult] = await db
-      .select()
-      .from(schema.matchResults)
-      .where(and(eq(schema.matchResults.challengeMatchId, match.id), eq(schema.matchResults.userId, request.userId!)))
-      .limit(1);
-    if (existingResult) return reply.code(409).send({ error: 'Hai già inviato un risultato per questo match' });
-
-    try {
-      const [start] = await db
-        .insert(schema.challengeMatchStarts)
-        .values({ challengeMatchId: match.id, userId: request.userId! })
-        .returning();
-      return reply.code(201).send({ startedAt: start!.startedAt });
-    } catch (error) {
-      if (isUniqueViolation(error)) {
-        const [existing] = await db
-          .select()
-          .from(schema.challengeMatchStarts)
-          .where(and(eq(schema.challengeMatchStarts.challengeMatchId, match.id), eq(schema.challengeMatchStarts.userId, request.userId!)))
-          .limit(1);
-        return reply.send({ startedAt: existing!.startedAt });
-      }
-      throw error;
-    }
-  });
-
+  // Chi ha lanciato la sfida la ritira, ma solo finché l'avversario non ha risposto
   app.post('/challenges/:id/cancel', { preHandler: requireAuth }, async (request, reply) => {
-    const params = idParamsSchema.safeParse(request.params);
+    const params = idParams.safeParse(request.params);
     if (!params.success) return reply.code(400).send({ error: 'id non valido' });
+    const duel = await getDuel(params.data.id);
+    if (!duel || duel.challengerId !== request.userId) return reply.code(404).send({ error: 'Sfida non trovata' });
 
-    const [challenge] = await db.select().from(schema.challenges).where(eq(schema.challenges.id, params.data.id)).limit(1);
-    if (!challenge) return reply.code(404).send({ error: 'Sfida non trovata' });
-    if (challenge.creatorUserId !== request.userId) {
-      return reply.code(403).send({ error: 'Solo chi ha creato la sfida può cancellarla' });
-    }
-    if (challenge.status === 'cancelled') return reply.code(409).send({ error: 'Sfida già cancellata' });
-
-    await db.update(schema.challenges).set({ status: 'cancelled' }).where(eq(schema.challenges.id, challenge.id));
+    const updated = await db
+      .update(schema.duels)
+      .set({ status: 'cancelled' })
+      .where(and(eq(schema.duels.id, duel.id), eq(schema.duels.status, 'invited')))
+      .returning({ id: schema.duels.id });
+    if (updated.length === 0) return reply.code(409).send({ error: 'Si può ritirare solo una sfida ancora senza risposta' });
     return reply.send({ status: 'cancelled' });
   });
 
-  app.get('/challenges/:id', { preHandler: requireAuth }, async (request, reply) => {
-    const params = idParamsSchema.safeParse(request.params);
+  // Il tempo parte qui, deciso dal server: ricaricare la pagina non lo rimette a zero
+  app.post('/challenges/:id/start', { preHandler: requireAuth }, async (request, reply) => {
+    const params = idParams.safeParse(request.params);
     if (!params.success) return reply.code(400).send({ error: 'id non valido' });
+    const me = request.userId!;
+    const found = await getDuel(params.data.id);
+    if (!found || !isParticipant(found, me)) return reply.code(404).send({ error: 'Sfida non trovata' });
+    const duel = await refreshDuel(found);
+    if (duel.status !== 'in_progress') return reply.code(409).send({ error: 'La sfida non è giocabile' });
 
-    const [challenge] = await db.select().from(schema.challenges).where(eq(schema.challenges.id, params.data.id)).limit(1);
-    if (!challenge) return reply.code(404).send({ error: 'Sfida non trovata' });
-
-    await expireStaleMatchStarts(challenge);
-    const [refreshedChallenge] = await db.select().from(schema.challenges).where(eq(schema.challenges.id, challenge.id)).limit(1);
-    Object.assign(challenge, refreshedChallenge);
-
-    const participants = await db
-      .select({
-        id: schema.challengeParticipants.id,
-        challengeId: schema.challengeParticipants.challengeId,
-        userId: schema.challengeParticipants.userId,
-        username: schema.users.username,
-        teamId: schema.challengeParticipants.teamId,
-        joinedAt: schema.challengeParticipants.joinedAt,
-      })
-      .from(schema.challengeParticipants)
-      .innerJoin(schema.users, eq(schema.users.id, schema.challengeParticipants.userId))
-      .where(eq(schema.challengeParticipants.challengeId, challenge.id));
-    const usernameByUserId = new Map(participants.map((p) => [p.userId, p.username]));
-
-    const [configRow] = await db.select().from(schema.gameConfigs).where(eq(schema.gameConfigs.id, challenge.configId)).limit(1);
-    const teamRows =
-      challenge.mode === 'team'
-        ? await db.select().from(schema.teams).where(eq(schema.teams.challengeId, challenge.id))
-        : [];
-    const matches = await db
-      .select()
-      .from(schema.challengeMatches)
-      .where(eq(schema.challengeMatches.challengeId, challenge.id))
-      .orderBy(schema.challengeMatches.matchIndex);
-
-    const { index } = loadDictionary();
-
-    const matchesWithResults = await Promise.all(
-      matches.map(async (match) => {
-        if (!match.settledAt) {
-          const [myResult] = await db
-            .select()
-            .from(schema.matchResults)
-            .where(and(eq(schema.matchResults.challengeMatchId, match.id), eq(schema.matchResults.userId, request.userId!)))
-            .limit(1);
-          const [myStart] = await db
-            .select()
-            .from(schema.challengeMatchStarts)
-            .where(and(eq(schema.challengeMatchStarts.challengeMatchId, match.id), eq(schema.challengeMatchStarts.userId, request.userId!)))
-            .limit(1);
-          return {
-            id: match.id,
-            matchIndex: match.matchIndex,
-            seed: match.seed,
-            status: 'waiting' as const,
-            submittedByMe: myResult !== undefined,
-            startedByMe: myStart?.startedAt ?? null,
-          };
-        }
-        const results = await db.select().from(schema.matchResults).where(eq(schema.matchResults.challengeMatchId, match.id));
-        const wordsByUser = buildMatchWordBreakdown(configRow!, index, match, results, participants);
-        return {
-          id: match.id,
-          matchIndex: match.matchIndex,
-          seed: match.seed,
-          status: 'completed' as const,
-          scores: results.map((r) => ({
-            userId: r.userId,
-            username: usernameByUserId.get(r.userId),
-            score: r.score,
-            words: wordsByUser.get(r.userId) ?? [],
-          })),
-        };
-      }),
-    );
-
-    return reply.send({
-      id: challenge.id,
-      creatorUserId: challenge.creatorUserId,
-      mode: challenge.mode,
-      status: challenge.status,
-      bestOf: challenge.bestOf,
-      maxParticipants: challenge.maxParticipants,
-      playersPerTeam: challenge.playersPerTeam,
-      config: configRow,
-      teams: teamRows,
-      participants,
-      matches: matchesWithResults,
-    });
-  });
-
-  app.post('/challenges/:id/matches/:matchIndex/results', { preHandler: requireAuth }, async (request, reply) => {
-    const params = matchParamsSchema.safeParse(request.params);
-    if (!params.success) return reply.code(400).send({ error: 'Parametri non validi' });
-    const body = submitResultsSchema.safeParse(request.body);
-    if (!body.success) return reply.code(400).send({ error: body.error.flatten() });
-
-    const [challenge] = await db.select().from(schema.challenges).where(eq(schema.challenges.id, params.data.id)).limit(1);
-    if (!challenge) return reply.code(404).send({ error: 'Sfida non trovata' });
-    if (challenge.status !== 'in_progress') {
-      return reply.code(409).send({ error: 'La sfida non è ancora iniziata: mancano ancora giocatori' });
-    }
-
-    const [participant] = await db
-      .select()
-      .from(schema.challengeParticipants)
-      .where(and(eq(schema.challengeParticipants.challengeId, challenge.id), eq(schema.challengeParticipants.userId, request.userId!)))
+    const [existingResult] = await db
+      .select({ id: schema.duelResults.id })
+      .from(schema.duelResults)
+      .where(and(eq(schema.duelResults.duelId, duel.id), eq(schema.duelResults.userId, me)))
       .limit(1);
-    if (!participant) return reply.code(403).send({ error: 'Non partecipi a questa sfida' });
-
-    const [match] = await db
-      .select()
-      .from(schema.challengeMatches)
-      .where(and(eq(schema.challengeMatches.challengeId, challenge.id), eq(schema.challengeMatches.matchIndex, params.data.matchIndex)))
-      .limit(1);
-    if (!match) return reply.code(404).send({ error: 'Match non trovato' });
-    if (match.settledAt) return reply.code(409).send({ error: 'Match già concluso' });
-
-    const [configRow] = await db.select().from(schema.gameConfigs).where(eq(schema.gameConfigs.id, challenge.configId)).limit(1);
-
-    const [start] = await db
-      .select()
-      .from(schema.challengeMatchStarts)
-      .where(and(eq(schema.challengeMatchStarts.challengeMatchId, match.id), eq(schema.challengeMatchStarts.userId, request.userId!)))
-      .limit(1);
-    if (start && Date.now() - start.startedAt.getTime() > configRow!.durationMs + MATCH_TIMEOUT_MARGIN_MS) {
-      await expireStaleMatchStarts(challenge);
-      return reply.code(409).send({ error: 'Tempo scaduto per questo match' });
-    }
-
-    const { index } = loadDictionary();
-    const graded = gradeSubmission(toGameConfig(configRow!, match.seed), index, body.data.paths);
+    if (existingResult) return reply.code(409).send({ error: 'Hai già giocato questa sfida' });
 
     try {
-      await db.insert(schema.matchResults).values({
-        challengeMatchId: match.id,
-        userId: request.userId!,
-        paths: body.data.paths,
-      });
+      const [start] = await db.insert(schema.duelStarts).values({ duelId: duel.id, userId: me }).returning();
+      return reply.code(201).send({ startedAt: start!.startedAt, seed: duel.seed });
     } catch (error) {
-      if (isUniqueViolation(error)) return reply.code(409).send({ error: 'Hai già inviato un risultato per questo match' });
-      throw error;
+      if (!isUniqueViolation(error)) throw error;
+      const [existing] = await db
+        .select()
+        .from(schema.duelStarts)
+        .where(and(eq(schema.duelStarts.duelId, duel.id), eq(schema.duelStarts.userId, me)))
+        .limit(1);
+      return reply.send({ startedAt: existing!.startedAt, seed: duel.seed });
+    }
+  });
+
+  app.post('/challenges/:id/results', { preHandler: requireAuth }, async (request, reply) => {
+    const params = idParams.safeParse(request.params);
+    const body = submitSchema.safeParse(request.body);
+    if (!params.success || !body.success) return reply.code(400).send({ error: 'Richiesta non valida' });
+    const me = request.userId!;
+    const found = await getDuel(params.data.id);
+    if (!found || !isParticipant(found, me)) return reply.code(404).send({ error: 'Sfida non trovata' });
+    const duel = await refreshDuel(found);
+    if (duel.status !== 'in_progress') return reply.code(409).send({ error: 'La sfida non è giocabile' });
+
+    const configRow = await getConfig(duel.configId);
+    const [start] = await db
+      .select()
+      .from(schema.duelStarts)
+      .where(and(eq(schema.duelStarts.duelId, duel.id), eq(schema.duelStarts.userId, me)))
+      .limit(1);
+    // Si può inviare solo dopo aver iniziato, ed entro la durata + margine
+    if (!start) return reply.code(409).send({ error: 'Partita non iniziata' });
+    if (Date.now() - start.startedAt.getTime() > configRow.durationMs + MATCH_TIMEOUT_MARGIN_MS) {
+      return reply.code(409).send({ error: 'Tempo scaduto' });
     }
 
-    const settled = await trySettleMatch(challenge, match, configRow!, index);
-
+    const { index } = loadDictionary();
+    const graded = gradeSubmission(toGameConfig(configRow, duel.seed), index, body.data.paths);
+    try {
+      await db.insert(schema.duelResults).values({ duelId: duel.id, userId: me, paths: body.data.paths });
+    } catch (error) {
+      if (isUniqueViolation(error)) return reply.code(409).send({ error: 'Hai già inviato il risultato' });
+      throw error;
+    }
+    const settled = await trySettle(duel, configRow, index);
     return reply.send({ found: graded, settled });
   });
 
-  app.get('/challenges', { preHandler: requireAuth }, async (request, reply) => {
-    const rows = await db
-      .select({
-        id: schema.challenges.id,
-        mode: schema.challenges.mode,
-        status: schema.challenges.status,
-        bestOf: schema.challenges.bestOf,
-        maxParticipants: schema.challenges.maxParticipants,
-        playersPerTeam: schema.challenges.playersPerTeam,
-        createdAt: schema.challenges.createdAt,
-        creatorUserId: schema.challenges.creatorUserId,
-        creatorUsername: schema.users.username,
-        config: {
-          size: schema.gameConfigs.size,
-          durationMs: schema.gameConfigs.durationMs,
-          minWordLength: schema.gameConfigs.minWordLength,
-          scoring: schema.gameConfigs.scoring,
-          pointMode: schema.gameConfigs.pointMode,
-          positionBonus: schema.gameConfigs.positionBonus,
-        },
-      })
-      .from(schema.challenges)
-      .innerJoin(schema.users, eq(schema.users.id, schema.challenges.creatorUserId))
-      .innerJoin(schema.gameConfigs, eq(schema.gameConfigs.id, schema.challenges.configId))
-      .orderBy(desc(schema.challenges.createdAt));
+  app.get('/challenges/:id', { preHandler: requireAuth }, async (request, reply) => {
+    const params = idParams.safeParse(request.params);
+    if (!params.success) return reply.code(400).send({ error: 'id non valido' });
+    const me = request.userId!;
+    const found = await getDuel(params.data.id);
+    if (!found || !isParticipant(found, me)) return reply.code(404).send({ error: 'Sfida non trovata' });
+    const duel = await refreshDuel(found);
 
-    const allParticipants = await db
-      .select({ challengeId: schema.challengeParticipants.challengeId, userId: schema.challengeParticipants.userId })
-      .from(schema.challengeParticipants);
-    const participantCountByChallengeId = new Map<string, number>();
-    const myChallengeIds = new Set<string>();
-    for (const p of allParticipants) {
-      participantCountByChallengeId.set(p.challengeId, (participantCountByChallengeId.get(p.challengeId) ?? 0) + 1);
-      if (p.userId === request.userId) myChallengeIds.add(p.challengeId);
+    const configRow = await getConfig(duel.configId);
+    const names = await usernames([duel.challengerId, duel.opponentId]);
+    const results = await db.select().from(schema.duelResults).where(eq(schema.duelResults.duelId, duel.id));
+    const starts = await db.select().from(schema.duelStarts).where(eq(schema.duelStarts.duelId, duel.id));
+    const opponentOfMe = duel.challengerId === me ? duel.opponentId : duel.challengerId;
+
+    let scores: { userId: string; username: string | undefined; score: number | null; words: { word: string; points: number }[] }[] | undefined;
+    if (duel.status === 'completed') {
+      const { gradedByUser, counts } = scoreResults(configRow, loadDictionary().index, duel.seed, results);
+      scores = results.map((r) => ({
+        userId: r.userId,
+        username: names.get(r.userId),
+        score: r.score,
+        words: (gradedByUser.get(r.userId) ?? [])
+          .map((g) => ({ word: g.word, points: counts ? versusWordValue(g.points, counts.get(g.word) ?? 1) : g.points }))
+          .sort((a, b) => b.word.length - a.word.length || a.word.localeCompare(b.word)),
+      }));
     }
 
-    const visible = rows
-      .filter((row) => row.status !== 'cancelled' && (row.status === 'open' || myChallengeIds.has(row.id)))
-      .map((row) => ({ ...row, participantCount: participantCountByChallengeId.get(row.id) ?? 0 }));
+    return reply.header('Cache-Control', 'no-store').send({
+      id: duel.id,
+      status: duel.status,
+      createdAt: duel.createdAt,
+      challenger: { id: duel.challengerId, username: names.get(duel.challengerId) },
+      opponent: { id: duel.opponentId, username: names.get(duel.opponentId) },
+      iAmChallenger: duel.challengerId === me,
+      config: configRow,
+      // Il seed si dà solo quando la sfida è giocabile (prima dell'accettazione nessuno può studiare la griglia)
+      seed: duel.status === 'in_progress' ? duel.seed : undefined,
+      startedByMe: starts.find((s) => s.userId === me)?.startedAt ?? null,
+      submittedByMe: results.some((r) => r.userId === me),
+      opponentSubmitted: results.some((r) => r.userId === opponentOfMe),
+      scores,
+    });
+  });
 
-    return reply.send(visible);
+  app.get('/challenges', { preHandler: requireAuth }, async (request, reply) => {
+    const me = request.userId!;
+    const rows = await db
+      .select()
+      .from(schema.duels)
+      .where(or(eq(schema.duels.challengerId, me), eq(schema.duels.opponentId, me)))
+      .orderBy(desc(schema.duels.createdAt))
+      .limit(50);
+    const duels = await Promise.all(rows.map(refreshDuel));
+    const visible = duels.filter((d) => d.status !== 'cancelled');
+
+    const names = await usernames([...new Set(visible.flatMap((d) => [d.challengerId, d.opponentId]))]);
+    const ids = visible.map((d) => d.id);
+    const results = ids.length ? await db.select().from(schema.duelResults).where(inArray(schema.duelResults.duelId, ids)) : [];
+    const configs = visible.length
+      ? await db.select().from(schema.gameConfigs).where(inArray(schema.gameConfigs.id, visible.map((d) => d.configId)))
+      : [];
+    const configById = new Map(configs.map((c) => [c.id, c]));
+
+    return reply.header('Cache-Control', 'no-store').send(
+      visible.map((d) => {
+        const mine = results.find((r) => r.duelId === d.id && r.userId === me);
+        const other = d.challengerId === me ? d.opponentId : d.challengerId;
+        const theirs = results.find((r) => r.duelId === d.id && r.userId === other);
+        const config = configById.get(d.configId);
+        return {
+          id: d.id,
+          status: d.status,
+          createdAt: d.createdAt,
+          iAmChallenger: d.challengerId === me,
+          opponent: { id: other, username: names.get(other) },
+          config: config && {
+            size: config.size,
+            durationMs: config.durationMs,
+            minWordLength: config.minWordLength,
+            scoring: config.scoring,
+            pointMode: config.pointMode,
+            positionBonus: config.positionBonus,
+          },
+          submittedByMe: mine !== undefined,
+          opponentSubmitted: theirs !== undefined,
+          // Il punteggio si mostra solo a sfida conclusa
+          myScore: d.status === 'completed' ? (mine?.score ?? null) : null,
+          opponentScore: d.status === 'completed' ? (theirs?.score ?? null) : null,
+        };
+      }),
+    );
   });
 }
