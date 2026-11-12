@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { adminLogout } from '../lib/admin.svelte.js';
+  import { closeAdmin } from '../lib/admin.svelte.js';
   import AdminUsersScreen from './AdminUsersScreen.svelte';
   import AdminWordsScreen from './AdminWordsScreen.svelte';
 
@@ -16,7 +16,7 @@
   <div class="page menu">
     <div class="header">
       <h1>Amministrazione</h1>
-      <button type="button" class="btn btn-secondary btn-sm" onclick={adminLogout}>Esci</button>
+      <button type="button" class="btn btn-secondary btn-sm" onclick={closeAdmin}>Chiudi</button>
     </div>
 
     <button type="button" class="tile" onclick={() => (view = 'users')}>

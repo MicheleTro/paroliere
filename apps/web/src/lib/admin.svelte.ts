@@ -1,18 +1,16 @@
-const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3000';
-const ADMIN_TOKEN_KEY = 'paroliere.admin.token';
-
 export interface AdminUser {
   id: string;
   username: string;
-  email: string;
   createdAt: string;
+  lastSeenAt: string;
 }
 
-class AdminAuthStore {
-  loggedIn = $state(localStorage.getItem(ADMIN_TOKEN_KEY) !== null);
+/** Schermata admin aperta o chiusa. Chi è admin lo decide il server (gruppo `admin` di whoru). */
+class AdminUiStore {
+  open = $state(false);
 }
 
-export const adminAuth = new AdminAuthStore();
+export const adminAuth = new AdminUiStore();
 
 async function parseError(res: Response): Promise<string> {
   try {
@@ -25,41 +23,21 @@ async function parseError(res: Response): Promise<string> {
 }
 
 async function adminRequest<T>(path: string, init: RequestInit = {}): Promise<T> {
-  const token = localStorage.getItem(ADMIN_TOKEN_KEY);
-  const res = await fetch(`${API_URL}${path}`, {
+  const res = await fetch(`/api${path}`, {
     ...init,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...init.headers,
-    },
+    headers: { 'Content-Type': 'application/json', ...init.headers },
   });
-
   if (res.status === 401 || res.status === 403) {
-    adminLogout();
-    throw new Error('Sessione admin scaduta, accedi di nuovo');
+    closeAdmin();
+    throw new Error('Accesso admin non disponibile');
   }
   if (!res.ok) throw new Error(await parseError(res));
   if (res.status === 204) return undefined as T;
   return (await res.json()) as T;
 }
 
-export async function adminLogin(username: string, password: string): Promise<void> {
-  const res = await fetch(`${API_URL}/admin/login`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ username, password }),
-  });
-  if (!res.ok) throw new Error(await parseError(res));
-
-  const { token } = (await res.json()) as { token: string };
-  localStorage.setItem(ADMIN_TOKEN_KEY, token);
-  adminAuth.loggedIn = true;
-}
-
-export function adminLogout(): void {
-  localStorage.removeItem(ADMIN_TOKEN_KEY);
-  adminAuth.loggedIn = false;
+export function closeAdmin(): void {
+  adminAuth.open = false;
 }
 
 export function listUsers(): Promise<AdminUser[]> {

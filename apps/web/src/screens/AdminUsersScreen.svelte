@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { adminLogout, deleteUser, listUsers, type AdminUser } from '../lib/admin.svelte.js';
+  import { closeAdmin, deleteUser, listUsers, type AdminUser } from '../lib/admin.svelte.js';
   import AdminUserDetailScreen from './AdminUserDetailScreen.svelte';
 
   interface Props {
@@ -48,7 +48,7 @@
     <div class="header">
       <button type="button" class="btn-icon" aria-label="Torna al menu admin" onclick={onBack}>&larr;</button>
       <h1>Gestione utenti</h1>
-      <button type="button" class="btn btn-secondary btn-sm" onclick={adminLogout}>Esci</button>
+      <button type="button" class="btn btn-secondary btn-sm" onclick={closeAdmin}>Chiudi</button>
     </div>
 
     {#if error}
@@ -64,7 +64,7 @@
             <button type="button" class="row" onclick={() => (selectedUser = user)}>
               <div class="info">
                 <span class="username">{user.username}</span>
-                <span class="email">{user.email}</span>
+                <span class="email">ultimo accesso {new Date(user.lastSeenAt).toLocaleDateString('it-IT')}</span>
                 <span class="date">registrato il {new Date(user.createdAt).toLocaleDateString('it-IT')}</span>
               </div>
             </button>

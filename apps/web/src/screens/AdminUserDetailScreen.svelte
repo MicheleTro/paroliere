@@ -29,7 +29,7 @@
     <button type="button" class="btn btn-secondary btn-sm" onclick={onBack}>&larr; Utenti</button>
     <h1>{user.username}</h1>
   </div>
-  <p class="email">{user.email} · registrato il {new Date(user.createdAt).toLocaleDateString('it-IT')}</p>
+  <p class="email">registrato il {new Date(user.createdAt).toLocaleDateString('it-IT')} · ultimo accesso {new Date(user.lastSeenAt).toLocaleDateString('it-IT')}</p>
 
   {#if error}
     <p class="error-text">{error}</p>

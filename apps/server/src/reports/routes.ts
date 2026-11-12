@@ -6,8 +6,7 @@ import { desc, eq } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 
-import { requireAdmin } from '../admin/require-admin.js';
-import { requireAuth } from '../auth/require-auth.js';
+import { requireAdmin, requireAuth } from '../auth/require-auth.js';
 import { db } from '../db/client.js';
 import * as schema from '../db/schema.js';
 

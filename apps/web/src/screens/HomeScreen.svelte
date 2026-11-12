@@ -4,9 +4,10 @@
     onNewGame: () => void;
     onChallenges?: () => void;
     onHistory?: () => void;
+    onAdmin?: () => void;
   }
 
-  let { ready, onNewGame, onChallenges, onHistory }: Props = $props();
+  let { ready, onNewGame, onChallenges, onHistory, onAdmin }: Props = $props();
 </script>
 
 <div class="page home">
@@ -21,6 +22,14 @@
       <span class="icon">⚔️</span>
       <span class="label">Sfide</span>
       <span class="hint">Gioca contro amici e squadre</span>
+    </button>
+  {/if}
+
+  {#if onAdmin}
+    <button type="button" class="tile tile-secondary" onclick={onAdmin}>
+      <span class="icon">🛠️</span>
+      <span class="label">Amministrazione</span>
+      <span class="hint">Utenti e parole segnalate</span>
     </button>
   {/if}
 

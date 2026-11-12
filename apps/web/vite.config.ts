@@ -41,5 +41,7 @@ export default defineConfig({
   ],
   server: {
     host: true,
+    // In sviluppo le API sono sul server Fastify: stessa origine anche qui
+    proxy: { '/api': 'http://localhost:3000' },
   },
 });

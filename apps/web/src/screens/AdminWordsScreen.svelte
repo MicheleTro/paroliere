@@ -1,6 +1,6 @@
 <script lang="ts">
   import {
-    adminLogout,
+    closeAdmin,
     approveReportedWord,
     discardReportedWord,
     listReportedWords,
@@ -60,7 +60,7 @@
   <div class="header">
     <button type="button" class="btn-icon" aria-label="Torna al menu admin" onclick={onBack}>&larr;</button>
     <h1>Gestione parole</h1>
-    <button type="button" class="btn btn-secondary btn-sm" onclick={adminLogout}>Esci</button>
+    <button type="button" class="btn btn-secondary btn-sm" onclick={closeAdmin}>Chiudi</button>
   </div>
 
   <p class="hint">Parole segnalate dai giocatori come mancanti nel dizionario.</p>

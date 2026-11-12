@@ -1,83 +1,65 @@
 import type { FastifyInstance } from 'fastify';
-import { eq, or } from 'drizzle-orm';
 import { z } from 'zod';
 
+import { config, loginUrl, portalUrl } from '../config.js';
 import { db } from '../db/client.js';
-import { isUniqueViolation } from '../db/errors.js';
 import { users } from '../db/schema.js';
-import { signAccessToken } from './jwt.js';
-import { hashPassword, verifyPassword } from './password.js';
-import { requireAuth } from './require-auth.js';
+import { verifyPortalToken } from './portal-token.js';
+import { ADMIN_GROUP, requireAuth } from './require-auth.js';
+import { clearedSessionCookie, sessionCookie, signSession, type PlayerSession } from './session.js';
 
-const registerSchema = z.object({
-  username: z.string().min(3).max(32),
-  email: z.string().email().max(254),
-  password: z.string().min(8).max(128),
-});
-
-const loginSchema = z.object({
-  identifier: z.string().min(1),
-  password: z.string().min(1),
-});
+/** Registra (o aggiorna) la riga sottile dell'utente: chiave `sub`, il nome serve solo per mostrarlo. */
+async function rememberUser(session: PlayerSession): Promise<void> {
+  await db
+    .insert(users)
+    .values({ id: session.sub, username: session.username })
+    .onConflictDoUpdate({ target: users.id, set: { username: session.username, lastSeenAt: new Date() } });
+}
 
 export function registerAuthRoutes(app: FastifyInstance): void {
-  app.post('/auth/register', async (request, reply) => {
-    const body = registerSchema.safeParse(request.body);
-    if (!body.success) {
-      return reply.code(400).send({ error: body.error.flatten() });
+  // Ritorno dal portale: scambia il token breve con la sessione del gioco e toglie il token dall'indirizzo.
+  app.get('/auth/callback', async (request, reply) => {
+    const query = z.object({ token: z.string().min(20).max(4096) }).safeParse(request.query);
+    const session = query.success ? await verifyPortalToken(query.data.token) : null;
+    if (!session) {
+      // Token scaduto, già usato o non valido: si riparte dal portale
+      return reply.header('Cache-Control', 'no-store').redirect(loginUrl);
     }
-
-    const { username, email, password } = body.data;
-    const passwordHash = await hashPassword(password);
-
-    try {
-      const [user] = await db.insert(users).values({ username, email, passwordHash }).returning();
-      if (!user) {
-        throw new Error('Inserimento utente senza risultato');
-      }
-      const token = await signAccessToken(user.id);
-      return reply.code(201).send({ token });
-    } catch (error) {
-      if (isUniqueViolation(error)) {
-        return reply.code(409).send({ error: 'Username o email già registrati' });
-      }
-      throw error;
-    }
-  });
-
-  app.post('/auth/login', async (request, reply) => {
-    const body = loginSchema.safeParse(request.body);
-    if (!body.success) {
-      return reply.code(400).send({ error: body.error.flatten() });
-    }
-
-    const { identifier, password } = body.data;
-    const [user] = await db
-      .select()
-      .from(users)
-      .where(or(eq(users.username, identifier), eq(users.email, identifier)))
-      .limit(1);
-
-    const invalidCredentials = () => reply.code(401).send({ error: 'Credenziali non valide' });
-
-    if (!user) {
-      return invalidCredentials();
-    }
-
-    const passwordValid = await verifyPassword(user.passwordHash, password);
-    if (!passwordValid) {
-      return invalidCredentials();
-    }
-
-    const token = await signAccessToken(user.id);
-    return reply.send({ token });
+    await rememberUser(session);
+    return reply
+      .header('Set-Cookie', sessionCookie(await signSession(session)))
+      .header('Cache-Control', 'no-store')
+      .header('Referrer-Policy', 'no-referrer')
+      .redirect('/');
   });
 
   app.get('/auth/me', { preHandler: requireAuth }, async (request, reply) => {
-    const [user] = await db.select().from(users).where(eq(users.id, request.userId!)).limit(1);
-    if (!user) {
-      return reply.code(401).send({ error: 'Utente non trovato' });
-    }
-    return reply.send({ id: user.id, username: user.username, email: user.email, createdAt: user.createdAt });
+    const session = request.session!;
+    return reply.header('Cache-Control', 'no-store').send({
+      id: session.sub,
+      username: session.username,
+      isAdmin: session.groups.includes(ADMIN_GROUP),
+      loginUrl,
+      portalUrl,
+    });
   });
+
+  // Esce dal gioco (la sessione del portale resta: si esce da lì).
+  app.post('/auth/logout', async (_request, reply) => {
+    return reply.header('Set-Cookie', clearedSessionCookie()).code(204).send();
+  });
+
+  // Solo sviluppo (DEV_LOGIN=true, mai in produzione): entra senza portale. /api/auth/dev?user=mario&admin=1
+  if (config.DEV_LOGIN) {
+    app.get('/auth/dev', async (request, reply) => {
+      const q = z.object({ user: z.string().min(1).max(32).default('dev'), admin: z.string().optional() }).parse(request.query);
+      const session: PlayerSession = {
+        sub: `dev-${q.user}`,
+        username: q.user,
+        groups: q.admin ? [ADMIN_GROUP, 'membri'] : ['membri'],
+      };
+      await rememberUser(session);
+      return reply.header('Set-Cookie', sessionCookie(await signSession(session))).redirect('/');
+    });
+  }
 }

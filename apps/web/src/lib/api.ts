@@ -1,17 +1,6 @@
-const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3000';
-const TOKEN_KEY = 'paroliere.token';
+import { auth } from './auth.svelte.js';
 
-export function getToken(): string | null {
-  return localStorage.getItem(TOKEN_KEY);
-}
-
-export function setToken(token: string): void {
-  localStorage.setItem(TOKEN_KEY, token);
-}
-
-export function clearToken(): void {
-  localStorage.removeItem(TOKEN_KEY);
-}
+// Frontend e API sono sulla stessa origine (/api): la sessione è un cookie HttpOnly, nessun token nel browser.
 
 async function parseError(res: Response): Promise<string> {
   try {
@@ -32,15 +21,16 @@ async function parseError(res: Response): Promise<string> {
 }
 
 export async function apiRequest<T>(path: string, init: RequestInit = {}): Promise<T> {
-  const token = getToken();
-  const res = await fetch(`${API_URL}${path}`, {
+  const res = await fetch(`/api${path}`, {
     ...init,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...init.headers,
-    },
+    headers: { 'Content-Type': 'application/json', ...init.headers },
   });
+  if (res.status === 401) {
+    // Sessione assente o scaduta: si torna dal portale, che riporta qui dopo l'accesso
+    const body = (await res.json().catch(() => ({}))) as { loginUrl?: string };
+    auth.redirectToPortal(body.loginUrl);
+    throw new Error('Sessione scaduta');
+  }
   if (!res.ok) throw new Error(await parseError(res));
   if (res.status === 204) return undefined as T;
   return (await res.json()) as T;

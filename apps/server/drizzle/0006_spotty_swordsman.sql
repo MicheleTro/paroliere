@@ -1,1 +1,0 @@
-ALTER TABLE "player_word_stats" ADD COLUMN "max_words_in_game" integer DEFAULT 0 NOT NULL;

@@ -11,7 +11,6 @@
   import AdminScreen from './screens/AdminScreen.svelte';
   import HomeScreen from './screens/HomeScreen.svelte';
   import ConfigScreen, { type GameSettings } from './screens/ConfigScreen.svelte';
-  import LoginScreen from './screens/LoginScreen.svelte';
   import PlayScreen from './screens/PlayScreen.svelte';
   import SummaryScreen from './screens/SummaryScreen.svelte';
   import ChallengesScreen from './screens/ChallengesScreen.svelte';
@@ -24,7 +23,6 @@
   import { getWordStats, type WordStats } from './lib/stats.js';
   import { playAlreadyFound, playRejected, playWordAccepted } from './lib/sound.js';
   import HistoryScreen from './screens/HistoryScreen.svelte';
-  import { OFFLINE_MODE } from './lib/config.js';
   import { adminAuth } from './lib/admin.svelte.js';
   import { auth, checkSession, logout } from './lib/auth.svelte.js';
   import { submitMatchResult, type ChallengeDetail, type ChallengeMatch, type SubmitResultResponse } from './lib/challenges.js';
@@ -209,10 +207,6 @@
     }
 
     screen = 'summary';
-    if (OFFLINE_MODE) {
-      saveGame(session.config, summary, Date.now()).catch((err) => console.error('Salvataggio partita non riuscito', err));
-      return;
-    }
     saveGame(session.config, summary, Date.now())
       .then((record) => syncGame(record))
       .then(() => getWordStats(size, durationMs))
@@ -283,31 +277,32 @@
   });
 
   navigator.storage?.persist?.().catch(() => {});
-  if (!OFFLINE_MODE) void checkSession();
+  void checkSession();
 </script>
 
 <main class:play-mode={screen === 'playing' && !!session}>
-  {#if !OFFLINE_MODE && adminAuth.loggedIn}
-    <AdminScreen />
-  {:else if !OFFLINE_MODE && auth.status === 'checking'}
+  {#if auth.status === 'checking'}
     <p>Caricamento...</p>
-  {:else if !OFFLINE_MODE && auth.status === 'unauthenticated'}
-    <LoginScreen />
+  {:else if auth.status === 'unauthenticated'}
+    <p>Accesso tramite whoru…</p>
+  {:else if adminAuth.open && auth.user?.isAdmin}
+    <AdminScreen />
   {:else if screen === 'playing' && session}
     <PlayScreen {session} {now} {popup} onSubmit={handleSubmit} />
   {:else}
     <AppShell
-      username={OFFLINE_MODE ? undefined : (auth.user?.username ?? '')}
+      username={auth.user?.username ?? ''}
       showHome={screen !== 'home'}
       onHome={goHome}
-      onLogout={OFFLINE_MODE ? undefined : logout}
+      onLogout={logout}
     >
       {#if screen === 'home'}
         <HomeScreen
           {ready}
           onNewGame={goToConfig}
-          onChallenges={OFFLINE_MODE ? undefined : goToChallenges}
-          onHistory={OFFLINE_MODE ? () => (screen = 'history') : undefined}
+          onChallenges={goToChallenges}
+          onHistory={() => (screen = 'history')}
+          onAdmin={auth.user?.isAdmin ? () => (adminAuth.open = true) : undefined}
         />
       {:else if screen === 'history'}
         <HistoryScreen />

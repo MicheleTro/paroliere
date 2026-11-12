@@ -1,11 +1,14 @@
 import { bigint, boolean, integer, jsonb, pgEnum, pgTable, timestamp, unique, uuid, varchar } from 'drizzle-orm/pg-core';
 
+/**
+ * Riga sottile dell'utente: l'identità vive in whoru (decisione whoru #24). La chiave è il `sub` del portale
+ * (testo); il nome serve solo per mostrarlo nelle classifiche e si aggiorna a ogni accesso. Nessuna email, nessuna password.
+ */
 export const users = pgTable('users', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  username: varchar('username', { length: 32 }).notNull().unique(),
-  email: varchar('email', { length: 254 }).notNull().unique(),
-  passwordHash: varchar('password_hash', { length: 256 }).notNull(),
+  id: varchar('id', { length: 64 }).primaryKey(),
+  username: varchar('username', { length: 64 }).notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  lastSeenAt: timestamp('last_seen_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
 export const scoringEnum = pgEnum('scoring', ['classic', 'versus']);
@@ -31,7 +34,7 @@ export const gameConfigs = pgTable('game_configs', {
 
 export const challenges = pgTable('challenges', {
   id: uuid('id').primaryKey().defaultRandom(),
-  creatorUserId: uuid('creator_user_id')
+  creatorUserId: varchar('creator_user_id', { length: 64 })
     .notNull()
     .references(() => users.id, { onDelete: 'cascade' }),
   configId: uuid('config_id')
@@ -60,7 +63,7 @@ export const challengeParticipants = pgTable(
     challengeId: uuid('challenge_id')
       .notNull()
       .references(() => challenges.id, { onDelete: 'cascade' }),
-    userId: uuid('user_id')
+    userId: varchar('user_id', { length: 64 })
       .notNull()
       .references(() => users.id, { onDelete: 'cascade' }),
     teamId: uuid('team_id').references(() => teams.id, { onDelete: 'cascade' }),
@@ -90,7 +93,7 @@ export const matchResults = pgTable(
     challengeMatchId: uuid('challenge_match_id')
       .notNull()
       .references(() => challengeMatches.id, { onDelete: 'cascade' }),
-    userId: uuid('user_id')
+    userId: varchar('user_id', { length: 64 })
       .notNull()
       .references(() => users.id, { onDelete: 'cascade' }),
     paths: jsonb('paths').notNull().$type<number[][]>(),
@@ -107,7 +110,7 @@ export const challengeMatchStarts = pgTable(
     challengeMatchId: uuid('challenge_match_id')
       .notNull()
       .references(() => challengeMatches.id, { onDelete: 'cascade' }),
-    userId: uuid('user_id')
+    userId: varchar('user_id', { length: 64 })
       .notNull()
       .references(() => users.id, { onDelete: 'cascade' }),
     startedAt: timestamp('started_at', { withTimezone: true }).notNull().defaultNow(),
@@ -123,7 +126,7 @@ export interface GameWordEntry {
 
 export const games = pgTable('games', {
   id: uuid('id').primaryKey().defaultRandom(),
-  userId: uuid('user_id')
+  userId: varchar('user_id', { length: 64 })
     .notNull()
     .references(() => users.id, { onDelete: 'cascade' }),
   configId: uuid('config_id')
@@ -146,7 +149,7 @@ export const reportedWords = pgTable('reported_words', {
   word: varchar('word', { length: 64 }).notNull().unique(),
   status: reportedWordStatusEnum('status').notNull().default('pending'),
   reportCount: integer('report_count').notNull().default(1),
-  firstReportedByUserId: uuid('first_reported_by_user_id')
+  firstReportedByUserId: varchar('first_reported_by_user_id', { length: 64 })
     .notNull()
     .references(() => users.id, { onDelete: 'cascade' }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
@@ -163,7 +166,7 @@ export const playerWordStats = pgTable(
   'player_word_stats',
   {
     id: uuid('id').primaryKey().defaultRandom(),
-    userId: uuid('user_id')
+    userId: varchar('user_id', { length: 64 })
       .notNull()
       .references(() => users.id, { onDelete: 'cascade' }),
     gridSize: integer('grid_size').notNull(),
