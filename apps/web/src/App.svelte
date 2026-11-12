@@ -24,7 +24,7 @@
   import { playAlreadyFound, playRejected, playWordAccepted } from './lib/sound.js';
   import HistoryScreen from './screens/HistoryScreen.svelte';
   import { adminAuth } from './lib/admin.svelte.js';
-  import { auth, checkSession, logout } from './lib/auth.svelte.js';
+  import { auth, checkSession, logout, watchPortalSession } from './lib/auth.svelte.js';
   import { submitMatchResult, type ChallengeDetail, type ChallengeMatch, type SubmitResultResponse } from './lib/challenges.js';
   import type { WordPopupData } from './lib/word-popup.js';
   import { setDisplayForms } from './lib/display.js';
@@ -278,6 +278,7 @@
 
   navigator.storage?.persist?.().catch(() => {});
   void checkSession();
+  watchPortalSession(() => screen === 'playing');
 </script>
 
 <main class:play-mode={screen === 'playing' && !!session}>

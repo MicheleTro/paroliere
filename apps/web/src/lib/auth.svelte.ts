@@ -47,3 +47,55 @@ export async function logout(): Promise<void> {
   auth.status = 'unauthenticated';
   window.location.assign(portalUrl);
 }
+
+// --- Controllo della sessione del portale ---
+// Il gioco ha una sessione sua; se nel frattempo l'utente esce dal portale (o entra con un altro account)
+// il gioco deve accorgersene. Il portale non tiene l'elenco delle sessioni: lo chiede il browser, che ha il
+// cookie del portale (stesso sito). Non interrompe mai una partita in corso: aspetta la fine.
+
+const CHECK_EVERY_MS = 60_000;
+
+/** true = stessa persona, false = uscita o cambiata, null = non si sa (rete assente): non si fa nulla. */
+async function portalMatches(): Promise<boolean | null> {
+  const user = auth.user;
+  if (!user) return null;
+  try {
+    const res = await fetch(`${user.portalUrl}/api/session`, { credentials: 'include', cache: 'no-store' });
+    if (res.status === 401) return false;
+    if (!res.ok) return null;
+    const body = (await res.json()) as { sub?: string };
+    return body.sub === user.id;
+  } catch {
+    return null;
+  }
+}
+
+export function watchPortalSession(isBusy: () => boolean): void {
+  let pendingLeave = false;
+  let running = false;
+
+  const check = async () => {
+    const user = auth.user;
+    // Le sessioni di sviluppo (dev-...) non hanno un corrispettivo nel portale
+    if (running || !user || user.id.startsWith('dev-')) return;
+    running = true;
+    try {
+      if (!pendingLeave && (await portalMatches()) === false) pendingLeave = true;
+      if (pendingLeave && !isBusy()) {
+        const loginUrl = user.loginUrl;
+        await fetch('/api/auth/logout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }).catch(
+          () => {},
+        );
+        auth.redirectToPortal(loginUrl);
+      }
+    } finally {
+      running = false;
+    }
+  };
+
+  setInterval(() => void check(), CHECK_EVERY_MS);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') void check();
+  });
+  window.addEventListener('focus', () => void check());
+}
