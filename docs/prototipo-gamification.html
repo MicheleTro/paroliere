@@ -1,0 +1,1122 @@
+<title>Paroliere in gioco</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: colonna da telefono centrata (app), mappa dei flussi fissa a sinistra su desktop.
+   Identità: tessere di maiolica su blu cobalto, zafferano per le ricompense, corallo per la serie. */
+:root{
+  --bg:#e8eef8; --surface:#ffffff; --surface-2:#dbe4f3; --line:#c5d1e6;
+  --ink:#0e1b38; --muted:#56668a;
+  --cobalt:#1d4ed8; --cobalt-soft:#d6e1fb; --on-cobalt:#ffffff;
+  --saffron:#f0a92a; --saffron-soft:#fdeccb; --on-saffron:#3a2500;
+  --coral:#e8513f; --coral-soft:#fbdcd7;
+  --mint:#138a69; --mint-soft:#d3f0e6;
+  --amber:#b7791f;
+  --tile:#fbf8f1; --tile-edge:#c7cfdf; --tile-ink:#10204a; --tile-sel:#ffd577;
+  --shadow:0 1px 2px rgba(14,27,56,.08),0 6px 18px rgba(14,27,56,.08);
+  --f-display:"Bricolage Grotesque","Avenir Next","Segoe UI",system-ui,sans-serif;
+  --f-body:"Figtree","Segoe UI",system-ui,-apple-system,sans-serif;
+  --r:14px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#09112a; --surface:#121c3a; --surface-2:#1b2850; --line:#2a3a68;
+  --ink:#e8eefc; --muted:#9aa9cc;
+  --cobalt:#7095ff; --cobalt-soft:#1f2f63; --on-cobalt:#08122e;
+  --saffron:#f5bd4f; --saffron-soft:#3b2c0f; --on-saffron:#2a1a00;
+  --coral:#ff7a68; --coral-soft:#43201e;
+  --mint:#43cfa2; --mint-soft:#0f3a30;
+  --amber:#f0b45a;
+  --tile:#f3efe4; --tile-edge:#8d97b4; --tile-ink:#10204a; --tile-sel:#ffcf66;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 22px rgba(0,0,0,.3);
+  color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#09112a; --surface:#121c3a; --surface-2:#1b2850; --line:#2a3a68;
+  --ink:#e8eefc; --muted:#9aa9cc;
+  --cobalt:#7095ff; --cobalt-soft:#1f2f63; --on-cobalt:#08122e;
+  --saffron:#f5bd4f; --saffron-soft:#3b2c0f; --on-saffron:#2a1a00;
+  --coral:#ff7a68; --coral-soft:#43201e;
+  --mint:#43cfa2; --mint-soft:#0f3a30;
+  --amber:#f0b45a;
+  --tile:#f3efe4; --tile-edge:#8d97b4; --tile-ink:#10204a; --tile-sel:#ffcf66;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 22px rgba(0,0,0,.3);
+  color-scheme:dark}
+
+html,body{height:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.45;
+  padding-left:max(0px,env(safe-area-inset-left,0px));padding-right:max(0px,env(safe-area-inset-right,0px))}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:30;background:var(--bg)}
+*{box-sizing:border-box}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,a:focus-visible,input:focus-visible{outline:3px solid var(--saffron);outline-offset:2px}
+.num{font-variant-numeric:tabular-nums}
+h1,h2,h3{font-family:var(--f-display);margin:0;text-wrap:balance;letter-spacing:-.01em}
+h1{font-size:1.75rem;font-weight:800;line-height:1.1}
+h2{font-size:1.2rem;font-weight:700}
+h3{font-size:1rem;font-weight:700}
+p{margin:0}
+.eyebrow{font-size:.72rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+.muted{color:var(--muted)}
+
+/* shell */
+.stage{display:flex;justify-content:center;gap:32px;min-height:100%}
+.map-aside{display:none}
+@media (min-width:1000px){
+  .stage{padding-block:24px}
+  .map-aside{display:block;width:300px;flex:none;position:sticky;top:24px;align-self:flex-start;max-height:calc(100vh - 48px);overflow:auto;
+    background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:20px}
+  .app{border-radius:28px;border:1px solid var(--line);box-shadow:var(--shadow);min-height:calc(100vh - 48px)!important;max-height:calc(100vh - 48px);overflow:auto}
+}
+.app{width:100%;max-width:460px;background:var(--bg);position:relative;min-height:100%;display:flex;flex-direction:column}
+.topbar{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--bg);display:flex;align-items:center;gap:10px;
+  padding:12px 16px 10px;min-height:60px}
+.topbar .title{flex:1;min-width:0;font-family:var(--f-display);font-weight:700;font-size:1.1rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.iconbtn{width:40px;height:40px;border-radius:12px;border:1px solid var(--line);background:var(--surface);display:grid;place-items:center;position:relative;flex:none}
+.iconbtn svg{width:20px;height:20px}
+.dot{position:absolute;top:-4px;right:-4px;min-width:18px;height:18px;border-radius:9px;background:var(--coral);color:#fff;font-size:.7rem;font-weight:700;display:grid;place-items:center;padding:0 4px;border:2px solid var(--bg)}
+main{flex:1;padding:4px 16px 28px;display:flex;flex-direction:column;gap:18px}
+.app.playing main{padding-bottom:24px}
+
+.tabbar{position:sticky;bottom:0;z-index:20;display:grid;grid-template-columns:repeat(5,1fr);align-items:end;
+  background:var(--surface);border-top:1px solid var(--line);padding:6px 6px calc(8px + env(safe-area-inset-bottom,0px))}
+.tab{background:none;border:0;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:.7rem;font-weight:600;color:var(--muted);padding:6px 0;border-radius:10px;position:relative}
+.tab svg{width:22px;height:22px}
+.tab[aria-current="page"]{color:var(--cobalt)}
+.tab .dot{top:0;right:calc(50% - 22px)}
+.tab-play{margin-top:-26px}
+.tab-play span.fab{width:58px;height:58px;border-radius:18px;background:var(--cobalt);color:var(--on-cobalt);display:grid;place-items:center;box-shadow:0 6px 16px rgba(29,78,216,.35);transform:rotate(-4deg)}
+.tab-play span.fab svg{width:28px;height:28px}
+.app.playing .tabbar{display:none}
+
+/* elementi */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:16px}
+.btn{border:0;border-radius:12px;padding:13px 18px;font-weight:700;font-size:1rem;display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:48px}
+.btn-primary{background:var(--cobalt);color:var(--on-cobalt)}
+.btn-gold{background:var(--saffron);color:var(--on-saffron)}
+.btn-ghost{background:var(--surface);border:1px solid var(--line);color:var(--ink)}
+.btn-quiet{background:transparent;color:var(--cobalt);padding:8px 4px;min-height:auto;font-weight:700}
+.btn-block{width:100%}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.row{display:flex;align-items:center;gap:12px}
+.between{justify-content:space-between}
+.stack{display:flex;flex-direction:column;gap:12px}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border-radius:999px;background:var(--surface-2);font-size:.8rem;font-weight:600}
+.chip svg{width:14px;height:14px}
+.pill{display:inline-flex;white-space:nowrap;padding:2px 8px;border-radius:999px;font-size:.72rem;font-weight:700}
+.pill-mint{background:var(--mint-soft);color:var(--mint)}
+.pill-coral{background:var(--coral-soft);color:var(--coral)}
+.pill-gold{background:var(--saffron-soft);color:var(--amber)}
+.pill-blue{background:var(--cobalt-soft);color:var(--cobalt)}
+.bar{height:8px;border-radius:999px;background:var(--surface-2);overflow:hidden}
+.bar>i{display:block;height:100%;border-radius:inherit;background:var(--cobalt);transition:width .8s cubic-bezier(.2,.8,.2,1)}
+.bar.gold>i{background:var(--saffron)}
+.bar.mint>i{background:var(--mint)}
+.bar.coral>i{background:var(--coral)}
+.section-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+.list{display:flex;flex-direction:column}
+.list>*+*{border-top:1px solid var(--line)}
+.li{display:flex;align-items:center;gap:12px;padding:12px 0;background:none;border-left:0;border-right:0;border-bottom:0;width:100%;text-align:left}
+.list>.li:first-child{border-top:0}
+.li .grow{flex:1;min-width:0}
+.avatar{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;font-family:var(--f-display);font-weight:800;color:var(--tile-ink);background:var(--tile);border:1px solid var(--tile-edge);box-shadow:inset 0 -3px 0 rgba(16,32,74,.12);flex:none}
+.seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:6px;background:var(--surface-2);padding:4px;border-radius:12px}
+.seg button{border:0;background:transparent;border-radius:9px;padding:9px 6px;font-weight:700;font-size:.88rem;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:var(--shadow)}
+.seg button:disabled{opacity:.4}
+
+/* top bar home */
+.me{display:flex;align-items:center;gap:10px;flex:1;min-width:0;background:none;border:0;padding:0;text-align:left}
+.me .lvl{font-family:var(--f-display);font-weight:800;font-size:1rem;line-height:1}
+.me .bar{height:6px;width:110px;margin-top:5px}
+.streak{display:inline-flex;align-items:center;gap:4px;padding:8px 10px;border-radius:12px;background:var(--coral-soft);color:var(--coral);font-family:var(--f-display);font-weight:800;border:0}
+.streak svg{width:18px;height:18px}
+
+/* maiolica */
+.majolica{position:relative;overflow:hidden;background:var(--cobalt);color:var(--on-cobalt);border-radius:20px;padding:20px;border:0}
+.majolica::before{content:"";position:absolute;inset:0;opacity:.16;pointer-events:none;
+  background:
+   radial-gradient(circle at 0 0,transparent 13px,currentColor 14px,currentColor 16px,transparent 17px) 0 0/34px 34px,
+   radial-gradient(circle at 17px 17px,currentColor 3px,transparent 4px) 0 0/34px 34px}
+.majolica>*{position:relative}
+.majolica .eyebrow{color:inherit;opacity:.8}
+.majolica .btn-gold{box-shadow:0 4px 0 rgba(0,0,0,.18)}
+.mini-tiles{display:flex;gap:5px}
+.mini-tiles b{width:30px;height:30px;border-radius:8px;background:var(--tile);color:var(--tile-ink);display:grid;place-items:center;font-family:var(--f-display);font-weight:800;text-transform:uppercase;box-shadow:inset 0 -3px 0 rgba(16,32,74,.15)}
+.mini-tiles b.q{background:rgba(255,255,255,.18);color:inherit;box-shadow:none}
+
+.tiles-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.qcard{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px;text-align:left;display:flex;flex-direction:column;gap:8px;min-height:112px;position:relative}
+.qcard .ic{width:34px;height:34px;border-radius:10px;display:grid;place-items:center}
+.qcard .ic svg{width:20px;height:20px}
+.qcard .big{font-family:var(--f-display);font-weight:800;font-size:1.35rem;line-height:1}
+
+/* missioni */
+.mission{display:grid;grid-template-columns:1fr auto;gap:6px 12px;align-items:center;padding:12px 0}
+.mission .bar{grid-column:1/2;height:6px}
+.mission .rw{grid-row:1/3;grid-column:2;text-align:right}
+.mission.done .t{text-decoration:line-through;color:var(--muted)}
+.xp{font-family:var(--f-display);font-weight:800;color:var(--amber)}
+
+/* gioco */
+.hud{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center}
+.timer{font-family:var(--f-display);font-weight:800;font-size:1.6rem;line-height:1;min-width:64px}
+.timer.low{color:var(--coral)}
+.score{font-family:var(--f-display);font-weight:800;font-size:1.6rem;line-height:1;text-align:right;min-width:64px}
+.tbar{height:6px;border-radius:999px;background:var(--surface-2);overflow:hidden}
+.tbar i{display:block;height:100%;background:var(--cobalt);transition:width .25s linear}
+.tbar.low i{background:var(--coral)}
+.ladder{position:relative;height:30px;margin-top:2px}
+.ladder .track{position:absolute;left:0;right:0;top:12px;height:6px;border-radius:999px;background:var(--surface-2)}
+.ladder .fill{position:absolute;left:0;top:12px;height:6px;border-radius:999px;background:var(--saffron);transition:width .5s cubic-bezier(.2,.8,.2,1)}
+.ladder .tick{position:absolute;top:7px;width:16px;height:16px;margin-left:-8px;border-radius:50%;background:var(--surface);border:2px solid var(--line);display:grid;place-items:center;font-size:.55rem;font-weight:800;color:var(--muted)}
+.ladder .tick.on{background:var(--saffron);border-color:var(--saffron);color:var(--on-saffron)}
+.gradeline{display:flex;justify-content:space-between;font-size:.82rem;gap:8px}
+.gradeline b{font-family:var(--f-display)}
+
+.board-wrap{position:relative;user-select:none;-webkit-user-select:none;touch-action:none;margin-top:4px}
+.board{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;padding:12px;border-radius:22px;background:var(--cobalt);position:relative;
+  box-shadow:inset 0 0 0 4px rgba(255,255,255,.08)}
+.board::before{content:"";position:absolute;inset:0;border-radius:inherit;opacity:.12;pointer-events:none;color:#fff;
+  background:radial-gradient(circle at 50% 50%,currentColor 2px,transparent 3px) 0 0/22px 22px}
+.tile{aspect-ratio:1;max-width:100%;border-radius:16px;background:var(--tile);color:var(--tile-ink);display:grid;place-items:center;position:relative;z-index:1;
+  font-family:var(--f-display);font-weight:800;font-size:clamp(1.8rem,9vw,2.6rem);text-transform:uppercase;
+  box-shadow:inset 0 -5px 0 rgba(16,32,74,.16),0 2px 0 rgba(0,0,0,.15);transition:transform .08s,background .12s}
+.tile.sel{background:var(--tile-sel);transform:scale(.94)}
+.tile .bonus{position:absolute;top:5px;right:6px;font-size:.62rem;font-weight:800;padding:1px 5px;border-radius:6px;background:var(--coral);color:#fff;font-family:var(--f-body);letter-spacing:.02em;text-transform:none}
+.tile .bonus.x2{background:var(--mint)}
+.board.ok .tile.sel{background:var(--mint-soft);}
+.board svg.path{position:absolute;inset:0;width:100%;height:100%;z-index:2;pointer-events:none}
+.board svg.path polyline{fill:none;stroke:var(--coral);stroke-width:7;stroke-linecap:round;stroke-linejoin:round;opacity:.75}
+.board.hl .tile:not(.sel){opacity:.55}
+.current{height:44px;display:flex;align-items:center;justify-content:center;gap:10px}
+.current .w{font-family:var(--f-display);font-weight:800;font-size:1.7rem;letter-spacing:.06em;text-transform:uppercase}
+.current .fb{font-weight:700;font-size:.95rem;padding:6px 12px;border-radius:999px}
+.fb.ok{background:var(--mint-soft);color:var(--mint)}
+.fb.dup{background:var(--saffron-soft);color:var(--amber)}
+.fb.no{background:var(--coral-soft);color:var(--coral)}
+.fb.short{background:var(--surface-2);color:var(--muted)}
+.shake{animation:shake .32s}
+@keyframes shake{20%,60%{transform:translateX(-6px)}40%,80%{transform:translateX(6px)}}
+.floater{position:absolute;z-index:5;pointer-events:none;font-family:var(--f-display);font-weight:800;font-size:1.6rem;color:var(--mint);animation:float .9s ease-out forwards;text-shadow:0 1px 0 var(--surface)}
+@keyframes float{from{opacity:1;transform:translate(-50%,0)}to{opacity:0;transform:translate(-50%,-60px)}}
+.combo{display:inline-flex;align-items:center;gap:6px;font-family:var(--f-display);font-weight:800;color:var(--coral);font-size:.95rem}
+.combo .bar{width:70px;height:6px}
+.found{display:flex;flex-wrap:wrap;gap:6px;max-height:96px;overflow:auto}
+.wchip{padding:4px 9px;border-radius:8px;background:var(--surface);border:1px solid var(--line);font-weight:600;font-size:.85rem;text-transform:uppercase;letter-spacing:.03em}
+.wchip.new{border-color:var(--saffron);background:var(--saffron-soft)}
+.wchip.rare{border-color:var(--cobalt);background:var(--cobalt-soft)}
+button.wchip{cursor:pointer}
+button.wchip[aria-pressed="true"]{background:var(--cobalt);color:var(--on-cobalt);border-color:var(--cobalt)}
+.countdown{position:absolute;inset:0;z-index:10;display:grid;place-items:center;background:color-mix(in srgb,var(--bg) 70%,transparent);border-radius:22px}
+.countdown b{font-family:var(--f-display);font-size:5rem;font-weight:800;color:var(--cobalt);animation:pop .9s ease-out}
+@keyframes pop{from{transform:scale(1.6);opacity:0}30%{opacity:1}to{transform:scale(1)}}
+
+/* riepilogo */
+.medal{width:132px;height:132px;margin:0 auto;border-radius:34px;background:var(--saffron);color:var(--on-saffron);display:grid;place-items:center;position:relative;transform:rotate(-6deg);
+  box-shadow:inset 0 -8px 0 rgba(0,0,0,.14),0 10px 30px rgba(240,169,42,.35);animation:medal .7s cubic-bezier(.2,1.4,.4,1)}
+.medal b{font-family:var(--f-display);font-size:3.6rem;font-weight:800;transform:rotate(6deg)}
+@keyframes medal{from{transform:rotate(-30deg) scale(.3);opacity:0}to{transform:rotate(-6deg) scale(1);opacity:1}}
+.hero-center{text-align:center;display:flex;flex-direction:column;gap:10px;align-items:center;padding-top:8px}
+.grade-steps{display:grid;grid-template-columns:repeat(6,1fr);gap:4px}
+.grade-steps div{text-align:center;font-size:.66rem;font-weight:700;color:var(--muted);display:flex;flex-direction:column;gap:4px;align-items:center}
+.grade-steps i{display:block;width:100%;height:8px;border-radius:4px;background:var(--surface-2)}
+.grade-steps .on i{background:var(--saffron)}
+.grade-steps .cur{color:var(--ink)}
+.grade-steps .cur i{background:var(--coral)}
+.banner{display:flex;gap:12px;align-items:center;padding:12px 14px;border-radius:var(--r);background:var(--mint-soft);color:var(--mint);font-weight:700}
+.banner svg{width:22px;height:22px;flex:none}
+.stats3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px;text-align:center}
+.stat b{display:block;font-family:var(--f-display);font-size:1.35rem;font-weight:800}
+.stat span{font-size:.72rem;color:var(--muted);font-weight:600}
+.xp-break{display:grid;grid-template-columns:1fr auto;gap:4px 12px;font-size:.88rem}
+.xp-break span:nth-child(even){text-align:right;font-weight:700}
+.miniboard{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;padding:8px;border-radius:14px;background:var(--cobalt);width:168px;position:relative;flex:none}
+.miniboard .tile{font-size:1.15rem;border-radius:8px;box-shadow:inset 0 -3px 0 rgba(16,32,74,.16)}
+.miniboard svg.path polyline{stroke-width:4}
+.words-panel{display:flex;gap:14px;align-items:flex-start}
+@media (max-width:420px){.words-panel{flex-direction:column;align-items:center}.words-panel>.found{width:100%}}
+.words-panel .found{max-height:240px;flex:1;min-width:0;align-content:flex-start}
+
+/* sheet / modale / toast */
+.scrim{position:fixed;inset:0;z-index:50;background:rgba(5,10,25,.55);display:flex;align-items:flex-end;justify-content:center;padding:16px;padding-bottom:calc(16px + env(safe-area-inset-bottom,0px))}
+.sheet{width:100%;max-width:428px;background:var(--surface);border-radius:24px;padding:24px 20px 20px;display:flex;flex-direction:column;gap:14px;animation:up .3s cubic-bezier(.2,.8,.2,1);max-height:85vh;overflow:auto}
+.sheet.center{text-align:center;align-items:center}
+@keyframes up{from{transform:translateY(40px);opacity:0}}
+.toast{position:fixed;left:50%;bottom:calc(96px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:60;background:var(--ink);color:var(--bg);padding:11px 16px;border-radius:12px;font-weight:600;font-size:.9rem;max-width:min(420px,calc(100% - 32px));box-shadow:var(--shadow);animation:up .25s}
+.badge-medal{width:72px;height:72px;border-radius:22px;display:grid;place-items:center;font-family:var(--f-display);font-weight:800;font-size:1.3rem;position:relative;
+  background:var(--tile);color:var(--tile-ink);border:3px solid var(--tile-edge);box-shadow:inset 0 -5px 0 rgba(16,32,74,.12)}
+.badge-medal.bronze{border-color:#c98552}.badge-medal.silver{border-color:#9fb0c8}.badge-medal.gold{border-color:var(--saffron);background:var(--saffron-soft);color:var(--amber)}
+.badge-medal.locked{filter:grayscale(1);opacity:.45}
+.badge-medal.big{width:110px;height:110px;font-size:2rem;border-radius:30px;animation:medal .7s cubic-bezier(.2,1.4,.4,1)}
+.badges{display:grid;grid-template-columns:repeat(3,1fr);gap:16px 10px}
+.badge{display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center;background:none;border:0;padding:0}
+.badge .n{font-size:.78rem;font-weight:700;line-height:1.2}
+.badge .bar{width:64px;height:5px}
+
+/* duelli */
+.elo{display:flex;align-items:center;gap:14px}
+.elo .shield{width:64px;height:72px;flex:none;display:grid;place-items:center;font-family:var(--f-display);font-weight:800;color:var(--tile-ink);font-size:1.1rem;
+  background:var(--tile);clip-path:polygon(50% 0,100% 16%,100% 62%,50% 100%,0 62%,0 16%);box-shadow:inset 0 -6px 0 rgba(16,32,74,.15)}
+.vs{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px;text-align:center}
+.vs .s{font-family:var(--f-display);font-weight:800;font-size:2.4rem;line-height:1}
+.vs .win{color:var(--mint)}
+.cols3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.cols3>div{min-width:0;display:flex;flex-direction:column;gap:6px}
+.cols3 .found{max-height:200px}
+.cols3 .wchip{font-size:.72rem;padding:3px 6px}
+.radio-li{display:flex;align-items:center;gap:12px;padding:10px;border-radius:12px;border:1px solid var(--line);background:var(--surface);width:100%;text-align:left}
+.radio-li[aria-pressed="true"]{border-color:var(--cobalt);box-shadow:0 0 0 2px var(--cobalt) inset}
+
+/* collezione */
+.hist{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;align-items:end;height:120px}
+.hist div{display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:4px;height:100%;font-size:.7rem;color:var(--muted);font-weight:600}
+.hist i{display:block;width:100%;border-radius:6px 6px 2px 2px;background:var(--cobalt)}
+.hist em{font-style:normal;color:var(--ink);font-weight:700}
+.input{width:100%;padding:12px 14px;border-radius:12px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font:inherit}
+
+/* serie */
+.flame-hero{display:flex;align-items:center;gap:16px}
+.flame-hero svg{width:64px;height:64px;color:var(--coral)}
+.flame-hero b{font-family:var(--f-display);font-size:3rem;font-weight:800;line-height:1}
+.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;text-align:center}
+.cal .h{font-size:.7rem;font-weight:700;color:var(--muted)}
+.cal .d{aspect-ratio:1;max-width:100%;border-radius:10px;display:grid;place-items:center;font-size:.82rem;font-weight:600;background:var(--surface-2);color:var(--muted)}
+.cal .d.p{background:var(--coral);color:#fff}
+.cal .d.f{background:var(--cobalt-soft);color:var(--cobalt);outline:2px dashed var(--cobalt);outline-offset:-3px}
+.cal .d.t{outline:2px solid var(--ink);outline-offset:-2px;color:var(--ink)}
+.cal .d.x{background:transparent}
+.week{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+.week div{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:.7rem;font-weight:700;color:var(--muted)}
+.week i{width:30px;height:30px;border-radius:9px;background:var(--surface-2);display:grid;place-items:center}
+.week i.p{background:var(--coral);color:#fff}
+.week i.t{outline:2px solid var(--ink);outline-offset:-2px}
+.week i svg{width:16px;height:16px}
+
+/* classifiche */
+.rank{display:grid;grid-template-columns:28px 38px 1fr auto;gap:10px;align-items:center;padding:10px 0}
+.rank .pos{font-family:var(--f-display);font-weight:800;color:var(--muted);text-align:center}
+.rank.me{background:var(--cobalt-soft);border-radius:12px;padding:10px 8px;margin:0 -8px}
+.rank .sc{font-family:var(--f-display);font-weight:800;text-align:right}
+.podium1 .pos{color:var(--amber)}
+
+/* mappa */
+.map h3{margin-top:14px}
+.map ol{margin:6px 0 0;padding-left:18px;display:flex;flex-direction:column;gap:2px;font-size:.88rem}
+.map a{color:var(--cobalt);font-weight:600;text-decoration:none}
+.map a:hover{text-decoration:underline}
+.map .sim{display:flex;flex-direction:column;gap:6px;margin-top:8px}
+.map .sim .btn{min-height:38px;padding:8px 12px;font-size:.85rem}
+.notif{display:flex;gap:12px;padding:12px 0;align-items:flex-start;width:100%;text-align:left;background:none;border-left:0;border-right:0;border-bottom:0}
+.notif.unread .t{font-weight:700}
+.notif .ic{width:36px;height:36px;border-radius:10px;display:grid;place-items:center;flex:none}
+.notif .ic svg{width:18px;height:18px}
+.ic-blue{background:var(--cobalt-soft);color:var(--cobalt)}
+.ic-gold{background:var(--saffron-soft);color:var(--amber)}
+.ic-coral{background:var(--coral-soft);color:var(--coral)}
+.ic-mint{background:var(--mint-soft);color:var(--mint)}
+.table{width:100%;border-collapse:collapse;font-size:.88rem}
+.table td{padding:9px 0;border-top:1px solid var(--line)}
+.table td:last-child{text-align:right;font-family:var(--f-display);font-weight:800}
+.switch{width:46px;height:28px;border-radius:999px;background:var(--surface-2);border:1px solid var(--line);position:relative;flex:none}
+.switch::after{content:"";position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:var(--muted);transition:.2s}
+.switch[aria-pressed="true"]{background:var(--cobalt);border-color:var(--cobalt)}
+.switch[aria-pressed="true"]::after{left:21px;background:#fff}
+.note{font-size:.8rem;color:var(--muted);padding:10px 12px;border-radius:10px;border:1px dashed var(--line)}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+</style>
+
+<div class="stage">
+  <aside class="map-aside map" id="mapAside" aria-label="Mappa del prototipo"></aside>
+  <div class="app" id="app">
+    <header class="topbar" id="topbar"></header>
+    <main id="main"></main>
+    <nav class="tabbar" id="tabbar" aria-label="Navigazione principale"></nav>
+  </div>
+</div>
+<div id="overlay"></div>
+
+<script>
+(function(){
+"use strict";
+/* ---------- dati: tre griglie reali risolte col dizionario del progetto ---------- */
+const GRIDS={
+  train:{letters:"tnaovamlltidlsea",words:["adiamo","adiate","adiste","adita","adite","aia","aie","ali","aliamo","aliate","alida","alide","alita","alitan","alma","almi","almo","alo","alt","alte","alti","ama","amai","aman","amate","amati","ami","amiate","amo","anali","analiste","atea","atei","dai","dea","dei","desi","desia","desiamo","desian","desta","destai","destan","desti","destiamo","dia","diamo","dian","diate","dieta","dista","distan","dita","dite","edita","editan","esima","esiman","esimo","esita","esitan","estima","estiman","estimo","idea","ima","imo","laida","laide","lama","lana","lati","liana","lieta","lima","liman","limate","limo","lise","list","lista","listan","liste","lite","mai","mail","mais","mal","mali","malia","malie","malo","malte","maltesi","man","manate","mia","mie","mieta","mietan","mila","mise","mista","miste","mite","mola","molan","moli","moliate","naia","naie","nate","nati","natia","natie","ola","oli","olia","olian","oliate","olmi","omise","seda","sedai","sedi","sedia","sediamo","sei","set","seta","seti","sia","siamo","sian","siate","sieda","sim","sit","sita","site","slam","sta","stai","stan","stana","stia","stiamo","stian","stie","stil","stila","stilan","stilo","stima","stiman","stimo","stimola","stimolan","tal","tam","tamil","tana","tant","tate","tedi","tedia","tediamo","tedian","tesi","tesiamo","tie","vai","vaia","vaie","val","valse","valsi","van","vana","vate","vati"]},
+  daily:{letters:"ntmnoaaoendiaell",words:["adiamo","ama","amai","aman","amando","amano","amato","amo","andai","andata","andato","andiamo","aneli","aneliamo","anelli","ano","atona","atone","dai","dama","dan","data","datai","datan","datane","datano","dato","dea","dee","del","denota","denotai","denotan","denotano","dia","diamo","dian","diano","dio","dna","doma","domai","doman","domano","domata","domato","don","dona","donai","donan","donano","donata","donato","elida","elidano","elido","end","idea","idean","ideano","idee","leda","ledano","ledi","lediamo","ledo","lena","lene","leno","liana","liane","lido","mai","mail","man","manda","mandai","mandan","mandano","mandato","mandi","mando","mano","manona","manone","manto","moda","mode","model","modelli","modi","monade","monadi","nana","nane","nano","nata","nato","nel","neo","neon","neonata","nodi","noi","noia","noma","nomade","nomadi","nomai","noman","nomano","nomata","nomato","non","nona","none","nota","notai","notaio","notan","notando","notano","oda","odan","odano","ode","odi","odia","odian","odiano","odiata","odiato","odile","onda","ondata","onde","onta","tam","tana","tane","tona","tonai","tonan","tonando","tonano","tonda","tonde","tondi","tondo"]},
+  duel:{letters:"morevmldaisitlet",words:["aie","alesi","ali","alt","alti","ami","amo","amor","amore","atleti","avi","avo","del","dite","edili","edite","elise","elisi","elisia","elisie","elite","elmi","elmo","ero","esile","esili","esilia","esiliammo","esiliamo","esiliavo","esima","esimo","esita","esitammo","esitavo","ima","immoli","imo","itale","lati","lavi","lavo","ledi","lei","lesi","lesiva","lesivo","lesti","lider","lieti","lima","limavo","limo","lise","lisi","list","liste","listi","lite","livore","lord","lorde","lordi","mai","mail","mais","mal","male","malesi","mali","malie","mia","mie","miei","mieti","mila","milite","mise","misi","miste","misti","mole","moli","molse","molsi","morde","mordi","more","ole","oli","olia","oliva","olmi","omise","omisi","orde","ordiste","ordite","ore","orli","orma","ormai","ovaie","ovale","ovali","rom","romita","rovi","rovisti","sei","set","seti","sia","siamo","sim","sit","sita","site","slam","slavi","slavo","smalti","smaltivo","smiela","smielavo","steli","stie","stil","stile","stili","stiliamo","stilo","tal","tale","tali","tam","tamil","tavole","tavoli","tela","telai","teli","tesi","tesiamo","tie","timor","timore","vai","vaie","val","vale","valesti","vali","valse","valsi","vati","via","viale","vie","vieti","vile","vili","vis","visi","visite","viste","visti","vita","vitale","voler","volermi","voli","volse","volsi","vomita"]}
+};
+for(const g of Object.values(GRIDS)){g.set=new Set(g.words);g.max=g.words.reduce((s,w)=>s+base(w),0)}
+const N=4;
+const GRADES=["Principiante","Discreto","Bravo","Ottimo","Maestro","Genio"];
+const GRADE_F=[0,.03,.06,.1,.15,.22];
+const FRIENDS={Giulia:1452,Luca:1510,Marco:1340,Sara:1298,Elena:1405};
+
+function base(w){return Math.max(0,w.length-2)}
+function hash(s){let h=2166136261;for(let i=0;i<s.length;i++)h=Math.imul(h^s.charCodeAt(i),16777619);return (h>>>0)/4294967296}
+function rarity(w){const r={3:[35,85],4:[20,60],5:[10,35],6:[4,18]}[w.length]||[1,8];return Math.round(r[0]+hash(w)*(r[1]-r[0]))}
+function knownBefore(w){return hash(w+"#k")<.5}
+function thresholds(max){return GRADE_F.map(f=>Math.round(f*max))}
+function gradeOf(score,max){const t=thresholds(max);let g=0;t.forEach((v,i)=>{if(score>=v)g=i});return g}
+function adj(a,b){return a!==b&&Math.abs((a/N|0)-(b/N|0))<=1&&Math.abs(a%N-b%N)<=1}
+function findPath(letters,word){
+  const L=[...letters];
+  function dfs(i,k,used){if(L[i]!==word[k])return null;used.push(i);if(k===word.length-1)return used.slice();
+    for(let j=0;j<16;j++)if(!used.includes(j)&&adj(i,j)){const r=dfs(j,k+1,used);if(r)return r}used.pop();return null}
+  for(let i=0;i<16;i++){const r=dfs(i,0,[]);if(r)return r}return null}
+function xpFor(l){return 200+l*25}
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const fmt=n=>n.toLocaleString("it-IT");
+
+/* ---------- icone ---------- */
+const I={
+  home:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>',
+  swords:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 17.5 3 6V3h3l11.5 11.5M13 19l6-6M16 16l4 4M19 21l2-2M9.5 6.5 14 2h3v3l-4.5 4.5M5 14l-2 2 2 2 2-2"/></svg>',
+  play:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="2"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="2"/><path d="M14 14h7v7"/></svg>',
+  book:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5V5a2 2 0 0 1 2-2h14v16H6a2 2 0 0 0-2 2 2 2 0 0 0 2 2h14"/><path d="M9 7h7M9 11h5"/></svg>',
+  user:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>',
+  bell:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>',
+  back:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>',
+  close:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>',
+  flame:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2c1 3.5 5 6 5 11a5 5 0 0 1-10 0c0-2 .8-3.4 2-4.5.2 1.6 1 2.6 2 3-.6-3.2.2-6.6 1-9.5z"/></svg>',
+  trophy:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3"/></svg>',
+  medal:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="15" r="6"/><path d="M8.5 10 5 3h4l3 5 3-5h4l-3.5 7"/></svg>',
+  target:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/></svg>',
+  cal:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>',
+  check:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5 10 17 19 7"/></svg>',
+  star:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="m12 2.5 2.9 6 6.6.8-4.9 4.6 1.3 6.6L12 17.3 6.1 20.5l1.3-6.6L2.5 9.3l6.6-.8z"/></svg>',
+  share:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7M16 6l-4-4-4 4M12 2v13"/></svg>',
+  map:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2z"/><path d="M9 4v14M15 6v14"/></svg>',
+  shield:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z"/></svg>',
+  ice:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 2v20M4 7l16 10M20 7 4 17M9 4l3 2 3-2M9 20l3-2 3 2"/></svg>',
+  people:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c1-3.5 3.5-5 6.5-5s5.5 1.5 6.5 5"/><circle cx="17" cy="9" r="2.5"/><path d="M17 14c2.5 0 4 1.5 4.5 4"/></svg>'
+};
+
+/* ---------- stato simulato ---------- */
+let S;
+function initState(){
+  S={
+    level:12,xp:430,elo:1384,
+    streak:9,bestStreak:14,freezes:2,today:12,played:new Set([1,3,4,5,6,7,8,9,10,11]),frozen:new Set([2]),
+    daily:{n:312,played:false,result:null},
+    collectionBase:1847,discovered:new Set(),
+    lenHist:{3:212,4:398,5:461,6:402,7:236,8:98,9:40},
+    rareFound:["impastoiare","sbalestrato","ammonticchia","scalpitavano"],
+    records:{"4×4 · 120 s · Classica":46,"4×4 · 90 s · Classica":31,"4×4 · 120 s · Caselle bonus":63,"5×5 · 120 s · Classica":72,"Griglia del giorno":58},
+    stats:{games:214,words:5236,longest:"scalpitavano",wins:6},
+    sound:true,notifPush:true,
+    missions:[
+      {id:"long6",t:"Trova 3 parole da 6 lettere o più",goal:3,p:1,xp:40},
+      {id:"daily",t:"Gioca la griglia del giorno",goal:1,p:0,xp:60},
+      {id:"grade",t:"Raggiungi il grado Ottimo",goal:1,p:0,xp:50}
+    ],
+    weekly:[
+      {id:"wduel",t:"Vinci 3 duelli",goal:3,p:1,xp:150},
+      {id:"wnew",t:"Scopri 50 parole nuove",goal:50,p:32,xp:120},
+      {id:"wcombo",t:"Fai una combo ×5",goal:1,p:0,xp:100}
+    ],
+    badges:[
+      {id:"first",name:"Prima partita",lab:"1",tier:"bronze",desc:"Gioca la tua prima partita.",got:true},
+      {id:"s7",name:"Serie di 7",lab:"7",tier:"silver",desc:"Gioca 7 giorni di fila.",got:true},
+      {id:"s30",name:"Serie di 30",lab:"30",tier:"gold",desc:"Gioca 30 giorni di fila.",got:false,prog:()=>[S.streak,30]},
+      {id:"w7",name:"Settebello",lab:"7+",tier:"bronze",desc:"Trova una parola di 7 lettere o più.",got:true},
+      {id:"w9",name:"Nove lettere",lab:"9+",tier:"gold",desc:"Trova una parola di 9 lettere o più.",got:false},
+      {id:"ottimo",name:"Ottimo",lab:"Ot",tier:"silver",desc:"Chiudi una partita col grado Ottimo.",got:true},
+      {id:"genio",name:"Genio",lab:"Ge",tier:"gold",desc:"Chiudi una partita col grado Genio.",got:false},
+      {id:"combo5",name:"Fulmine",lab:"×5",tier:"silver",desc:"Trova 5 parole di fila, a meno di 5 secondi l'una dall'altra.",got:false},
+      {id:"coll2k",name:"Collezionista",lab:"2k",tier:"silver",desc:"Scopri 2.000 parole diverse.",got:false,prog:()=>[collCount(),2000]},
+      {id:"duel10",name:"Duellante",lab:"10",tier:"silver",desc:"Vinci 10 duelli.",got:false,prog:()=>[S.stats.wins,10]},
+      {id:"photo",name:"Al fotofinish",lab:"±2",tier:"gold",desc:"Vinci un duello con 2 punti di scarto o meno.",got:false},
+      {id:"daily1",name:"Puntuale",lab:"G",tier:"bronze",desc:"Gioca la griglia del giorno.",got:true}
+    ],
+    duels:[
+      {id:1,opp:"Giulia",status:"invito",dur:120},
+      {id:2,opp:"Marco",status:"tocca",dur:90,oppPlayed:true},
+      {id:3,opp:"Luca",status:"attesa",dur:120,me:41},
+      {id:4,opp:"Sara",status:"concluso",win:true,me:57,them:49,delta:12},
+      {id:5,opp:"Elena",status:"concluso",win:false,me:33,them:45,delta:-9}
+    ],
+    notifs:[
+      {id:1,ic:"swords",c:"ic-blue",t:"Giulia ti ha sfidato a un duello",s:"4×4 · 2 minuti · Versus",go:"duelli",unread:true,when:"10 min fa"},
+      {id:2,ic:"trophy",c:"ic-gold",t:"Luca ha fatto 71 punti sulla griglia del giorno",s:"Il tuo record sulla griglia del giorno è 58",go:"giorno",unread:true,when:"1 h fa"},
+      {id:3,ic:"people",c:"ic-mint",t:"Paolo vuole essere tuo amico",s:"Richiesta arrivata dal portale",go:"notizie",unread:true,when:"ieri",friend:true},
+      {id:4,ic:"medal",c:"ic-gold",t:"Hai sbloccato la medaglia Serie di 7",s:"Prossima: Serie di 30",go:"medaglie",unread:false,when:"5 giorni fa"},
+      {id:5,ic:"flame",c:"ic-coral",t:"La tua serie è a rischio",s:"Promemoria delle 20:00, se non hai ancora giocato",go:"serie",unread:false,when:"esempio"}
+    ],
+    game:null,lastResult:null,lastDuel:null,selDuelOpp:"Giulia",cfg:{dur:120,variant:"classica"},
+    sumTab:"trovate",sumSel:null,rankTab:"oggi",duelDur:120
+  };
+}
+initState();
+const collCount=()=>S.collectionBase+S.discovered.size;
+const unread=()=>S.notifs.filter(n=>n.unread).length;
+const duelTodo=()=>S.duels.filter(d=>d.status==="invito"||d.status==="tocca").length;
+
+/* ---------- audio ---------- */
+let AC=null;
+function beep(f,d=.09,type="triangle",v=.08){if(!S.sound)return;try{AC=AC||new (window.AudioContext||window.webkitAudioContext)();const o=AC.createOscillator(),g=AC.createGain();o.type=type;o.frequency.value=f;g.gain.value=v;g.gain.exponentialRampToValueAtTime(.0001,AC.currentTime+d);o.connect(g).connect(AC.destination);o.start();o.stop(AC.currentTime+d)}catch(e){}}
+
+/* ---------- router ---------- */
+const ROUTES={
+  home:{title:"",tab:"home",r:vHome},
+  allenamento:{title:"Allenamento",tab:"play",r:vConfig,back:"home"},
+  partita:{title:"",r:vGame,playing:true},
+  riepilogo:{title:"Riepilogo",r:vSummary,back:"home"},
+  giorno:{title:"Griglia del giorno",tab:"home",r:vDaily,back:"home"},
+  classifica:{title:"Classifiche",tab:"home",r:vRanking,back:"home"},
+  duelli:{title:"Duelli",tab:"duelli",r:vDuels},
+  "nuovo-duello":{title:"Nuovo duello",tab:"duelli",r:vNewDuel,back:"duelli"},
+  "esito-duello":{title:"Esito del duello",tab:"duelli",r:vDuelResult,back:"duelli"},
+  collezione:{title:"Collezione",tab:"collezione",r:vCollection},
+  medaglie:{title:"Medaglie",tab:"profilo",r:vBadges,back:"profilo"},
+  serie:{title:"Serie di giorni",tab:"home",r:vStreak,back:"home"},
+  missioni:{title:"Missioni",tab:"home",r:vMissions,back:"home"},
+  profilo:{title:"Profilo",tab:"profilo",r:vProfile},
+  notizie:{title:"Notizie",tab:"home",r:vNotifs,back:"home"},
+  mappa:{title:"Mappa del prototipo",tab:"profilo",r:vMapPage,back:"profilo"}
+};
+let route="home";
+function go(r){if(location.hash==="#"+r)render();else location.hash=r}
+function current(){const h=location.hash.slice(1);return ROUTES[h]?h:"home"}
+window.addEventListener("hashchange",()=>{if(S.game&&current()!=="partita"){location.hash="partita";return}render()});
+
+function render(){
+  route=current();
+  if(route==="partita"&&!S.game){location.hash="home";return}
+  if(route==="riepilogo"&&!S.lastResult){location.hash="home";return}
+  if(route==="esito-duello"&&!S.lastDuel){location.hash="duelli";return}
+  const R=ROUTES[route];
+  const app=document.getElementById("app");
+  app.classList.toggle("playing",!!R.playing);
+  document.getElementById("topbar").innerHTML=topbar(R);
+  document.getElementById("main").innerHTML=R.r();
+  document.getElementById("tabbar").innerHTML=tabbar(R.tab);
+  document.getElementById("mapAside").innerHTML=mapHTML();
+  app.scrollTop=0;window.scrollTo(0,0);
+  after[route]&&after[route]();
+}
+const after={};
+
+function topbar(R){
+  if(route==="home"){
+    const need=xpFor(S.level);
+    return `<button class="me" data-go="profilo" aria-label="Profilo, livello ${S.level}">
+      <span class="avatar">T</span><span><span class="lvl">Livello ${S.level}</span><div class="bar gold"><i style="width:${Math.min(100,S.xp/need*100)}%"></i></div></span></button>
+      <button class="streak" data-go="serie" aria-label="Serie di ${S.streak} giorni">${I.flame}<span class="num">${S.streak}</span></button>
+      <button class="iconbtn" data-go="notizie" aria-label="Notizie">${I.bell}${unread()?`<span class="dot num">${unread()}</span>`:""}</button>`;
+  }
+  if(R.playing){
+    const g=S.game;
+    return `<button class="iconbtn" data-act="quit" aria-label="Abbandona la partita">${I.close}</button>
+      <div class="title">${esc(g.label)}</div>
+      ${g.variant==="zen"?`<button class="btn btn-ghost" style="min-height:40px;padding:8px 14px" data-act="endgame">Termina</button>`:""}`;
+  }
+  const back=R.back?`<button class="iconbtn" data-go="${R.back}" aria-label="Indietro">${I.back}</button>`:"";
+  return `${back}<div class="title">${esc(R.title)}</div>
+    ${route==="profilo"?`<button class="iconbtn" data-go="mappa" aria-label="Mappa del prototipo">${I.map}</button>`:""}
+    <button class="iconbtn" data-go="notizie" aria-label="Notizie">${I.bell}${unread()?`<span class="dot num">${unread()}</span>`:""}</button>`;
+}
+function tabbar(tab){
+  const t=(id,label,icon,go,dot)=>`<button class="tab" data-go="${go}" ${tab===id?'aria-current="page"':""}>${icon}<span>${label}</span>${dot?`<span class="dot num">${dot}</span>`:""}</button>`;
+  return t("home","Home",I.home,"home")+t("duelli","Duelli",I.swords,"duelli",duelTodo())+
+   `<button class="tab tab-play" data-go="allenamento" ${tab==="play"?'aria-current="page"':""}><span class="fab">${I.play}</span><span>Gioca</span></button>`+
+   t("collezione","Collezione",I.book,"collezione")+t("profilo","Profilo",I.user,"profilo");
+}
+
+/* ---------- HOME ---------- */
+function msToMidnight(){const d=new Date(),m=new Date(d);m.setHours(24,0,0,0);const s=Math.max(0,m-d);return `${Math.floor(s/36e5)} h ${Math.floor(s%36e5/6e4)} min`}
+function vHome(){
+  const d=S.daily;
+  const daily=d.played?`
+    <section class="majolica stack">
+      <div class="row between"><span class="eyebrow">Griglia del giorno · n. ${d.n}</span><span class="pill" style="background:rgba(255,255,255,.18)">Giocata</span></div>
+      <div class="row" style="align-items:flex-end;gap:16px">
+        <div><div style="font-family:var(--f-display);font-weight:800;font-size:2.4rem;line-height:1" class="num">${d.result.score} pt</div>
+        <div style="font-weight:700">${GRADES[d.result.grade]} · ${ordinal(dailyRank())} tra gli amici</div></div>
+      </div>
+      <div class="row" style="gap:8px;flex-wrap:wrap">
+        <button class="btn btn-gold" data-go="classifica">Classifica</button>
+        <button class="btn" style="background:rgba(255,255,255,.16);color:inherit" data-act="share">${I.share} Condividi</button>
+      </div>
+      <p style="opacity:.85;font-size:.85rem">Nuova griglia tra <span class="num">${msToMidnight()}</span></p>
+    </section>`:`
+    <section class="majolica stack">
+      <span class="eyebrow">Griglia del giorno · n. ${d.n}</span>
+      <h1 style="font-size:1.6rem">Stessa griglia per tutti. Una sola possibilità.</h1>
+      <div class="mini-tiles" aria-hidden="true"><b class="q">?</b><b>n</b><b class="q">?</b><b>a</b><b class="q">?</b><b>e</b></div>
+      <p style="opacity:.9">4×4 · 2 minuti. Mantieni la serie a <b>${S.streak}</b> giorni e scala la classifica degli amici.</p>
+      <button class="btn btn-gold btn-block" data-go="giorno">Gioca la griglia del giorno</button>
+    </section>`;
+  const ms=S.missions;
+  return `${daily}
+  <section class="card">
+    <div class="section-head"><h2>Missioni di oggi</h2><button class="btn-quiet btn" data-go="missioni">Tutte</button></div>
+    <div class="list">${ms.map(missionRow).join("")}</div>
+  </section>
+  <section class="tiles-grid">
+    <button class="qcard" data-go="allenamento"><span class="ic ic-blue">${I.play}</span><span class="big">Allenamento</span><span class="muted">Record ${S.records["4×4 · 120 s · Classica"]} pt</span></button>
+    <button class="qcard" data-go="duelli"><span class="ic ic-coral">${I.swords}</span><span class="big">Duelli</span><span class="muted">${duelTodo()?`${duelTodo()} da giocare`:"Nessuno in sospeso"}</span>${duelTodo()?`<span class="dot num" style="top:10px;right:10px">${duelTodo()}</span>`:""}</button>
+    <button class="qcard" data-go="collezione"><span class="ic ic-mint">${I.book}</span><span class="big num">${fmt(collCount())}</span><span class="muted">parole scoperte</span></button>
+    <button class="qcard" data-go="medaglie"><span class="ic ic-gold">${I.medal}</span><span class="big num">${S.badges.filter(b=>b.got).length}/${S.badges.length}</span><span class="muted">medaglie</span></button>
+  </section>
+  <section class="card">
+    <div class="section-head"><h2>Notizie</h2><button class="btn-quiet btn" data-go="notizie">Tutte</button></div>
+    <div class="list">${S.notifs.slice(0,3).map(notifRow).join("")}</div>
+  </section>`;
+}
+function missionRow(m){const done=m.p>=m.goal;return `<div class="mission ${done?"done":""}">
+  <span class="t">${esc(m.t)}</span>
+  <span class="rw">${done?`<span class="pill pill-mint">Fatto</span>`:`<span class="xp">+${m.xp} XP</span>`}<div class="muted num" style="font-size:.75rem">${Math.min(m.p,m.goal)}/${m.goal}</div></span>
+  <div class="bar ${done?"mint":"gold"}"><i style="width:${Math.min(100,m.p/m.goal*100)}%"></i></div></div>`}
+function notifRow(n){return `<button class="notif ${n.unread?"unread":""}" data-notif="${n.id}">
+  <span class="ic ${n.c}">${I[n.ic]}</span><span style="flex:1;min-width:0"><span class="t" style="display:block">${esc(n.t)}</span><span class="muted" style="font-size:.82rem">${esc(n.s)}</span></span>
+  <span class="muted" style="font-size:.75rem;white-space:nowrap">${n.when}</span></button>`}
+function ordinal(n){return n+"º"}
+
+/* ---------- CONFIG ALLENAMENTO ---------- */
+function cfgKey(c){return `4×4 · ${c.variant==="zen"?"senza tempo":c.dur+" s"} · ${{classica:"Classica",bonus:"Caselle bonus",zen:"Zen"}[c.variant]}`}
+function vConfig(){
+  const c=S.cfg,rec=S.records[cfgKey(c)];
+  const V=[["classica","Classica","Una parola vale 1 punto per 3 lettere, +1 per ogni lettera in più."],
+           ["bonus","Caselle bonus","Due caselle moltiplicano la parola: ×2 e ×3. Pensa al percorso, non solo alla parola."],
+           ["zen","Zen","Niente cronometro: finisci quando vuoi. Vale metà XP e non entra nei record."]];
+  return `
+  <section class="stack">
+    <span class="eyebrow">Modalità</span>
+    <div class="stack" style="gap:8px">${V.map(([id,n,d])=>`<button class="radio-li" data-cfg-variant="${id}" aria-pressed="${c.variant===id}">
+      <span class="ic ${id==="classica"?"ic-blue":id==="bonus"?"ic-coral":"ic-mint"}" style="width:36px;height:36px;border-radius:10px;display:grid;place-items:center">${id==="classica"?I.play:id==="bonus"?I.star:I.target}</span>
+      <span style="flex:1;min-width:0"><b>${n}</b><br><span class="muted" style="font-size:.85rem">${d}</span></span></button>`).join("")}</div>
+  </section>
+  <section class="stack">
+    <span class="eyebrow">Durata</span>
+    <div class="seg">${[60,90,120,150].map(d=>`<button data-cfg-dur="${d}" aria-pressed="${c.dur===d&&c.variant!=="zen"}" ${c.variant==="zen"?"disabled":""}>${d} s</button>`).join("")}</div>
+  </section>
+  <section class="stack">
+    <span class="eyebrow">Griglia</span>
+    <div class="seg"><button aria-pressed="true">4×4</button><button disabled>5×5</button><button disabled>6×6</button></div>
+    <p class="note">Nel prototipo si gioca solo la 4×4. Le altre dimensioni avrebbero record e classifiche separati.</p>
+  </section>
+  <section class="card row between">
+    <div><span class="eyebrow">Il tuo record qui</span><div style="font-family:var(--f-display);font-weight:800;font-size:1.6rem" class="num">${c.variant==="zen"?"—":rec?rec+" pt":"Nessuno"}</div></div>
+    <button class="btn btn-quiet" data-act="gradesinfo">Come funzionano i gradi</button>
+  </section>
+  <button class="btn btn-primary btn-block" data-act="start-train">Inizia</button>`;
+}
+
+/* ---------- PARTITA ---------- */
+function startGame(mode,opt){
+  const g=GRIDS[mode==="daily"?"daily":mode==="duel"?"duel":"train"];
+  const variant=opt.variant||"classica";
+  S.game={mode,variant,grid:g,letters:[...g.letters],dur:(opt.dur||120)*1000,left:(opt.dur||120)*1000,
+    found:[],score:0,combo:0,maxCombo:0,lastAt:0,path:[],running:false,duelId:opt.duelId,
+    bonus:variant==="bonus"?{5:3,14:2}:{},label:opt.label,countdown:3};
+  go("partita");
+}
+function vGame(){
+  const g=S.game,t=thresholds(g.grid.max),gr=gradeOf(g.score,g.grid.max),top=t[5];
+  const next=gr<5?t[gr+1]-g.score:0;
+  const timed=g.variant!=="zen";
+  return `
+  <div class="hud">
+    <div class="timer num ${timed&&g.left<=15000?"low":""}" id="timer">${timed?mmss(g.left):"∞"}</div>
+    <div class="tbar ${g.left<=15000?"low":""}" id="tbar"><i style="width:${timed?g.left/g.dur*100:100}%"></i></div>
+    <div class="score num" id="score">${g.score}</div>
+  </div>
+  <div id="ladder">${ladderHTML(g.score,g.grid.max)}</div>
+  <div class="gradeline" id="gradeline"><span><b>${GRADES[gr]}</b></span><span class="muted">${gr<5?`Mancano <b class="num">${next}</b> punti a ${GRADES[gr+1]}`:"Grado massimo!"}</span></div>
+  <div class="board-wrap" id="bw">
+    <div class="board" id="board">
+      ${g.letters.map((l,i)=>`<div class="tile" data-i="${i}">${l}${g.bonus[i]?`<span class="bonus ${g.bonus[i]===2?"x2":""}">×${g.bonus[i]}</span>`:""}</div>`).join("")}
+      <svg class="path" id="pathsvg"><polyline points=""/></svg>
+    </div>
+    ${g.countdown?`<div class="countdown" id="cd"><b>${g.countdown}</b></div>`:""}
+  </div>
+  <div class="current" id="cur" aria-live="polite"></div>
+  <div class="row between"><span class="muted num" id="fcount">${g.found.length} / ${g.grid.words.length} parole</span><span class="combo" id="combo">${comboHTML()}</span></div>
+  <div class="found" id="found">${g.found.slice().reverse().map(w=>`<span class="wchip ${!knownBefore(w)&&!S.discovered.has(w)?"new":""}">${w}</span>`).join("")}</div>`;
+}
+function mmss(ms){const s=Math.ceil(ms/1000);return `${Math.floor(s/60)}:${String(s%60).padStart(2,"0")}`}
+function ladderHTML(score,max){
+  const t=thresholds(max),top=t[5]*1.15;
+  const pos=v=>Math.min(100,v/top*100);
+  return `<div class="ladder" aria-label="Avanzamento verso i gradi"><div class="track"></div><div class="fill" style="width:${pos(score)}%"></div>
+    ${t.slice(1).map((v,i)=>`<span class="tick ${score>=v?"on":""}" style="left:${pos(v)}%" title="${GRADES[i+1]}: ${v} punti">${GRADES[i+1][0]}</span>`).join("")}</div>`;
+}
+function comboHTML(){const g=S.game;if(!g||g.combo<2)return "";const w=Math.max(0,1-(performance.now()-g.lastAt)/5000);return `Combo ×${g.combo}<span class="bar coral"><i style="width:${w*100}%;transition:none"></i></span>`}
+let tick=null;
+after.partita=function(){
+  const g=S.game;bindBoard();
+  if(g.countdown){
+    const cd=()=>{g.countdown--;const el=document.getElementById("cd");if(!el)return;
+      if(g.countdown<=0){el.remove();g.countdown=0;g.running=true;g.t0=performance.now()-(g.dur-g.left);beep(880,.15);loop()}
+      else{el.innerHTML=`<b>${g.countdown}</b>`;beep(520);setTimeout(cd,700)}};
+    beep(520);setTimeout(cd,700);
+  }else if(g.running)loop();
+};
+function loop(){
+  clearInterval(tick);
+  tick=setInterval(()=>{const g=S.game;if(!g||!g.running){clearInterval(tick);return}
+    if(g.variant!=="zen"){g.left=Math.max(0,g.dur-(performance.now()-g.t0));
+      const t=document.getElementById("timer"),b=document.getElementById("tbar");
+      if(t){t.textContent=mmss(g.left);t.classList.toggle("low",g.left<=15000)}
+      if(b){b.firstElementChild.style.width=(g.left/g.dur*100)+"%";b.classList.toggle("low",g.left<=15000)}
+      if(g.left<=10000&&Math.ceil(g.left/1000)!==g.lastTick){g.lastTick=Math.ceil(g.left/1000);beep(300,.05,"sine",.04)}
+      if(g.left<=0){endGame();return}}
+    if(g.combo>=2&&performance.now()-g.lastAt>5000){g.combo=0}
+    const c=document.getElementById("combo");if(c)c.innerHTML=comboHTML();
+  },100);
+}
+function bindBoard(){
+  const board=document.getElementById("board");if(!board)return;
+  const g=S.game;let active=false;
+  const tileAt=(x,y)=>{const el=document.elementFromPoint(x,y);const t=el&&el.closest(".tile");if(!t||!board.contains(t))return -1;
+    const r=t.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2;return Math.hypot(x-cx,y-cy)<=r.width*.46?+t.dataset.i:-1};
+  const draw=()=>{const tiles=board.querySelectorAll(".tile");tiles.forEach((t,i)=>t.classList.toggle("sel",g.path.includes(i)));
+    const br=board.getBoundingClientRect();
+    const pts=g.path.map(i=>{const r=tiles[i].getBoundingClientRect();return `${r.left-br.left+r.width/2},${r.top-br.top+r.height/2}`}).join(" ");
+    board.querySelector("polyline").setAttribute("points",pts);
+    const w=g.path.map(i=>g.letters[i]).join("");
+    document.getElementById("cur").innerHTML=w?`<span class="w">${w}</span>`:""};
+  board.addEventListener("pointerdown",e=>{if(!g.running)return;const i=tileAt(e.clientX,e.clientY);if(i<0)return;
+    active=true;g.path=[i];board.setPointerCapture(e.pointerId);draw();beep(400+g.path.length*40,.04,"sine",.03);e.preventDefault()});
+  board.addEventListener("pointermove",e=>{if(!active)return;const i=tileAt(e.clientX,e.clientY);if(i<0)return;
+    const p=g.path;if(i===p[p.length-1])return;
+    if(p.length>1&&i===p[p.length-2]){p.pop();draw();return}
+    if(!p.includes(i)&&adj(p[p.length-1],i)){p.push(i);draw();beep(400+p.length*40,.04,"sine",.03)}});
+  const up=()=>{if(!active)return;active=false;submit();};
+  board.addEventListener("pointerup",up);board.addEventListener("pointercancel",up);
+}
+function submit(){
+  const g=S.game,w=g.path.map(i=>g.letters[i]).join(""),cur=document.getElementById("cur"),board=document.getElementById("board");
+  let fb,cls;
+  if(w.length<3){fb="Troppo corta";cls="short"}
+  else if(g.found.includes(w)){fb="Già trovata";cls="dup"}
+  else if(!g.grid.set.has(w)){fb="Non nel dizionario";cls="no"}
+  else{
+    let mult=1;g.path.forEach(i=>{if(g.bonus[i])mult*=g.bonus[i]});
+    const pts=base(w)*mult;g.found.push(w);g.score+=pts;
+    const now=performance.now();g.combo=(g.combo>=1&&now-g.lastAt<=5000)?g.combo+1:1;g.lastAt=now;g.maxCombo=Math.max(g.maxCombo,g.combo);
+    fb=`+${pts}${mult>1?` (×${mult})`:""}`;cls="ok";
+    beep(520+g.combo*60,.12);if(w.length>=6)setTimeout(()=>beep(990,.15),90);
+    const last=g.path[g.path.length-1],t=board.querySelectorAll(".tile")[last],br=document.getElementById("bw").getBoundingClientRect(),r=t.getBoundingClientRect();
+    const f=document.createElement("div");f.className="floater";f.textContent="+"+pts;f.style.left=(r.left-br.left+r.width/2)+"px";f.style.top=(r.top-br.top)+"px";
+    document.getElementById("bw").appendChild(f);setTimeout(()=>f.remove(),900);
+    const prevG=gradeOf(g.score-pts,g.grid.max),newG=gradeOf(g.score,g.grid.max);
+    document.getElementById("score").textContent=g.score;
+    document.getElementById("ladder").innerHTML=ladderHTML(g.score,g.grid.max);
+    const t2=thresholds(g.grid.max);
+    document.getElementById("gradeline").innerHTML=`<span><b>${GRADES[newG]}</b></span><span class="muted">${newG<5?`Mancano <b class="num">${t2[newG+1]-g.score}</b> punti a ${GRADES[newG+1]}`:"Grado massimo!"}</span>`;
+    document.getElementById("fcount").textContent=`${g.found.length} / ${g.grid.words.length} parole`;
+    document.getElementById("found").innerHTML=g.found.slice().reverse().map(x=>`<span class="wchip ${!knownBefore(x)&&!S.discovered.has(x)?"new":""}">${x}</span>`).join("");
+    if(newG>prevG){toast(`Nuovo grado: ${GRADES[newG]}!`);beep(660,.1);setTimeout(()=>beep(880,.1),110);setTimeout(()=>beep(1175,.18),220)}
+    if(w.length>=7)toast(`Parola da ${w.length} lettere! ${w.toUpperCase()}`);
+  }
+  cur.innerHTML=`${w?`<span class="w">${w}</span>`:""}<span class="fb ${cls}">${fb}</span>`;
+  if(cls==="no"){board.classList.remove("shake");void board.offsetWidth;board.classList.add("shake");beep(160,.15,"sawtooth",.04)}
+  if(cls==="ok")board.classList.add("ok");
+  setTimeout(()=>{if(!S.game)return;g.path=[];board.classList.remove("ok");board.querySelectorAll(".tile").forEach(t=>t.classList.remove("sel"));board.querySelector("polyline").setAttribute("points","");},cls==="ok"?160:260);
+  clearTimeout(g.fbT);g.fbT=setTimeout(()=>{const c=document.getElementById("cur");if(c&&!g.path.length)c.innerHTML=""},1200);
+}
+
+/* ---------- fine partita e ricompense ---------- */
+const pendingModals=[];
+function endGame(){
+  const g=S.game;if(!g)return;g.running=false;clearInterval(tick);
+  beep(440,.2);setTimeout(()=>beep(330,.3),180);
+  const grade=gradeOf(g.score,g.grid.max);
+  const newWords=g.found.filter(w=>!knownBefore(w)&&!S.discovered.has(w));
+  newWords.forEach(w=>S.discovered.add(w));
+  const long=g.found.slice().sort((a,b)=>b.length-a.length)[0]||null;
+  const rare=g.found.filter(w=>rarity(w)<10).sort((a,b)=>rarity(a)-rarity(b));
+  rare.forEach(w=>{if(!S.rareFound.includes(w))S.rareFound.unshift(w)});
+  newWords.forEach(w=>{const L=Math.min(9,w.length);S.lenHist[L]=(S.lenHist[L]||0)+1});
+  S.stats.games++;S.stats.words+=g.found.length;if(long&&long.length>S.stats.longest.length)S.stats.longest=long;
+  // record
+  const key=g.mode==="daily"?"Griglia del giorno":g.mode==="train"&&g.variant!=="zen"?cfgKey({dur:g.dur/1000,variant:g.variant}):null;
+  let record=null;if(key){const prev=S.records[key];if(prev==null||g.score>prev){record={prev,now:g.score};S.records[key]=g.score}}
+  // XP
+  const xp=[["Punti × 2",g.score*2],["Grado "+GRADES[grade],grade*15],["Parole nuove",newWords.length*2]];
+  if(g.maxCombo>=3)xp.push(["Combo massima ×"+g.maxCombo,g.maxCombo*5]);
+  if(g.variant==="zen")xp.forEach(r=>r[1]=Math.round(r[1]/2));
+  // missioni
+  const done=[];
+  const bump=(list,id,n,abs)=>{const m=list.find(x=>x.id===id);if(!m||m.p>=m.goal)return;m.p=abs?Math.max(m.p,n):m.p+n;if(m.p>=m.goal){m.p=m.goal;done.push(m);xp.push(["Missione: "+m.t,m.xp])}};
+  bump(S.missions,"long6",g.found.filter(w=>w.length>=6).length);
+  if(g.mode==="daily")bump(S.missions,"daily",1);
+  if(grade>=3)bump(S.missions,"grade",1);
+  bump(S.weekly,"wnew",newWords.length);
+  if(g.maxCombo>=5)bump(S.weekly,"wcombo",1);
+  // medaglie
+  const unlocked=[];const unlock=id=>{const b=S.badges.find(x=>x.id===id);if(b&&!b.got){b.got=true;unlocked.push(b)}};
+  if(g.found.some(w=>w.length>=7))unlock("w7");
+  if(g.found.some(w=>w.length>=9))unlock("w9");
+  if(grade>=3)unlock("ottimo");if(grade>=5)unlock("genio");if(g.maxCombo>=5)unlock("combo5");
+  if(collCount()>=2000)unlock("coll2k");
+  // daily
+  if(g.mode==="daily"){S.daily.played=true;S.daily.result={score:g.score,grade,found:g.found.length};
+    if(!S.played.has(S.today)){S.played.add(S.today);S.streak++;S.bestStreak=Math.max(S.bestStreak,S.streak)}
+    if(S.streak>=30)unlock("s30")}
+  const xpTot=xp.reduce((s,r)=>s+r[1],0);
+  const lvlBefore=S.level,xpBefore=S.xp;S.xp+=xpTot;let ups=0;while(S.xp>=xpFor(S.level)){S.xp-=xpFor(S.level);S.level++;ups++}
+  S.lastResult={mode:g.mode,variant:g.variant,grid:g.grid,found:g.found.slice(),score:g.score,grade,newWords,long,rare,maxCombo:g.maxCombo,record,xp,xpTot,lvlBefore,xpBefore,ups,done,unlocked,label:g.label,duelId:g.duelId,dur:g.dur};
+  S.sumTab="trovate";S.sumSel=null;
+  if(ups)pendingModals.push(()=>levelModal());
+  unlocked.forEach(b=>pendingModals.push(()=>badgeModal(b)));
+  const mode=g.mode,duelId=g.duelId;S.game=null;
+  if(mode==="duel"){finishDuel(duelId,S.lastResult);return}
+  go("riepilogo");
+}
+function nextModal(){const f=pendingModals.shift();if(f)setTimeout(f,450)}
+
+function vSummary(){
+  const r=S.lastResult,t=thresholds(r.grid.max),pct=Math.round(r.found.length/r.grid.words.length*100);
+  const need=xpFor(S.level);
+  const tabs=r.sumTab;
+  const list=S.sumTab==="trovate"?r.found.slice().sort((a,b)=>b.length-a.length||a.localeCompare(b)):r.grid.words.filter(w=>!r.found.includes(w)).sort((a,b)=>b.length-a.length||a.localeCompare(b));
+  return `
+  <section class="hero-center">
+    <span class="eyebrow">${esc(r.label)}</span>
+    <div class="medal"><b>${GRADES[r.grade].slice(0,2)}</b></div>
+    <h1>${GRADES[r.grade]}</h1>
+    <p class="muted"><b class="num" style="color:var(--ink)">${r.score} punti</b> · ${r.found.length} parole su ${r.grid.words.length} (${pct}%)</p>
+  </section>
+  <section class="card stack">
+    <div class="grade-steps">${GRADES.map((n,i)=>`<div class="${i<r.grade?"on":""} ${i===r.grade?"cur":""}"><i></i>${n}<span class="num muted">${t[i]}</span></div>`).join("")}</div>
+    ${r.grade<5?`<p class="muted" style="font-size:.88rem">Ti mancavano <b class="num">${t[r.grade+1]-r.score}</b> punti per ${GRADES[r.grade+1]}.</p>`:""}
+  </section>
+  ${r.record?`<div class="banner">${I.trophy}<span>Nuovo record! ${r.record.prev!=null?`Prima era ${r.record.prev}, ora `:""}<span class="num">${r.record.now}</span> punti.</span></div>`:""}
+  ${r.mode==="daily"?`<section class="card row between"><div><span class="eyebrow">Classifica amici</span><div style="font-family:var(--f-display);font-weight:800;font-size:1.4rem">${ordinal(dailyRank())} su ${Object.keys(FRIENDS).length+1}</div></div>
+    <div class="row" style="gap:6px"><button class="btn btn-ghost" data-act="share" aria-label="Condividi">${I.share}</button><button class="btn btn-primary" data-go="classifica">Classifica</button></div></section>`:""}
+  <section class="card stack">
+    <div class="section-head"><h2>Ricompense</h2><span class="xp num">+${r.xpTot} XP</span></div>
+    <div class="xp-break num">${r.xp.map(([k,v])=>`<span>${esc(k)}</span><span>+${v}</span>`).join("")}</div>
+    <div><div class="row between" style="font-size:.85rem;font-weight:700"><span>Livello ${S.level}</span><span class="muted num">${S.xp}/${need} XP</span></div>
+    <div class="bar gold" style="margin-top:6px"><i id="xpfill" style="width:${r.ups?0:r.xpBefore/need*100}%"></i></div></div>
+    ${r.done.length?`<div class="stack" style="gap:6px">${r.done.map(m=>`<div class="row" style="gap:8px"><span class="pill pill-mint">Missione completata</span><span style="font-size:.88rem">${esc(m.t)}</span></div>`).join("")}</div>`:""}
+  </section>
+  <section class="stats3">
+    <div class="stat"><b class="num">${r.newWords.length}</b><span>parole nuove in collezione</span></div>
+    <div class="stat"><b style="text-transform:uppercase;font-size:${r.long&&r.long.length>8?".8rem":r.long&&r.long.length>5?".95rem":"1.15rem"};overflow-wrap:anywhere">${r.long||"—"}</b><span>la più lunga</span></div>
+    <div class="stat"><b class="num">×${r.maxCombo}</b><span>combo massima</span></div>
+  </section>
+  ${r.rare.length?`<section class="card stack"><h3>Parole rare</h3><div class="stack" style="gap:6px">${r.rare.slice(0,3).map(w=>`<div class="row between"><span class="wchip rare">${w}</span><span class="muted" style="font-size:.85rem">trovata dal <b class="num">${rarity(w)}%</b> dei giocatori</span></div>`).join("")}</div></section>`:""}
+  <section class="card stack">
+    <div class="seg"><button data-sumtab="trovate" aria-pressed="${S.sumTab==="trovate"}">Trovate (${r.found.length})</button><button data-sumtab="mancate" aria-pressed="${S.sumTab==="mancate"}">Mancate (${r.grid.words.length-r.found.length})</button></div>
+    <div class="words-panel">
+      ${miniBoard(r.grid.letters,S.sumSel?findPath(r.grid.letters,S.sumSel):[])}
+      <div class="found">${list.map(w=>`<button class="wchip ${S.sumTab==="trovate"&&r.newWords.includes(w)?"new":""}" data-sumword="${w}" aria-pressed="${S.sumSel===w}">${w}</button>`).join("")||'<span class="muted">Nessuna parola.</span>'}</div>
+    </div>
+    <p class="muted" style="font-size:.8rem">Tocca una parola per vederne il percorso. In giallo le parole entrate ora nella collezione.</p>
+  </section>
+  <div class="stack" style="gap:8px">
+    ${r.mode==="train"?`<button class="btn btn-primary btn-block" data-act="again">Gioca ancora</button>`:""}
+    <button class="btn btn-ghost btn-block" data-act="challenge-grid">Sfida un amico su questa griglia</button>
+    <button class="btn btn-quiet btn-block" data-go="home">Torna alla Home</button>
+  </div>`;
+}
+after.riepilogo=function(){const r=S.lastResult;if(!r.animated){r.animated=true;setTimeout(()=>{const f=document.getElementById("xpfill");if(f)f.style.width=(S.xp/xpFor(S.level)*100)+"%"},250);nextModal()}};
+function miniBoard(letters,path){
+  return `<div class="miniboard board ${path&&path.length?"hl":""}" aria-hidden="true">${[...letters].map((l,i)=>`<div class="tile ${path&&path.includes(i)?"sel":""}">${l}</div>`).join("")}
+    <svg class="path" viewBox="0 0 168 168"><polyline points="${(path||[]).map(i=>{const c=i%4,r=i/4|0,s=(168-16-15)/4;return `${8+c*(s+5)+s/2},${8+r*(s+5)+s/2}`}).join(" ")}"/></svg></div>`;
+}
+
+/* ---------- GRIGLIA DEL GIORNO ---------- */
+const DAILY_FRIENDS={Luca:71,Giulia:64,Sara:52,Marco:38,Elena:44};
+function dailyRank(){if(!S.daily.played)return null;const me=S.daily.result.score;return 1+Object.values(DAILY_FRIENDS).filter(v=>v>me).length}
+function vDaily(){
+  const d=S.daily,days=["L","M","M","G","V","S","D"];
+  const wk=[];for(let k=6;k>=0;k--){const day=S.today-k;wk.push({day,p:S.played.has(day),t:day===S.today})}
+  const startDow=(new Date(2026,10,S.today).getDay()+6)%7;
+  return `
+  <section class="majolica stack">
+    <span class="eyebrow">n. ${d.n} · ${S.today} novembre</span>
+    <h1>${d.played?"Hai già giocato oggi":"La griglia di oggi è uguale per tutti"}</h1>
+    <p style="opacity:.9">${d.played?`${GRADES[d.result.grade]} con ${d.result.score} punti. La prossima arriva tra ${msToMidnight()}.`:"Hai un solo tentativo: quando inizi, il cronometro non si ferma. Configurazione fissa: 4×4, 2 minuti, punteggio classico."}</p>
+    ${d.played?`<button class="btn btn-gold btn-block" data-go="classifica">Vedi la classifica</button>`:`<button class="btn btn-gold btn-block" data-act="start-daily">Inizia il tentativo</button>`}
+  </section>
+  <section class="card stack">
+    <div class="section-head"><h2>La tua settimana</h2><button class="btn btn-quiet" data-go="serie">Serie</button></div>
+    <div class="week">${wk.map((x,i)=>`<div><i class="${x.p?"p":""} ${x.t?"t":""}">${x.p?I.check:""}</i>${days[(startDow-6+i+70)%7]}</div>`).join("")}</div>
+    <p class="muted" style="font-size:.88rem">${d.played?`Serie a <b>${S.streak}</b> giorni. Torna domani per allungarla.`:`Gioca oggi per portare la serie da ${S.streak} a ${S.streak+1} giorni.`}</p>
+  </section>
+  <section class="card stack">
+    <h2>Gli amici oggi</h2>
+    ${d.played?rankList(dailyRows(),"pt"):`<p class="muted">${Object.keys(DAILY_FRIENDS).length} amici hanno già giocato. I loro punteggi restano nascosti finché non giochi tu, per non darti indizi.</p>
+      <div class="row" style="gap:-6px">${Object.keys(DAILY_FRIENDS).map(n=>`<span class="avatar" title="${n}">${n[0]}</span>`).join("")}</div>`}
+  </section>`;
+}
+function dailyRows(){const rows=Object.entries(DAILY_FRIENDS).map(([n,v])=>({n,v}));if(S.daily.played)rows.push({n:"Tu",v:S.daily.result.score,me:true});return rows.sort((a,b)=>b.v-a.v)}
+function rankList(rows,unit){return `<div class="list">${rows.map((x,i)=>`<div class="rank ${x.me?"me":""} ${i===0?"podium1":""}"><span class="pos num">${i+1}</span><span class="avatar">${x.n[0]}</span><span><b>${x.n}</b>${x.sub?`<br><span class="muted" style="font-size:.8rem">${x.sub}</span>`:""}</span><span class="sc num">${x.v}${unit?` <span class="muted" style="font-size:.75rem;font-family:var(--f-body)">${unit}</span>`:""}</span></div>`).join("")}</div>`}
+
+/* ---------- CLASSIFICHE ---------- */
+function vRanking(){
+  const t=S.rankTab;let body;
+  if(t==="oggi")body=S.daily.played?rankList(dailyRows(),"pt"):`<p class="muted">Gioca la griglia del giorno per vedere i punteggi degli amici.</p><button class="btn btn-gold btn-block" data-go="giorno">Gioca la griglia del giorno</button>`;
+  else if(t==="settimana"){const rows=[{n:"Luca",v:402},{n:"Giulia",v:377},{n:"Sara",v:301},{n:"Elena",v:288},{n:"Marco",v:240},{n:"Tu",v:330+(S.daily.played?S.daily.result.score:0),me:true}].sort((a,b)=>b.v-a.v);
+    body=rankList(rows,"pt")+`<p class="muted" style="font-size:.82rem">Somma delle griglie del giorno da lunedì. Si azzera ogni lunedì a mezzanotte.</p>`}
+  else{const rows=Object.entries(FRIENDS).map(([n,v])=>({n,v,sub:tier(v).name})).concat([{n:"Tu",v:S.elo,me:true,sub:tier(S.elo).name}]).sort((a,b)=>b.v-a.v);body=rankList(rows,"")}
+  return `<div class="seg"><button data-rank="oggi" aria-pressed="${t==="oggi"}">Oggi</button><button data-rank="settimana" aria-pressed="${t==="settimana"}">Settimana</button><button data-rank="duelli" aria-pressed="${t==="duelli"}">Duelli</button></div>
+  <section class="card">${body}</section>
+  <p class="note">Le classifiche mostrano solo gli amici del portale. Una classifica globale è una domanda aperta.</p>`;
+}
+
+/* ---------- DUELLI ---------- */
+function tier(e){const T=[[0,"Bronzo"],[1200,"Argento"],[1500,"Oro"],[1800,"Platino"]];let i=0;T.forEach((x,k)=>{if(e>=x[0])i=k});return {name:T[i][1],lo:T[i][0],hi:T[i+1]?T[i+1][0]:null,next:T[i+1]?T[i+1][1]:null}}
+function winProb(a,b){return 1/(1+Math.pow(10,(b-a)/400))}
+function vDuels(){
+  const tr=tier(S.elo);
+  const by=s=>S.duels.filter(d=>d.status===s);
+  const todo=S.duels.filter(d=>d.status==="invito"||d.status==="tocca");
+  return `
+  <section class="card elo">
+    <div class="shield num">${S.elo}</div>
+    <div style="flex:1;min-width:0"><span class="eyebrow">Punteggio duelli</span><h2>${tr.name}</h2>
+      ${tr.hi?`<div class="bar" style="margin-top:6px"><i style="width:${(S.elo-tr.lo)/(tr.hi-tr.lo)*100}%"></i></div><p class="muted" style="font-size:.82rem;margin-top:4px">Mancano <b class="num">${tr.hi-S.elo}</b> punti per ${tr.next}</p>`:""}</div>
+  </section>
+  <button class="btn btn-primary btn-block" data-go="nuovo-duello">${I.swords} Sfida un amico</button>
+  <section class="stack"><h2>Tocca a te</h2>
+    ${todo.length?todo.map(d=>`<div class="card row">
+      <span class="avatar">${d.opp[0]}</span><div style="flex:1;min-width:0"><b>${d.opp}</b> <span class="muted num" style="font-size:.8rem">${FRIENDS[d.opp]}</span><br>
+      <span class="muted" style="font-size:.82rem">4×4 · ${d.dur} s · Versus${d.status==="invito"?" · ti ha invitato":d.oppPlayed?" · ha già giocato":""}</span></div>
+      ${d.status==="invito"?`<div class="row" style="gap:6px"><button class="btn btn-ghost" style="min-height:40px;padding:8px 12px" data-duel-no="${d.id}">Rifiuta</button><button class="btn btn-primary" style="min-height:40px;padding:8px 12px" data-duel-yes="${d.id}">Accetta</button></div>`
+      :`<button class="btn btn-gold" style="min-height:40px;padding:8px 14px" data-duel-play="${d.id}">Gioca</button>`}</div>`).join(""):`<p class="muted">Nessun duello da giocare.</p>`}
+  </section>
+  <section class="stack"><h2>In attesa dell'avversario</h2>
+    ${by("attesa").length?by("attesa").map(d=>`<div class="card row"><span class="avatar">${d.opp[0]}</span><div style="flex:1;min-width:0"><b>${d.opp}</b><br><span class="muted" style="font-size:.82rem">Hai fatto ${d.me} punti. Il suo punteggio resta nascosto finché non gioca.</span></div>
+      <button class="btn btn-ghost" style="min-height:40px;padding:8px 12px;font-size:.8rem" data-duel-sim="${d.id}" title="Solo nel prototipo">Simula: gioca ${d.opp}</button></div>`).join(""):`<p class="muted">Nessuno.</p>`}
+  </section>
+  <section class="stack"><h2>Conclusi</h2>
+    <div class="card list" style="padding-block:4px">${by("concluso").map(d=>`<div class="li"><span class="avatar">${d.opp[0]}</span><div class="grow"><b>${d.opp}</b> <span class="pill ${d.win?"pill-mint":"pill-coral"}">${d.win?"Vinto":"Perso"}</span><br><span class="muted num" style="font-size:.82rem">${d.me} a ${d.them} · ${d.delta>0?"+":""}${d.delta} punti duello</span></div>
+      <button class="btn btn-quiet" data-duel-rematch="${d.id}">Rivincita</button></div>`).join("")}</div>
+  </section>`;
+}
+function vNewDuel(){
+  const sel=S.selDuelOpp;
+  return `<section class="stack"><span class="eyebrow">Avversario · amici del portale</span>
+    ${Object.entries(FRIENDS).map(([n,e])=>`<button class="radio-li" data-pick-opp="${n}" aria-pressed="${sel===n}"><span class="avatar">${n[0]}</span><span style="flex:1;min-width:0"><b>${n}</b><br><span class="muted" style="font-size:.82rem">${tier(e).name} · <span class="num">${e}</span></span></span>
+    <span class="muted" style="font-size:.8rem;text-align:right">Probabilità<br>di vittoria <b class="num" style="color:var(--ink)">${Math.round(winProb(S.elo,e)*100)}%</b></span></button>`).join("")}
+  </section>
+  <section class="stack"><span class="eyebrow">Durata</span><div class="seg">${[60,90,120].map(d=>`<button data-duel-dur="${d}" aria-pressed="${S.duelDur===d}">${d} s</button>`).join("")}</div></section>
+  <section class="card stack"><h3>Regola Versus</h3><p class="muted" style="font-size:.9rem">Una parola trovata solo da te vale il doppio. Una parola trovata da entrambi vale il valore base. Ognuno gioca quando vuole: il risultato arriva quando avete giocato tutti e due.</p></section>
+  <button class="btn btn-primary btn-block" data-act="send-duel">Invia l'invito a ${sel}</button>`;
+}
+function oppWords(grid,opp){const P={3:.35,4:.27,5:.17,6:.08};return grid.words.filter(w=>hash(w+"@"+opp)<(P[w.length]||.03))}
+function versus(mine,theirs){const A=new Set(mine),B=new Set(theirs);
+  const uA=mine.filter(w=>!B.has(w)),uB=theirs.filter(w=>!A.has(w)),c=mine.filter(w=>B.has(w));
+  const sA=uA.reduce((s,w)=>s+2*base(w),0)+c.reduce((s,w)=>s+base(w),0),sB=uB.reduce((s,w)=>s+2*base(w),0)+c.reduce((s,w)=>s+base(w),0);
+  return {uA,uB,c,sA,sB}}
+function finishDuel(id,r){
+  const d=S.duels.find(x=>x.id===id);if(!d){go("duelli");return}
+  d.myWords=r.found;
+  if(d.oppPlayed){resolveDuel(d)}
+  else{d.status="attesa";d.me=versus(r.found,[]).sA;toast(`Fatto. Ti avvisiamo quando ${d.opp} avrà giocato.`);go("duelli");nextModal()}
+}
+function resolveDuel(d){
+  const mine=d.myWords||oppWords(GRIDS.duel,"me"+d.id);
+  const theirs=oppWords(GRIDS.duel,d.opp);
+  const v=versus(mine,theirs);const win=v.sA>v.sB||(v.sA===v.sB);
+  const oe=FRIENDS[d.opp],delta=Math.round(24*((v.sA>v.sB?1:v.sA===v.sB?.5:0)-winProb(S.elo,oe)));
+  const before=S.elo;S.elo+=delta;
+  Object.assign(d,{status:"concluso",win:v.sA>v.sB,me:v.sA,them:v.sB,delta});
+  const unlocked=[];
+  if(v.sA>v.sB){S.stats.wins++;const m=S.weekly.find(x=>x.id==="wduel");if(m&&m.p<m.goal)m.p++;
+    if(v.sA-v.sB<=2){const b=S.badges.find(x=>x.id==="photo");if(!b.got){b.got=true;unlocked.push(b)}}
+    if(S.stats.wins>=10){const b=S.badges.find(x=>x.id==="duel10");if(!b.got){b.got=true;unlocked.push(b)}}}
+  unlocked.forEach(b=>pendingModals.push(()=>badgeModal(b)));
+  S.lastDuel={d,v,before,delta,mine,theirs,animated:false};
+  go("esito-duello");
+}
+function vDuelResult(){
+  const {d,v,before,delta}=S.lastDuel;const res=v.sA>v.sB?"Hai vinto!":v.sA===v.sB?"Pareggio":"Hai perso";
+  const col=(title,ws,mult,cls)=>`<div><span class="eyebrow">${title}</span><span class="num" style="font-weight:700">${ws.length} · ${ws.reduce((s,w)=>s+mult*base(w),0)} pt</span><div class="found">${ws.sort((a,b)=>b.length-a.length).map(w=>`<span class="wchip ${cls}">${w}</span>`).join("")}</div></div>`;
+  return `<section class="hero-center"><span class="eyebrow">Duello con ${d.opp} · Versus</span><h1>${res}</h1></section>
+  <section class="card vs"><div><span class="avatar" style="margin:0 auto">T</span><div class="s num ${v.sA>v.sB?"win":""}">${v.sA}</div><span class="muted">Tu</span></div><span class="muted" style="font-weight:800">contro</span>
+    <div><span class="avatar" style="margin:0 auto">${d.opp[0]}</span><div class="s num ${v.sB>v.sA?"win":""}">${v.sB}</div><span class="muted">${d.opp}</span></div></section>
+  <section class="card elo"><div class="shield num" id="eloval">${before}</div><div><span class="eyebrow">Punteggio duelli</span><h2 class="num" style="color:${delta>=0?"var(--mint)":"var(--coral)"}">${delta>=0?"+":""}${delta}</h2><p class="muted" style="font-size:.85rem">${tier(S.elo).name} · era ${before}, ora <span class="num">${S.elo}</span></p></div></section>
+  <section class="card cols3">${col("Solo tue ×2",v.uA,2,"new")}${col("In comune",v.c,1,"")}${col("Solo sue ×2",v.uB,2,"rare")}</section>
+  <div class="stack" style="gap:8px"><button class="btn btn-primary btn-block" data-duel-rematch="${d.id}">Rivincita</button><button class="btn btn-quiet btn-block" data-go="duelli">Torna ai duelli</button></div>`;
+}
+after["esito-duello"]=function(){const L=S.lastDuel;if(L.animated)return;L.animated=true;const el=document.getElementById("eloval");let i=0;const steps=20;
+  const t=setInterval(()=>{i++;if(el)el.textContent=Math.round(L.before+L.delta*i/steps);if(i>=steps){clearInterval(t)}},40);
+  if(L.d.win){beep(660,.1);setTimeout(()=>beep(880,.1),120);setTimeout(()=>beep(1320,.2),240)}nextModal()};
+
+/* ---------- COLLEZIONE ---------- */
+function vCollection(){
+  const total=380284,c=collCount(),next=Math.ceil((c+1)/500)*500;
+  const H=S.lenHist,mx=Math.max(...Object.values(H));
+  const recent=[...S.discovered].slice(-12).reverse();
+  return `
+  <section class="card stack">
+    <span class="eyebrow">Parole scoperte</span>
+    <div class="row" style="align-items:baseline;gap:8px"><span style="font-family:var(--f-display);font-weight:800;font-size:2.6rem;line-height:1" class="num">${fmt(c)}</span><span class="muted num">su ${fmt(total)} del dizionario</span></div>
+    <div class="bar mint"><i style="width:${(c-(next-500))/500*100}%"></i></div>
+    <p class="muted" style="font-size:.85rem">Prossimo traguardo: <b class="num">${fmt(next)}</b> parole${next===2000?" (medaglia Collezionista)":""}.</p>
+  </section>
+  <section class="card stack"><h2>Per lunghezza</h2>
+    <div class="hist">${[3,4,5,6,7,8,9].map(L=>`<div><em class="num">${H[L]||0}</em><i style="height:${(H[L]||0)/mx*80}%"></i>${L}${L===9?"+":""}</div>`).join("")}</div>
+  </section>
+  <section class="card stack"><h2>Cerca nella tua collezione</h2>
+    <input class="input" id="collq" placeholder="Scrivi una parola, per esempio: notando" autocomplete="off">
+    <p id="collres" class="muted" style="font-size:.88rem;min-height:1.3em"></p>
+  </section>
+  <section class="card stack"><h2>Scoperte di oggi</h2>
+    ${recent.length?`<div class="found" style="max-height:none">${recent.map(w=>`<span class="wchip new">${w}</span>`).join("")}</div>`:`<p class="muted">Ancora niente. Ogni parola che non avevi mai trovato entra qui.</p><button class="btn btn-primary" data-go="allenamento">Gioca una partita</button>`}
+  </section>
+  <section class="card stack"><h2>Le tue rarità</h2>
+    <div class="list">${S.rareFound.slice(0,6).map(w=>`<div class="li"><span class="wchip rare">${w}</span><span class="grow"></span><span class="muted num" style="font-size:.85rem">trovata dal ${rarity(w)}%</span></div>`).join("")}</div>
+  </section>`;
+}
+after.collezione=function(){const q=document.getElementById("collq");if(!q)return;q.addEventListener("input",()=>{const w=q.value.trim().toLowerCase(),o=document.getElementById("collres");
+  if(w.length<3){o.textContent="";return}
+  const all=Object.values(GRIDS).some(g=>g.set.has(w));
+  o.innerHTML=S.discovered.has(w)?`<b style="color:var(--mint)">Sì</b>, l'hai scoperta oggi.`:all&&knownBefore(w)?`<b style="color:var(--mint)">Sì</b>, è già nella tua collezione.`:all?`Non ancora. È nelle griglie di prova: vai a cercarla.`:`Non risulta nella tua collezione.`})};
+
+/* ---------- MEDAGLIE ---------- */
+function vBadges(){
+  const got=S.badges.filter(b=>b.got).length;
+  return `<section class="card row between"><div><span class="eyebrow">Sbloccate</span><h1 class="num">${got} / ${S.badges.length}</h1></div><div class="bar gold" style="width:40%"><i style="width:${got/S.badges.length*100}%"></i></div></section>
+  <section class="badges">${S.badges.map(b=>{const p=b.prog&&!b.got?b.prog():null;return `<button class="badge" data-badge="${b.id}"><span class="badge-medal ${b.tier} ${b.got?"":"locked"}">${b.lab}</span><span class="n">${b.name}</span>${p?`<div class="bar"><i style="width:${Math.min(100,p[0]/p[1]*100)}%"></i></div><span class="muted num" style="font-size:.7rem">${fmt(p[0])}/${fmt(p[1])}</span>`:b.got?`<span class="pill pill-mint">Sbloccata</span>`:`<span class="muted" style="font-size:.72rem">Bloccata</span>`}</button>`}).join("")}</section>
+  <p class="note">Bordo bronzo, argento, oro: tre livelli di difficoltà. Tocca una medaglia per sapere come si ottiene.</p>`;
+}
+
+/* ---------- SERIE ---------- */
+function vStreak(){
+  const startDow=(new Date(2026,10,1).getDay()+6)%7;
+  const cells=[];for(let i=0;i<startDow;i++)cells.push(`<span class="d x"></span>`);
+  for(let d=1;d<=30;d++){const c=S.played.has(d)?"p":S.frozen.has(d)?"f":"";cells.push(`<span class="d ${c} ${d===S.today?"t":""} num">${d}</span>`)}
+  return `
+  <section class="card flame-hero">${I.flame}<div><b class="num">${S.streak}</b><div style="font-weight:700">giorni di fila</div><div class="muted" style="font-size:.85rem">Record: ${S.bestStreak}</div></div></section>
+  ${S.played.has(S.today)?`<div class="banner">${I.check}<span>Oggi hai già giocato. La serie è al sicuro fino a mezzanotte di domani.</span></div>`:`<section class="card stack"><p><b>Oggi non hai ancora giocato.</b> Basta una partita qualsiasi della griglia del giorno per tenere viva la serie.</p><button class="btn btn-gold btn-block" data-go="giorno">Gioca la griglia del giorno</button></section>`}
+  <section class="card stack"><div class="section-head"><h2>Novembre 2026</h2></div>
+    <div class="cal">${["L","M","M","G","V","S","D"].map(x=>`<span class="h">${x}</span>`).join("")}${cells.join("")}</div>
+    <div class="row" style="gap:14px;flex-wrap:wrap;font-size:.8rem"><span class="row" style="gap:6px"><span class="cal"><span class="d p" style="width:16px;height:16px"></span></span>giocato</span><span class="row" style="gap:6px"><span class="cal"><span class="d f" style="width:16px;height:16px"></span></span>salvataggio usato</span></div>
+  </section>
+  <section class="card row"><span class="ic ic-blue" style="width:44px;height:44px;border-radius:12px;display:grid;place-items:center">${I.ice}</span>
+    <div style="flex:1"><b>Salvataggi: <span class="num">${S.freezes}</span> su 2</b><p class="muted" style="font-size:.85rem">Se salti un giorno, un salvataggio protegge la serie in automatico. Ne guadagni uno ogni 7 giorni di fila.</p></div></section>`;
+}
+
+/* ---------- MISSIONI ---------- */
+function vMissions(){
+  return `<section class="card"><div class="section-head"><h2>Oggi</h2><span class="muted" style="font-size:.85rem">Si rinnovano tra ${msToMidnight()}</span></div><div class="list">${S.missions.map(missionRow).join("")}</div></section>
+  <section class="card"><div class="section-head"><h2>Questa settimana</h2><span class="muted" style="font-size:.85rem">Fino a domenica</span></div><div class="list">${S.weekly.map(missionRow).join("")}</div></section>
+  <p class="note">Le missioni spingono a provare ciò che di solito non si gioca: duelli, parole lunghe, combo. L'XP serve solo per il livello, non compra nulla.</p>`;
+}
+
+/* ---------- PROFILO ---------- */
+function vProfile(){
+  const need=xpFor(S.level);
+  return `<section class="card row"><span class="avatar" style="width:64px;height:64px;font-size:1.8rem;border-radius:18px">T</span>
+    <div style="flex:1;min-width:0"><h2>Tu</h2><p class="muted" style="font-size:.88rem">Livello ${S.level} · ${tier(S.elo).name} nei duelli</p>
+    <div class="bar gold" style="margin-top:8px"><i style="width:${S.xp/need*100}%"></i></div><p class="muted num" style="font-size:.78rem;margin-top:4px">${S.xp}/${need} XP al livello ${S.level+1}</p></div></section>
+  <section class="stats3"><div class="stat"><b class="num">${S.stats.games}</b><span>partite</span></div><div class="stat"><b class="num">${fmt(S.stats.words)}</b><span>parole trovate</span></div><div class="stat"><b style="font-size:.9rem;text-transform:uppercase;overflow-wrap:anywhere">${S.stats.longest}</b><span>la più lunga</span></div></section>
+  <section class="card"><div class="list">
+    <button class="li" data-go="medaglie"><span class="ic ic-gold" style="width:36px;height:36px;border-radius:10px;display:grid;place-items:center">${I.medal}</span><span class="grow"><b>Medaglie</b></span><span class="muted num">${S.badges.filter(b=>b.got).length}/${S.badges.length}</span></button>
+    <button class="li" data-go="serie"><span class="ic ic-coral" style="width:36px;height:36px;border-radius:10px;display:grid;place-items:center">${I.flame}</span><span class="grow"><b>Serie</b></span><span class="muted num">${S.streak} giorni</span></button>
+    <button class="li" data-go="missioni"><span class="ic ic-blue" style="width:36px;height:36px;border-radius:10px;display:grid;place-items:center">${I.target}</span><span class="grow"><b>Missioni</b></span><span class="muted num">${S.missions.filter(m=>m.p>=m.goal).length}/${S.missions.length} oggi</span></button>
+    <button class="li" data-go="classifica"><span class="ic ic-mint" style="width:36px;height:36px;border-radius:10px;display:grid;place-items:center">${I.trophy}</span><span class="grow"><b>Classifiche</b></span></button>
+  </div></section>
+  <section class="card stack"><h2>Record</h2><table class="table num">${Object.entries(S.records).map(([k,v])=>`<tr><td>${k}</td><td>${v}</td></tr>`).join("")}</table></section>
+  <section class="card"><div class="list">
+    <div class="li"><span class="grow"><b>Suoni</b><br><span class="muted" style="font-size:.82rem">Effetti durante la partita</span></span><button class="switch" data-toggle="sound" aria-pressed="${S.sound}" aria-label="Suoni"></button></div>
+    <div class="li"><span class="grow"><b>Promemoria serie</b><br><span class="muted" style="font-size:.82rem">Uno solo, alle 20:00, se non hai giocato</span></span><button class="switch" data-toggle="notifPush" aria-pressed="${S.notifPush}" aria-label="Promemoria serie"></button></div>
+  </div></section>
+  <button class="btn btn-ghost btn-block" data-go="mappa">${I.map} Mappa del prototipo</button>`;
+}
+
+/* ---------- NOTIZIE ---------- */
+function vNotifs(){
+  return `<section class="card" style="padding-block:4px"><div class="list">${S.notifs.map(n=>n.friend&&!n.handled?`<div class="notif unread"><span class="ic ${n.c}">${I[n.ic]}</span><span style="flex:1;min-width:0"><span class="t" style="display:block">${esc(n.t)}</span><span class="muted" style="font-size:.82rem">${esc(n.s)}</span>
+    <div class="row" style="gap:6px;margin-top:8px"><button class="btn btn-ghost" style="min-height:36px;padding:6px 12px" data-friend="no">Ignora</button><button class="btn btn-primary" style="min-height:36px;padding:6px 12px" data-friend="yes">Accetta</button></div></span></div>`:notifRow(n)).join("")}</div></section>
+  ${unread()?`<button class="btn btn-quiet btn-block" data-act="readall">Segna tutte come lette</button>`:""}`;
+}
+
+/* ---------- MAPPA ---------- */
+function mapHTML(){
+  const L=(h,t)=>`<li><a href="#${h}">${t}</a></li>`;
+  return `<span class="eyebrow">Prototipo</span><h2>Mappa dei flussi</h2>
+  <p class="muted" style="font-size:.82rem;margin-top:4px">Dati di esempio, nessun server. Le tre griglie sono vere, risolte col dizionario del progetto.</p>
+  <h3>1. Allenamento</h3><ol>${L("home","Home")}${L("allenamento","Scelta modalità")}<li>Partita</li><li>Riepilogo, poi livello e medaglie</li></ol>
+  <h3>2. Griglia del giorno</h3><ol>${L("giorno","Presentazione")}<li>Partita, un solo tentativo</li><li>Riepilogo e condivisione</li>${L("classifica","Classifica amici")}</ol>
+  <h3>3. Duelli</h3><ol>${L("duelli","Elenco e punteggio duelli")}${L("nuovo-duello","Nuovo duello")}<li>Partita</li><li>Esito, punteggio duelli, rivincita</li></ol>
+  <h3>4. Progressione</h3><ol>${L("profilo","Profilo e record")}${L("collezione","Collezione di parole")}${L("medaglie","Medaglie")}</ol>
+  <h3>5. Ritorno quotidiano</h3><ol>${L("serie","Serie di giorni")}${L("missioni","Missioni")}${L("notizie","Notizie")}</ol>
+  <h3>Simula</h3><div class="sim">
+    <button class="btn btn-ghost" data-act="sim-day">Passa al giorno dopo</button>
+    <button class="btn btn-ghost" data-act="sim-skip">Salta un giorno senza giocare</button>
+    <button class="btn btn-ghost" data-act="sim-invite">Ricevi un invito a duello</button>
+    <button class="btn btn-ghost" data-act="sim-reset">Ricomincia da capo</button></div>`;
+}
+function vMapPage(){return `<section class="card map">${mapHTML()}</section>`}
+
+/* ---------- overlay ---------- */
+function sheet(html,cls=""){const o=document.getElementById("overlay");o.innerHTML=`<div class="scrim" data-scrim><div class="sheet ${cls}" role="dialog" aria-modal="true">${html}</div></div>`;const b=o.querySelector(".sheet button");b&&b.focus()}
+function closeSheet(){document.getElementById("overlay").innerHTML="";nextModal()}
+function levelModal(){beep(523,.12);setTimeout(()=>beep(659,.12),120);setTimeout(()=>beep(784,.12),240);setTimeout(()=>beep(1047,.3),360);
+  sheet(`<span class="eyebrow">Sali di livello</span><div class="medal"><b class="num">${S.level}</b></div><h1>Livello ${S.level}</h1>
+  <p class="muted">Nuovo livello sbloccato: una nuova cornice per l'avatar nelle classifiche.</p><button class="btn btn-gold btn-block" data-close>Continua</button>`,"center")}
+function badgeModal(b){beep(784,.1);setTimeout(()=>beep(1175,.25),120);
+  sheet(`<span class="eyebrow">Medaglia sbloccata</span><span class="badge-medal big ${b.tier}">${b.lab}</span><h1>${b.name}</h1><p class="muted">${esc(b.desc)}</p><button class="btn btn-primary btn-block" data-close>Continua</button>`,"center")}
+function toast(t){const el=document.createElement("div");el.className="toast";el.setAttribute("role","status");el.textContent=t;document.body.appendChild(el);setTimeout(()=>el.remove(),2400)}
+
+/* ---------- azioni ---------- */
+document.addEventListener("click",e=>{
+  const el=e.target.closest("button,[data-scrim]");if(!el)return;
+  if(el.hasAttribute("data-scrim")){if(e.target===el)closeSheet();return}
+  const d=el.dataset;
+  if(d.close!==undefined){closeSheet();return}
+  if(d.go){go(d.go);return}
+  if(d.cfgVariant){S.cfg.variant=d.cfgVariant;render();return}
+  if(d.cfgDur){S.cfg.dur=+d.cfgDur;render();return}
+  if(d.sumtab){S.sumTab=d.sumtab;S.sumSel=null;render();return}
+  if(d.sumword){S.sumSel=S.sumSel===d.sumword?null:d.sumword;const y=window.scrollY,a=document.getElementById("app").scrollTop;render();window.scrollTo(0,y);document.getElementById("app").scrollTop=a;return}
+  if(d.rank){S.rankTab=d.rank;render();return}
+  if(d.pickOpp){S.selDuelOpp=d.pickOpp;render();return}
+  if(d.duelDur){S.duelDur=+d.duelDur;render();return}
+  if(d.duelYes){const x=S.duels.find(q=>q.id==+d.duelYes);x.status="tocca";x.oppPlayed=true;readNotifFor("duelli");toast(`Hai accettato. ${x.opp} ha già giocato: tocca a te.`);render();return}
+  if(d.duelNo){S.duels=S.duels.filter(q=>q.id!=+d.duelNo);readNotifFor("duelli");toast("Invito rifiutato.");render();return}
+  if(d.duelPlay){const x=S.duels.find(q=>q.id==+d.duelPlay);startGame("duel",{dur:x.dur,duelId:x.id,label:`Duello con ${x.opp}`});return}
+  if(d.duelSim){const x=S.duels.find(q=>q.id==+d.duelSim);resolveDuel(x);return}
+  if(d.duelRematch){const x=S.duels.find(q=>q.id==+d.duelRematch);const id=Date.now();S.duels.unshift({id,opp:x.opp,status:"tocca",dur:x.dur||120,oppPlayed:false});toast(`Rivincita inviata a ${x.opp}. Gioca il tuo turno quando vuoi.`);go("duelli");return}
+  if(d.badge){const b=S.badges.find(x=>x.id===d.badge);const p=b.prog&&!b.got?b.prog():null;sheet(`<span class="badge-medal big ${b.tier} ${b.got?"":"locked"}">${b.lab}</span><h1>${b.name}</h1><p class="muted">${esc(b.desc)}</p>${p?`<p class="num"><b>${fmt(p[0])}</b> / ${fmt(p[1])}</p>`:""}<button class="btn btn-ghost btn-block" data-close>Chiudi</button>`,"center");return}
+  if(d.notif){const n=S.notifs.find(x=>x.id==+d.notif);n.unread=false;go(n.go);return}
+  if(d.friend){const n=S.notifs.find(x=>x.friend);n.handled=true;n.unread=false;n.t=d.friend==="yes"?"Paolo ora è tuo amico":"Richiesta di Paolo ignorata";n.s=d.friend==="yes"?"Puoi sfidarlo nei duelli":"";if(d.friend==="yes")FRIENDS.Paolo=1260;render();return}
+  if(d.toggle){S[d.toggle]=!S[d.toggle];render();return}
+  switch(d.act){
+    case "start-train":startGame("train",{dur:S.cfg.dur,variant:S.cfg.variant,label:`Allenamento · ${cfgKey(S.cfg)}`});break;
+    case "start-daily":sheet(`<h2>Pronto?</h2><p class="muted">Hai un solo tentativo per la griglia n. ${S.daily.n}. Se esci a metà, conta il punteggio fatto fino a quel momento.</p><div class="row" style="gap:8px"><button class="btn btn-ghost" style="flex:1" data-close>Non ora</button><button class="btn btn-gold" style="flex:1" data-act="go-daily">Inizia</button></div>`);break;
+    case "go-daily":document.getElementById("overlay").innerHTML="";startGame("daily",{dur:120,label:`Griglia del giorno n. ${S.daily.n}`});break;
+    case "quit":{const g=S.game;sheet(`<h2>Abbandoni la partita?</h2><p class="muted">${g.mode==="daily"?"Il tentativo di oggi resta usato: conta il punteggio fatto finora.":g.mode==="duel"?"Il duello resta valido col punteggio fatto finora.":"La partita finisce qui e vedi il riepilogo."}</p><div class="row" style="gap:8px"><button class="btn btn-ghost" style="flex:1" data-close>Continua a giocare</button><button class="btn btn-primary" style="flex:1" data-act="endgame">Termina</button></div>`);break}
+    case "endgame":document.getElementById("overlay").innerHTML="";endGame();break;
+    case "again":startGame("train",{dur:S.lastResult.dur/1000,variant:S.lastResult.variant,label:S.lastResult.label});break;
+    case "challenge-grid":S.selDuelOpp="Giulia";go("nuovo-duello");toast("Scegli l'amico da sfidare.");break;
+    case "send-duel":{S.duels.unshift({id:Date.now(),opp:S.selDuelOpp,status:"tocca",dur:S.duelDur,oppPlayed:false});toast(`Invito inviato a ${S.selDuelOpp}. Puoi giocare subito il tuo turno.`);go("duelli");break}
+    case "gradesinfo":{const t=thresholds(GRIDS.train.max);sheet(`<h2>Come funzionano i gradi</h2><p class="muted">Il grado dipende da quanti punti fai rispetto al totale possibile in quella griglia: così una griglia povera non ti penalizza. Su questa griglia di prova servono:</p>
+      <table class="table num">${GRADES.map((n,i)=>`<tr><td>${n}</td><td>${t[i]} pt</td></tr>`).join("")}</table><button class="btn btn-primary btn-block" data-close>Ho capito</button>`);break}
+    case "share":{const r=S.daily.result;const txt=`Paroliere n. ${S.daily.n} · ${GRADES[r.grade]} · ${r.score} punti · ${r.found} parole · serie ${S.streak}`;
+      const ok=()=>toast("Risultato copiato. Incollalo dove vuoi.");try{navigator.clipboard.writeText(txt).then(ok,()=>sheet(`<h2>Copia il risultato</h2><p class="input" style="user-select:all">${esc(txt)}</p><button class="btn btn-primary btn-block" data-close>Fatto</button>`))}catch(err){sheet(`<h2>Copia il risultato</h2><p class="input" style="user-select:all">${esc(txt)}</p><button class="btn btn-primary btn-block" data-close>Fatto</button>`)}break}
+    case "readall":S.notifs.forEach(n=>n.unread=false);render();break;
+    case "sim-day":newDay(false);break;
+    case "sim-skip":newDay(true);break;
+    case "sim-invite":S.duels.unshift({id:Date.now(),opp:"Luca",status:"invito",dur:90});S.notifs.unshift({id:Date.now(),ic:"swords",c:"ic-blue",t:"Luca ti ha sfidato a un duello",s:"4×4 · 90 secondi · Versus",go:"duelli",unread:true,when:"adesso"});toast("Nuovo invito da Luca.");render();break;
+    case "sim-reset":clearInterval(tick);pendingModals.length=0;initState();document.getElementById("overlay").innerHTML="";go("home");toast("Prototipo azzerato.");break;
+  }
+});
+function readNotifFor(r){S.notifs.forEach(n=>{if(n.go===r)n.unread=false})}
+function newDay(skip){
+  if(S.today>=29){toast("Fine del mese simulato. Usa Ricomincia da capo.");return}
+  if(skip){S.today++}
+  if(!S.played.has(S.today)){
+    if(S.freezes>0){S.freezes--;S.frozen.add(S.today);toast(skip?"Hai saltato un giorno: un salvataggio ha protetto la serie.":"Ieri non hai giocato: usato un salvataggio.")}
+    else{S.streak=0;toast("Serie interrotta. Ricomincia oggi.")}
+  }
+  S.today++;S.daily={n:S.daily.n+(skip?2:1),played:false,result:null};
+  S.missions.forEach(m=>m.p=m.id==="long6"?0:0);
+  S.notifs.unshift({id:Date.now(),ic:"cal",c:"ic-coral",t:`Nuova griglia del giorno n. ${S.daily.n}`,s:`Serie a ${S.streak} giorni`,go:"giorno",unread:true,when:"adesso"});
+  if(!skip)toast(`Giorno ${S.today} novembre. Nuova griglia e nuove missioni.`);
+  go("home");
+}
+document.addEventListener("keydown",e=>{if(e.key==="Escape"&&document.querySelector(".scrim"))closeSheet()});
+
+render();
+})();
+</script>
