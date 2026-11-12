@@ -21,6 +21,10 @@ export default defineConfig({
         ],
       },
       workbox: {
+        // Le pagine /api (ritorno dal portale con il token, logout, accesso di sviluppo) devono arrivare
+        // al server: senza questa esclusione il service worker risponderebbe con index.html e il login non
+        // si completerebbe mai.
+        navigateFallbackDenylist: [/^\/api\//],
         // Il file del dizionario ha un nome versionato: cache-first, non cambia mai
         // contenuto. Il suo manifest.json va invece riverificato in rete a ogni
         // avvio per scoprire una nuova versione (RF-18).
