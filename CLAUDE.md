@@ -2,6 +2,15 @@
 
 Gioco di parole stile Paroliere/Boggle, PWA Svelte + monorepo pnpm. Specifica completa: `docs/SPEC.md`.
 
+
+## Stato attuale: servizio di whoru (da 2026-11-12, decisioni whoru #24 e #25)
+**Questo sostituisce le parti su login proprio, admin fisso e modalità offline più sotto (storiche).**
+- Identità dal portale whoru: il portale emette un token EdDSA di 60 s (`/launch/paroliere`), il server lo verifica via JWKS (`apps/server/src/auth/portal-token.ts`), lo usa una sola volta e apre un cookie di sessione HttpOnly (`session.ts`). Chiave utente = `sub`; tabella `users` sottile (id, username, date). Admin = gruppo `admin` di whoru.
+- Frontend e API sulla stessa origine, API sotto `/api`; nessun CORS, ma le richieste che modificano devono avere la stessa origine. Senza sessione (401) il frontend va al portale. Nessun uso senza login (servono le statistiche).
+- Sviluppo locale: `DEV_LOGIN=true` abilita `/api/auth/dev?user=mario&admin=1` (mai in produzione). Vite fa da proxy di `/api` verso la 3000.
+- Deploy: `Dockerfile` (immagine unica: il server serve anche `apps/web/dist`, applica le migrazioni all'avvio). Variabili: `DATABASE_URL` (database `paroliere` nel Postgres condiviso), `SESSION_SECRET` (>= 32 caratteri), `PORTAL_URL`, `SERVICE_ID`. Mai segreti nel repo.
+- Prossimi passi: grafica di whoru, amici nel portale, poi sfide riviste.
+
 ## Passo corrente
 **Passo 5a — Utenza obbligatoria**, completato. `apps/server` (Fastify + Drizzle + Postgres, vedi SPEC.md §9): schema `users`, migrazione applicata, route `POST /auth/register`, `POST /auth/login` (body: `identifier` — username o email — e `password`), `GET /auth/me` (JWT via `jose`, hash password via `argon2`), CORS abilitato via `CORS_ORIGIN` (default `http://localhost:5173`, richiede `@fastify/cors`). Verificato end-to-end contro Postgres reale via Docker.
 

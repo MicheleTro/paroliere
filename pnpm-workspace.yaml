@@ -3,5 +3,4 @@ packages:
   - "tools/*"
   - "apps/*"
 allowBuilds:
-  argon2: true
   esbuild: true

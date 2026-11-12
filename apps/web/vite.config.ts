@@ -42,6 +42,7 @@ export default defineConfig({
   server: {
     host: true,
     // In sviluppo le API sono sul server Fastify: stessa origine anche qui
-    proxy: { '/api': 'http://localhost:3000' },
+    // xfwd: il server riceve l'host originale (5173) in X-Forwarded-Host e confronta l'origine giusta
+    proxy: { '/api': { target: 'http://localhost:3000', xfwd: true } },
   },
 });
