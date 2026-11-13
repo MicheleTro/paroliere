@@ -402,3 +402,99 @@ Dipendenze ammesse:
 - **Passo 1 (solo dev)**: `typescript`, `tsx`, `vitest`, `@types/node`, `eslint`, `typescript-eslint`, `prettier`.
 - **Passi 2–4**: `svelte`, `vite`, `@sveltejs/vite-plugin-svelte`, `vite-plugin-pwa`, `idb`.
 - **Passo 3 (dev, aggiunta approvata)**: `eslint-plugin-svelte`, `svelte-eslint-parser` (lint dei file `.svelte`).
+
+## 11. Progressione e modalità (design, non ancora implementato)
+
+Decisioni prese il 2026-11-13. Sostituiscono, per l'esperienza del giocatore, la vecchia "Allenamento" con configurazione libera. Il prototipo visivo `docs/prototipo-gamification.html` è precedente a queste decisioni e serve solo come riferimento grafico: contiene cose ora escluse (ELO, missioni, gradi, salvataggi della serie).
+
+### 11.1 Grandezze
+- **XP (punti esperienza)**: unica grandezza di progresso. Non si spende. Si guadagna in tutte le modalità: l'XP di una partita è il suo punteggio totale, calcolato con la regola di punteggio di quella modalità (anche le parole già trovate in passato valgono pieno). Altre fonti si aggiungeranno (per esempio le missioni, ora rimandate).
+- **Livello**: deriva dall'XP accumulato, senza un massimo. Per salire dal livello `n` a `n+1` servono `round(60 · n^1.4)` XP (1→2: 60, 4→5: 418, 9→10: 1.300). Valori arbitrari, da ritarare sui dati reali; ipotesi di partenza: circa 50 XP per partita in Gioca, quindi livello 5 dopo circa 18 partite, livello 10 dopo circa 110. Non ogni livello sblocca qualcosa.
+- **Parole trovate**: numero di forme distinte trovate almeno una volta, in qualsiasi modalità (andato, andata, andati contano 3). È anche un elenco consultabile dal profilo.
+- **Serie**: giorni consecutivi in cui il giocatore ha finito almeno una partita, in qualsiasi modalità. Conta il giorno in cui si gioca, non la data della griglia; abbandonare una partita conta come finirla. Nessun salvataggio: un giorno senza partite riporta la serie a zero.
+
+Fuori perimetro per ora: ELO, valute da spendere, missioni, statistiche aggregate su tutti i giocatori (percentili, rarità), record personali di punteggio.
+
+### 11.2 Primo accesso
+- La prima partita è guidata: spiega il trascinamento e cosa sono XP e parole trovate.
+- Disponibili da subito: **Gioca**, **Settimana**, **Profilo**, **Impostazioni**.
+- Le funzioni non ancora sbloccate sono visibili con un lucchetto e il livello richiesto.
+- Gli utenti già esistenti ripartono da zero (XP, livello, parole trovate, serie).
+
+### 11.3 Sblocchi per livello (arbitrari, da confermare)
+| Livello | Sblocco |
+|---|---|
+| 1 | Gioca, Settimana, Profilo, Impostazioni |
+| 5 | Amici e sfide (duelli 1 contro 1) |
+| 10 | Gioca: scelta della griglia (4×4, 5×5, 6×6) |
+| 15 | Gioca: scelta della durata |
+
+Sfide e amici prima dello sblocco:
+- Le richieste di amicizia arrivano e si vedono anche prima del livello 5.
+- Si può sfidare un amico che non ha ancora sbloccato le sfide: la sfida resta in attesa e gli compare quando le sblocca.
+
+### 11.4 Gioca
+- 5×5, 2 minuti, regola classica (RF-12), seed casuale.
+- Riepilogo: punteggio (= XP guadagnato), parole nuove entrate nella collezione, medaglie sbloccate, passaggio di livello, parole mancate (mostrate solo qui, perché il seed è casuale e non svela nulla ad altri).
+- Nessun voto, nessun record, nessuna classifica.
+
+### 11.5 Settimana
+- Settimana da lunedì a domenica (fuso orario da fissare, proposta `Europe/Rome`). Ogni giorno alle 00:00 si sblocca una nuova griglia, uguale per tutti.
+- Le griglie dei giorni passati si possono giocare fino a domenica alle 23:59; poi la settimana si chiude e le griglie non giocate valgono 0.
+- Un solo tentativo per griglia.
+- Per ogni griglia: chi l'ha giocata e con quanti punti. Le parole trovate dagli altri restano nascoste finché non hai giocato quella griglia; le parole mancate non si mostrano.
+- Classifiche: per griglia e per settimana (somma delle 7 griglie), ciascuna in due versioni: **generale** (tutti i giocatori) e **amici**.
+- Variante per giorno:
+
+| Giorno | Variante |
+|---|---|
+| Lunedì | Classica 4×4, 2 minuti |
+| Martedì | 5×5, 2 minuti |
+| Mercoledì | Caselle bonus (moltiplicatori di parola) |
+| Giovedì | Parole lunghe (minimo 4 lettere) |
+| Venerdì | Combo che danno punti |
+| Sabato | 6×6, 3 minuti |
+| Domenica | Parole uniche: vale doppio una parola che nessun altro giocatore ha trovato su quella griglia (regola Versus estesa a tutti) |
+
+Conseguenze tecniche già note:
+- Mercoledì, giovedì e venerdì richiedono nuove regole di punteggio in `packages/core` (oggi esistono `classic` e `versus`).
+- Il punteggio della domenica è provvisorio finché la settimana non si chiude, perché chi gioca dopo può rendere comune una parola che era unica. XP e classifica di quella griglia si consolidano alla chiusura.
+
+### 11.6 Medaglie
+Premi unici, non ricorrenti. Prime 15:
+
+| # | Medaglia | Condizione |
+|---|---|---|
+| 1 | Prima parola | Trova la tua prima parola |
+| 2 | Prima partita | Finisci la tua prima partita |
+| 3 | Cento parole | 100 parole trovate |
+| 4 | Mille parole | 1.000 parole trovate |
+| 5 | Diecimila parole | 10.000 parole trovate |
+| 6 | Settebello | Una parola di 7 lettere o più |
+| 7 | Nove lettere | Una parola di 9 lettere o più |
+| 8 | Raccolto | 30 parole in una sola partita |
+| 9 | Livello 10 | Raggiungi il livello 10 |
+| 10 | Prima settimana | Gioca la tua prima griglia della Settimana |
+| 11 | Settimana piena | Gioca tutte e 7 le griglie di una settimana |
+| 12 | Puntuale | Gioca tutte e 7 le griglie di una settimana, ognuna nel suo giorno |
+| 13 | Tuttofare | Gioca almeno una griglia per ciascuna delle 7 varianti |
+| 14 | Primo posto | Primo nella classifica generale di una griglia della Settimana, a settimana chiusa |
+| 15 | Ciclo completo | Completa una serie di 10 giorni |
+
+Le medaglie legate al punteggio esistono solo per la Settimana (la 14).
+
+### 11.7 Serie e oggetti (da progettare)
+- La serie ragiona a cicli di 10 giorni, sfasati rispetto alla settimana.
+- Idea: completare un ciclo dà un oggetto cumulabile da usare nelle partite della Settimana (per esempio secondi in più).
+- Rischio: un oggetto che dà vantaggio nella Settimana rompe il principio "stessa griglia, stesse condizioni" e premia la presenza invece della bravura nella classifica. Da decidere prima di implementarlo (vedi 11.9).
+
+### 11.8 Impostazioni
+Suoni, vibrazione, tema chiaro o scuro, promemoria.
+
+### 11.9 Domande aperte
+- Oggetti della serie: quali, quanti se ne possono usare per griglia, se sono visibili in classifica, se valgono anche nella classifica generale.
+- Dopo i 10 giorni la serie riparte da zero o continua a contare, con un premio ogni 10?
+- Le medaglie danno XP?
+- Le sfide (duelli) danno XP pari al punteggio Versus?
+- Lo storico delle partite giocate prima del reset resta visibile nel profilo?
+- Quali statistiche mostra il profilo oltre a XP, livello, parole trovate e serie?
