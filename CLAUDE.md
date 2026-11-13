@@ -12,6 +12,7 @@ Gioco di parole stile Paroliere/Boggle, PWA Svelte + monorepo pnpm. Specifica co
 - Sfide (decisione whoru #28): solo 1 contro 1 su invito, un solo match, contro un amico del portale (`apps/server/src/portal/friends.ts` chiama le API interne del portale con `PORTAL_SERVICE_TOKEN`; in sviluppo, senza token, i `dev-*` sono tutti amici). Tabelle `duels`, `duel_starts`, `duel_results`; le vecchie sfide (squadre, lobby, serie) non esistono più. Notifiche solo qui (home: inviti, partite da giocare, richieste di amicizia).
 - Test e2e: con server (DEV_LOGIN=true) e Vite avviati, `pnpm --filter @paroliere/web exec playwright test` (apps/web/e2e/sfide.e2e.ts, ~1 minuto).
 - Prossimo: grafica di whoru.
+- Progressione e modalità (XP, livelli, Gioca, Settimana, medaglie, serie): design in `docs/SPEC.md` §11, non ancora implementato. Niente ELO.
 
 ## Passo corrente
 **Passo 5a — Utenza obbligatoria**, completato. `apps/server` (Fastify + Drizzle + Postgres, vedi SPEC.md §9): schema `users`, migrazione applicata, route `POST /auth/register`, `POST /auth/login` (body: `identifier` — username o email — e `password`), `GET /auth/me` (JWT via `jose`, hash password via `argon2`), CORS abilitato via `CORS_ORIGIN` (default `http://localhost:5173`, richiede `@fastify/cors`). Verificato end-to-end contro Postgres reale via Docker.

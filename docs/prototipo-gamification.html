@@ -1,0 +1,856 @@
+<title>Paroliere in gioco</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@600;700;800;900&display=swap">
+<style>
+/* Mondo a fumetto, un solo aspetto voluto (niente tema scuro dell'interfaccia: la scena ha giorno e notte).
+   Layout: ogni schermata riempie esattamente lo schermo, niente scorrimento; la Home è la scena del ramo. */
+:root{
+  color-scheme:light;
+  --ink:#1d1a3a; --ink-2:#4b4775;
+  --paper:#fffaf0; --paper-2:#f3ead8;
+  --blue:#2f6bff; --blue-d:#1c45c2; --blue-l:#dbe6ff;
+  --gold:#ffc53d; --gold-d:#d99500; --gold-l:#fff1c7;
+  --coral:#ff5e4b; --coral-d:#cf3a28; --coral-l:#ffe0da;
+  --mint:#25c88d; --mint-d:#139466; --mint-l:#d4f7e8;
+  --grey:#cdd3e3; --grey-d:#9aa3bd;
+  --tile:#fffaf0; --tile-sel:#ffd45e;
+  --f-display:"Lilita One","Arial Rounded MT Bold","Trebuchet MS",system-ui,sans-serif;
+  --f-body:"Nunito","Segoe UI",system-ui,sans-serif;
+}
+html,body{height:100%;overflow:hidden}
+body{background:#2a3f9e;color:var(--ink);font-family:var(--f-body);font-weight:700;font-size:15px;line-height:1.35}
+*{box-sizing:border-box}
+button{font:inherit;color:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent}
+button:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+.num{font-variant-numeric:tabular-nums}
+h1,h2,h3{font-family:var(--f-display);font-weight:400;margin:0;letter-spacing:.01em;text-wrap:balance}
+p{margin:0}
+
+/* cornice */
+.stage{height:100%;display:flex;justify-content:center;align-items:center;gap:28px;
+  background:radial-gradient(circle at 50% 50%,rgba(255,255,255,.08) 2px,transparent 3px) 0 0/26px 26px,#2a3f9e}
+.app{position:relative;width:100%;height:100%;overflow:hidden;background:var(--blue)}
+.map-aside{display:none}
+@media (min-width:900px){
+  .app{width:400px;height:min(860px,calc(100% - 40px));border-radius:40px;border:4px solid var(--ink);box-shadow:0 10px 0 rgba(0,0,0,.35)}
+  .map-aside{display:block;width:280px;max-height:calc(100% - 40px);overflow:auto;background:var(--paper);border:3px solid var(--ink);border-radius:24px;padding:18px;box-shadow:0 6px 0 rgba(0,0,0,.3)}
+}
+.screen{position:absolute;inset:0;display:flex;flex-direction:column;
+  padding-top:calc(10px + env(safe-area-inset-top,0px));padding-bottom:calc(14px + env(safe-area-inset-bottom,0px));
+  padding-left:max(14px,env(safe-area-inset-left,0px));padding-right:max(14px,env(safe-area-inset-right,0px))}
+.pattern{background:radial-gradient(circle at 50% 50%,rgba(255,255,255,.13) 2.5px,transparent 3.5px) 0 0/24px 24px,linear-gradient(180deg,#3d7bff,#2a55e0)}
+
+/* elementi a fumetto */
+.btn{border:3px solid var(--ink);border-radius:18px;padding:10px 18px;font-family:var(--f-display);font-size:1.15rem;letter-spacing:.03em;text-transform:uppercase;
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:52px;box-shadow:0 5px 0 var(--ink);transition:transform .06s,box-shadow .06s;
+  background:var(--paper);color:var(--ink);text-shadow:none}
+.btn:active{transform:translateY(3px);box-shadow:0 2px 0 var(--ink)}
+.btn svg{width:22px;height:22px}
+.btn-gold{background:linear-gradient(180deg,#ffd768,var(--gold));}
+.btn-blue{background:linear-gradient(180deg,#5b8cff,var(--blue));color:#fff;text-shadow:0 2px 0 var(--blue-d)}
+.btn-coral{background:linear-gradient(180deg,#ff8270,var(--coral));color:#fff;text-shadow:0 2px 0 var(--coral-d)}
+.btn-mint{background:linear-gradient(180deg,#4fdba7,var(--mint));color:#fff;text-shadow:0 2px 0 var(--mint-d)}
+.btn-big{font-size:1.6rem;min-height:66px;border-radius:22px;padding:10px 26px}
+.btn-sm{min-height:40px;font-size:.95rem;padding:6px 12px;border-radius:14px;box-shadow:0 4px 0 var(--ink)}
+.btn-block{width:100%}
+.btn:disabled{filter:grayscale(1);opacity:.6}
+.round{width:52px;height:52px;border-radius:50%;padding:0;min-height:0;flex:none;position:relative}
+.round svg{width:26px;height:26px}
+.panel{background:var(--paper);border:3px solid var(--ink);border-radius:22px;box-shadow:0 6px 0 rgba(29,26,58,.35)}
+.pill{display:inline-flex;align-items:center;gap:6px;background:var(--paper);border:3px solid var(--ink);border-radius:999px;padding:3px 12px 3px 4px;font-family:var(--f-display);font-size:1rem;box-shadow:0 3px 0 var(--ink);white-space:nowrap}
+.pill svg{width:22px;height:22px}
+.badge{position:absolute;top:-6px;right:-6px;min-width:22px;height:22px;border-radius:11px;background:var(--coral);color:#fff;border:2.5px solid var(--ink);font-family:var(--f-display);font-size:.8rem;display:grid;place-items:center;padding:0 4px}
+.lockb{position:absolute;bottom:-4px;right:-4px;width:24px;height:24px;border-radius:50%;background:var(--grey);border:2.5px solid var(--ink);display:grid;place-items:center}
+.lockb svg{width:13px;height:13px}
+.info{width:28px;height:28px;border-radius:50%;border:2.5px solid var(--ink);background:var(--paper);font-family:Georgia,serif;font-style:italic;font-weight:700;font-size:1rem;display:inline-grid;place-items:center;padding:0;box-shadow:0 2px 0 var(--ink);flex:none;line-height:1}
+.chip{display:inline-flex;align-items:center;gap:4px;border:2.5px solid var(--ink);border-radius:12px;padding:3px 10px;font-family:var(--f-display);font-size:1rem;background:var(--paper);white-space:nowrap}
+.chip.gold{background:var(--gold-l)}.chip.blue{background:var(--blue-l)}.chip.coral{background:var(--coral-l)}.chip.mint{background:var(--mint-l)}
+.xpbar{height:14px;border-radius:8px;border:2.5px solid var(--ink);background:#e9e2cf;overflow:hidden}
+.xpbar i{display:block;height:100%;background:linear-gradient(180deg,#ffe07a,var(--gold));border-right:2.5px solid var(--ink);transition:width .9s cubic-bezier(.2,.8,.2,1)}
+.xpbar.blue i{background:linear-gradient(180deg,#7aa2ff,var(--blue))}
+.outline-text{color:#fff;text-shadow:-2px -2px 0 var(--ink),2px -2px 0 var(--ink),-2px 2px 0 var(--ink),2px 2px 0 var(--ink),0 4px 0 var(--ink)}
+.row{display:flex;align-items:center;gap:10px}
+.between{justify-content:space-between}
+.grow{flex:1;min-width:0}
+.center{text-align:center}
+.muted{color:var(--ink-2);font-weight:700}
+.avatar{width:40px;height:40px;border-radius:14px;border:3px solid var(--ink);background:var(--gold-l);display:grid;place-items:center;font-family:var(--f-display);font-size:1.15rem;flex:none;text-transform:uppercase}
+
+/* HOME / scena */
+.scene-wrap{position:absolute;inset:0}
+.scene-wrap svg{display:block;width:100%;height:100%}
+.hud{position:absolute;left:0;right:0;top:0;display:flex;align-items:center;gap:8px;z-index:3;
+  padding-top:calc(12px + env(safe-area-inset-top,0px));padding-left:max(12px,env(safe-area-inset-left,0px));padding-right:max(12px,env(safe-area-inset-right,0px))}
+.lvl{display:flex;align-items:center;gap:0;flex:1;min-width:0;background:none;border:0;padding:0}
+.lvl .star{width:50px;height:50px;flex:none;position:relative;z-index:1;display:grid;place-items:center}
+.lvl .star svg{position:absolute;inset:0;width:100%;height:100%}
+.lvl .star b{position:relative;font-family:var(--f-display);font-weight:400;font-size:1.25rem;color:var(--ink)}
+.lvl .xpbar{flex:1;max-width:120px;margin-left:-10px;height:18px;border-radius:0 10px 10px 0}
+.weekpill{position:absolute;left:50%;transform:translateX(-50%);top:calc(70px + env(safe-area-inset-top,0px));z-index:3;display:flex;gap:6px;align-items:center}
+.weekpill .pill{padding:3px 6px 3px 12px;font-size:.95rem}
+.dock{position:absolute;left:0;right:0;bottom:0;z-index:3;display:flex;align-items:flex-end;justify-content:center;gap:16px;
+  padding-bottom:calc(16px + env(safe-area-inset-bottom,0px))}
+.dock .round{width:62px;height:62px}
+.dock .round svg{width:30px;height:30px}
+.dock .lab{display:block;font-family:var(--f-display);font-size:.8rem;text-align:center;margin-top:4px}
+.dock .lab.white{color:#fff;text-shadow:0 2px 0 var(--ink),-1px 0 0 var(--ink),1px 0 0 var(--ink)}
+.dock .play{min-width:150px}
+.node{cursor:pointer}
+.node:focus{outline:none}
+.node:focus-visible circle.face{stroke:var(--gold);stroke-width:5}
+.pulse{animation:pulse 1.6s ease-out infinite;transform-box:fill-box;transform-origin:center}
+@keyframes pulse{from{transform:scale(1);opacity:.9}to{transform:scale(1.6);opacity:0}}
+.sloth-bob{animation:bob 5s ease-in-out infinite;transform-origin:0 0}
+@keyframes bob{0%,100%{transform:rotate(-4deg)}50%{transform:rotate(5deg)}}
+.blink{animation:blink 6s infinite;transform-box:fill-box;transform-origin:center}
+@keyframes blink{0%,94%,100%{transform:scaleY(1)}96%{transform:scaleY(.1)}}
+.fall{animation:fall linear infinite}
+@keyframes fall{from{transform:translate(0,-30px) rotate(0)}to{transform:translate(-40px,900px) rotate(320deg)}}
+.cloud{animation:drift 60s linear infinite}
+@keyframes drift{from{transform:translateX(-30px)}to{transform:translateX(30px)}}
+.bubble-pop{animation:pop .5s cubic-bezier(.2,1.6,.4,1)}
+
+/* GIOCO */
+.gtop{display:flex;align-items:center;gap:8px}
+.gtop .title{flex:1;min-width:0;text-align:center;font-family:var(--f-display);font-size:1.05rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gstats{display:flex;justify-content:space-between;align-items:center;margin-top:12px}
+.timer{font-family:var(--f-display);font-size:1.7rem;padding:2px 16px 2px 6px}
+.timer.low{background:var(--coral-l);animation:shake .5s infinite}
+.score{font-family:var(--f-display);font-size:1.7rem;padding:2px 16px 2px 6px}
+.coach{display:flex;align-items:center;gap:8px;margin-top:10px;min-height:56px}
+.coach .head{width:50px;height:50px;flex:none}
+.coach .say{position:relative;flex:1;background:var(--paper);border:3px solid var(--ink);border-radius:16px;padding:8px 12px;font-family:var(--f-display);font-size:1.05rem;box-shadow:0 4px 0 rgba(29,26,58,.35)}
+.coach .say::before{content:"";position:absolute;left:-11px;top:50%;margin-top:-8px;border:8px solid transparent;border-right:10px solid var(--ink)}
+.coach .say::after{content:"";position:absolute;left:-6px;top:50%;margin-top:-6px;border:6px solid transparent;border-right:7px solid var(--paper)}
+.coach .say b{color:var(--coral-d);font-weight:400}
+.board-area{flex:1;min-height:0;display:grid;place-items:center;margin-top:10px}
+.board-wrap{position:relative;user-select:none;-webkit-user-select:none;touch-action:none}
+.board{--n:4;--gap:9px;width:100%;height:100%;display:grid;grid-template-columns:repeat(var(--n),1fr);grid-template-rows:repeat(var(--n),1fr);gap:var(--gap);padding:12px;border-radius:26px;
+  background:linear-gradient(180deg,#1f3fae,#162f8a);border:4px solid var(--ink);box-shadow:0 7px 0 var(--ink);position:relative}
+.board.n5{--n:5;--gap:7px}.board.n6{--n:6;--gap:6px;padding:9px}
+.tile{border-radius:14px;background:var(--tile);border:3px solid var(--ink);display:grid;place-items:center;position:relative;z-index:1;
+  font-family:var(--f-display);text-transform:uppercase;color:var(--ink);box-shadow:inset 0 -5px 0 rgba(29,26,58,.18);transition:transform .08s,background .1s}
+.tile.sel{background:var(--tile-sel);transform:scale(.92)}
+.tile.hint{animation:hint 1s ease-in-out infinite}
+@keyframes hint{50%{background:var(--tile-sel);transform:scale(.94)}}
+.board.n6 .tile{border-width:2.5px;border-radius:10px}
+.tile .bonus{position:absolute;top:-8px;right:-8px;font-size:.75rem;padding:1px 5px;border-radius:8px;background:var(--coral);color:#fff;border:2px solid var(--ink);font-family:var(--f-display);text-transform:none}
+.tile .bonus.x2{background:var(--mint)}
+.board svg.path{position:absolute;inset:0;width:100%;height:100%;z-index:2;pointer-events:none}
+.board svg.path polyline{fill:none;stroke:var(--coral);stroke-width:9;stroke-linecap:round;stroke-linejoin:round;opacity:.8}
+.current{height:52px;display:flex;align-items:center;justify-content:center;gap:10px;margin-top:10px}
+.current .w{font-family:var(--f-display);font-size:2rem;letter-spacing:.06em;text-transform:uppercase;color:#fff;text-shadow:0 3px 0 var(--ink),-2px 0 0 var(--ink),2px 0 0 var(--ink),0 -2px 0 var(--ink)}
+.fb{font-family:var(--f-display);font-size:1.05rem;padding:4px 12px;border-radius:12px;border:3px solid var(--ink)}
+.fb.ok{background:var(--mint)}.fb.dup{background:var(--gold)}.fb.no{background:var(--coral);color:#fff}.fb.short{background:var(--grey)}
+.shake{animation:shake .32s}
+@keyframes shake{20%,60%{transform:translateX(-5px)}40%,80%{transform:translateX(5px)}}
+.floater{position:absolute;z-index:5;pointer-events:none;font-family:var(--f-display);font-size:2rem;color:var(--gold);animation:float .9s ease-out forwards;
+  text-shadow:0 3px 0 var(--ink),-2px 0 0 var(--ink),2px 0 0 var(--ink),0 -2px 0 var(--ink)}
+@keyframes float{from{opacity:1;transform:translate(-50%,0) scale(.8)}30%{transform:translate(-50%,-20px) scale(1.2)}to{opacity:0;transform:translate(-50%,-70px) scale(1)}}
+.strip{display:flex;gap:6px;overflow-x:auto;padding:4px 2px 8px;scrollbar-width:none;min-height:40px}
+.strip::-webkit-scrollbar{display:none}
+.wchip{flex:none;padding:3px 10px;border-radius:10px;background:var(--paper);border:2.5px solid var(--ink);font-family:var(--f-display);font-size:.95rem;text-transform:uppercase;letter-spacing:.03em}
+.wchip.new{background:var(--gold)}
+.wchip.mine{background:var(--blue-l)}
+button.wchip[aria-pressed="true"]{background:var(--blue);color:#fff}
+.combo{font-family:var(--f-display);color:var(--gold);font-size:1.1rem;text-shadow:0 2px 0 var(--ink)}
+.countdown{position:absolute;inset:0;z-index:10;display:grid;place-items:center}
+.countdown b{font-family:var(--f-display);font-size:7rem;color:var(--gold);animation:pop .9s ease-out;text-shadow:0 6px 0 var(--ink),-4px 0 0 var(--ink),4px 0 0 var(--ink),0 -4px 0 var(--ink)}
+@keyframes pop{from{transform:scale(1.8);opacity:0}30%{opacity:1}to{transform:scale(1)}}
+
+/* RIEPILOGO */
+.sum{justify-content:space-between;gap:12px}
+.burst{position:relative;width:min(70vw,250px);aspect-ratio:1;max-width:100%;margin:0 auto;display:grid;place-items:center}
+.burst svg{position:absolute;inset:0;width:100%;height:100%;animation:spin 30s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.burst .v{position:relative;text-align:center;animation:pop .7s cubic-bezier(.2,1.5,.4,1)}
+.burst .v b{display:block;font-family:var(--f-display);font-size:4rem;line-height:1;color:#fff;text-shadow:0 5px 0 var(--ink),-3px 0 0 var(--ink),3px 0 0 var(--ink),0 -3px 0 var(--ink)}
+.burst .v span{font-family:var(--f-display);font-size:1.3rem;color:var(--ink)}
+.trio{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.bub{background:var(--paper);border:3px solid var(--ink);border-radius:18px;padding:8px 4px;text-align:center;box-shadow:0 4px 0 rgba(29,26,58,.35);position:relative}
+.bub b{display:block;font-family:var(--f-display);font-size:1.5rem;line-height:1.1}
+.bub span{font-size:.72rem;color:var(--ink-2);text-transform:uppercase;letter-spacing:.04em}
+.bub .info{position:absolute;top:-10px;right:-8px;width:24px;height:24px;font-size:.85rem}
+.lvlrow{display:flex;align-items:center;gap:10px}
+.lvlrow .xpbar{flex:1;height:18px}
+
+/* sheet */
+.scrim{position:absolute;inset:0;z-index:50;background:rgba(18,16,40,.55);display:flex;align-items:flex-end;justify-content:center}
+.sheet{width:100%;background:var(--paper);border-top:4px solid var(--ink);border-radius:30px 30px 0 0;padding:18px 16px calc(18px + env(safe-area-inset-bottom,0px));
+  display:flex;flex-direction:column;gap:12px;animation:up .28s cubic-bezier(.2,.9,.3,1.1);max-height:92%;overflow:hidden}
+.sheet.mid{margin:16px;border:4px solid var(--ink);border-radius:30px;box-shadow:0 8px 0 rgba(0,0,0,.35);align-self:center;align-items:center;text-align:center;max-width:360px;width:calc(100% - 32px)}
+.scrim.centered{align-items:center}
+@keyframes up{from{transform:translateY(40px);opacity:0}}
+.sheet-head{display:flex;align-items:center;gap:10px}
+.sheet-head h2{flex:1;min-width:0;font-size:1.5rem}
+.x{width:38px;height:38px;border-radius:50%;border:3px solid var(--ink);background:var(--paper);display:grid;place-items:center;padding:0;box-shadow:0 3px 0 var(--ink);flex:none}
+.x svg{width:18px;height:18px}
+.vbadge{width:58px;height:58px;border-radius:18px;border:3px solid var(--ink);display:grid;place-items:center;font-family:var(--f-display);font-size:1.3rem;box-shadow:0 4px 0 var(--ink);flex:none}
+.facts{display:flex;gap:8px;flex-wrap:wrap}
+.toast{position:absolute;left:50%;top:calc(80px + env(safe-area-inset-top,0px));transform:translateX(-50%);z-index:60;background:var(--paper);border:3px solid var(--ink);padding:8px 16px;border-radius:16px;font-family:var(--f-display);font-size:1.05rem;max-width:calc(100% - 32px);box-shadow:0 4px 0 var(--ink);animation:up .25s;text-align:center}
+.podium{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;align-items:end;text-align:center}
+.podium .p{display:flex;flex-direction:column;align-items:center;gap:4px;min-width:0}
+.podium .p .avatar{width:44px;height:44px}
+.podium .p .blk{width:100%;border:3px solid var(--ink);border-radius:12px 12px 4px 4px;font-family:var(--f-display);font-size:1.1rem;display:grid;place-items:center}
+.podium .p .nm{font-size:.78rem;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rank{display:grid;grid-template-columns:28px 36px 1fr auto;gap:10px;align-items:center;padding:6px 8px;border-radius:14px;width:100%;background:none;border:0;text-align:left}
+.rank .pos{font-family:var(--f-display);font-size:1.1rem;text-align:center}
+.rank .avatar{width:34px;height:34px;font-size:.95rem;border-width:2.5px;border-radius:11px}
+.rank .sc{font-family:var(--f-display);font-size:1.2rem}
+.rank.me{background:var(--gold-l);border:2.5px solid var(--ink)}
+.rank .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tabs{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:6px;background:var(--paper-2);border:3px solid var(--ink);border-radius:16px;padding:4px}
+.tabs button{border:0;background:none;border-radius:11px;padding:7px;font-family:var(--f-display);font-size:1rem;color:var(--ink-2)}
+.tabs button[aria-pressed="true"]{background:var(--blue);color:#fff;box-shadow:0 3px 0 var(--ink)}
+.token{width:54px;height:54px;border-radius:50%;border:3px solid var(--ink);background:radial-gradient(circle at 35% 30%,#ffe9a0,var(--gold));display:grid;place-items:center;font-family:var(--f-display);font-size:.95rem;box-shadow:0 4px 0 var(--ink);flex:none}
+.token.off{background:var(--grey);color:var(--ink-2)}
+.toggle-help{display:flex;align-items:center;gap:10px;border:3px dashed var(--ink);border-radius:18px;padding:8px 10px;background:none;width:100%;text-align:left}
+.toggle-help[aria-pressed="true"]{border-style:solid;background:var(--gold-l)}
+.check{width:30px;height:30px;border-radius:10px;border:3px solid var(--ink);display:grid;place-items:center;background:var(--paper)}
+.check svg{width:18px;height:18px}
+.toggle-help[aria-pressed="true"] .check{background:var(--mint)}
+.wgrid{display:flex;flex-wrap:wrap;gap:6px;overflow:auto;align-content:flex-start;min-height:0}
+.miniboard{--n:4;display:grid;grid-template-columns:repeat(var(--n),1fr);gap:4px;padding:7px;border-radius:16px;background:#1f3fae;border:3px solid var(--ink);width:150px;position:relative;flex:none}
+.miniboard .tile{aspect-ratio:1;border-width:2px;border-radius:7px;font-size:.95rem;box-shadow:inset 0 -3px 0 rgba(29,26,58,.18)}
+.miniboard.n5 .tile{font-size:.8rem}.miniboard.n6 .tile{font-size:.65rem;border-radius:5px}
+.miniboard svg.path polyline{stroke-width:5}
+.miniboard.hl .tile:not(.sel){opacity:.5}
+.medals{display:grid;grid-template-columns:repeat(5,1fr);gap:10px 6px}
+.medal{display:flex;flex-direction:column;align-items:center;gap:3px;background:none;border:0;padding:0}
+.medal .m{width:54px;height:54px;max-width:100%;border-radius:50%;border:3px solid var(--ink);display:grid;place-items:center;font-family:var(--f-display);font-size:.95rem;box-shadow:0 3px 0 var(--ink);
+  background:radial-gradient(circle at 35% 30%,#ffe9a0,var(--gold))}
+.medal .m.week{background:radial-gradient(circle at 35% 30%,#b9ceff,#5b8cff);color:#fff;text-shadow:0 2px 0 var(--ink)}
+.medal .m.serie{background:radial-gradient(circle at 35% 30%,#ffc2b8,var(--coral));color:#fff;text-shadow:0 2px 0 var(--ink)}
+.medal .m.off{background:var(--grey);color:var(--grey-d);text-shadow:none;box-shadow:0 3px 0 var(--grey-d);border-color:var(--grey-d)}
+.medal .n{font-size:.62rem;line-height:1.1;max-width:62px}
+.medal .m.big{width:110px;height:110px;font-size:2rem;animation:pop .6s cubic-bezier(.2,1.5,.4,1)}
+.sw{width:54px;height:32px;border-radius:999px;border:3px solid var(--ink);background:var(--grey);position:relative;padding:0;flex:none}
+.sw::after{content:"";position:absolute;top:2px;left:2px;width:22px;height:22px;border-radius:50%;background:var(--paper);border:2.5px solid var(--ink);transition:.15s}
+.sw[aria-pressed="true"]{background:var(--mint)}
+.sw[aria-pressed="true"]::after{left:24px}
+.setrow{display:flex;align-items:center;gap:12px;padding:6px 0}
+.setrow svg{width:26px;height:26px}
+
+/* profilo e sfide */
+.ptop{display:flex;align-items:center;gap:10px}
+.ptitle{flex:1;text-align:center;font-family:var(--f-display);font-size:1.5rem;color:#fff;text-shadow:0 3px 0 var(--ink),-2px 0 0 var(--ink),2px 0 0 var(--ink),0 -2px 0 var(--ink)}
+.pbody{flex:1;min-height:0;display:flex;flex-direction:column;gap:14px;margin-top:14px}
+.hero{display:flex;align-items:center;gap:14px;padding:14px}
+.hero .bigstar{width:76px;height:76px;position:relative;flex:none;display:grid;place-items:center}
+.hero .bigstar svg{position:absolute;inset:0;width:100%;height:100%}
+.hero .bigstar b{position:relative;font-family:var(--f-display);font-size:1.8rem}
+.tiles4{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.ptile{position:relative;background:var(--paper);border:3px solid var(--ink);border-radius:20px;padding:10px 12px;text-align:left;box-shadow:0 5px 0 var(--ink);display:flex;flex-direction:column;gap:2px;min-width:0}
+.ptile .ic{width:34px;height:34px}
+.ptile b{font-family:var(--f-display);font-size:1.5rem;line-height:1.1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ptile span{font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-2)}
+.ptile .info{position:absolute;top:8px;right:8px;width:24px;height:24px;font-size:.85rem}
+.lockcard{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center;padding:20px}
+.biglock{width:120px;height:120px}
+.drow{display:flex;align-items:center;gap:10px;padding:8px 10px;border:3px solid var(--ink);border-radius:18px;background:var(--paper);box-shadow:0 4px 0 rgba(29,26,58,.35)}
+.vs{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px;text-align:center;padding:14px}
+.vs .s{font-family:var(--f-display);font-size:3rem;line-height:1}
+.vs .win{color:var(--mint-d)}
+
+/* mappa (desktop) */
+.map h2{font-size:1.4rem}
+.map h3{font-size:1rem;margin-top:12px}
+.map p{font-size:.82rem;color:var(--ink-2);margin-top:4px}
+.map .sim{display:flex;flex-direction:column;gap:6px;margin-top:8px}
+.map .sim button{text-align:left;border:2.5px solid var(--ink);border-radius:12px;background:var(--paper);padding:6px 10px;font-weight:800;font-size:.84rem;box-shadow:0 3px 0 var(--ink)}
+.map .tabs button{font-size:.8rem;padding:6px 2px}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+</style>
+
+<div class="stage">
+  <aside class="map-aside map" id="mapAside" aria-label="Mappa del prototipo"></aside>
+  <div class="app" id="app"><div id="view"></div><div id="overlay"></div></div>
+</div>
+
+<script>
+(function(){
+"use strict";
+const DATA={"gioca": [{"letters": "risalnpadanolichrltepeiac", "words": ["ace", "acetica", "acida", "adita", "adite", "aditi", "aia", "aie", "aironi", "ala", "alai", "ali", "alida", "alita", "alitai", "aliti", "alla", "alle", "allei", "alleiate", "allieta", "allietai", "allieti", "allo", "allori", "alo", "aloni", "alpino", "alt", "alta", "alte", "alti", "aoh", "api", "apolitica", "aporia", "aporie", "apri", "asino", "aspri", "atei", "cada", "cadi", "cala", "calda", "caldaie", "caldi", "cale", "calei", "caler", "caleron", "cali", "calice", "call", "calli", "callo", "calo", "calon", "calore", "calori", "calorie", "cda", "ceca", "ceci", "ceti", "ciao", "cieca", "cita", "citai", "citi", "dacia", "dacie", "dai", "daino", "dal", "dalla", "dalle", "dallo", "dia", "diaspore", "dica", "dice", "dieta", "dilati", "dita", "dite", "elica", "elida", "elite", "eri", "ero", "etica", "etilica", "iella", "inno", "ire", "ironia", "itale", "itali", "italica", "italo", "laica", "laida", "lati", "lei", "lepri", "lice", "liceale", "liceali", "lieta", "lieti", "lire", "lite", "liti", "lolita", "lolite", "noli", "non", "noni", "oasi", "ola", "ole", "oli", "olia", "oliai", "oliate", "oliati", "opa", "opri", "oprin", "ore", "ori", "oriate", "orla", "orlai", "orlate", "orlati", "orli", "orliate", "orpelli", "paia", "pais", "pali", "palla", "pallate", "palle", "palli", "pallia", "palliate", "palliati", "pallida", "palloni", "pallore", "pallori", "palo", "pela", "pelai", "pelate", "pelati", "peli", "peliate", "pelli", "pelo", "per", "peri", "periate", "perita", "peritali", "perite", "periti", "perla", "perlacei", "perno", "pero", "pia", "piai", "pialla", "piallai", "piallate", "piallati", "pialli", "pialliate", "piallo", "pin", "pino", "plaid", "plori", "ploriate", "poli", "poliate", "polir", "polire", "polita", "polite", "politi", "politica", "polla", "pollai", "pollate", "pollati", "polli", "polliate", "pollice", "poni", "pori", "porla", "porle", "porli", "prelati", "prilla", "prillai", "prilli", "prillo", "pro", "prole", "proli", "proni", "propali", "propri", "propria", "psi", "rei", "ria", "rie", "riporla", "riporle", "risa", "risai", "risaia", "risaie", "risalda", "risaldai", "risaldi", "risali", "risalita", "risalite", "risaliti", "risalta", "risaltai", "risalti", "riti", "rolla", "rollai", "rollate", "rollati", "rolli", "rolliate", "sadica", "sai", "sala", "salace", "salaci", "salai", "salda", "saldai", "saldi", "sali", "salica", "salice", "salita", "salite", "saliti", "salo", "saloni", "salpi", "salpin", "salpino", "salpo", "salta", "saltai", "salti", "saponi", "sapore", "sapori", "saporiate", "saporita", "saporite", "saporiti", "sia", "sin", "sino", "spa", "spada", "spai", "spaia", "spain", "spaino", "spali", "spalla", "spallate", "spalle", "spalo", "spalti", "spia", "spiai", "spin", "spino", "split", "spola", "spole", "spore", "tac", "tace", "tal", "tale", "tali", "talloni", "teca", "tic", "tie", "tieh", "tir", "tiro"], "hint": "alta"}, {"letters": "sonmnpasieoncoleopltirosp", "words": ["acino", "ancien", "ancor", "ancori", "ancoro", "ani", "anime", "ano", "ansi", "ansie", "ansin", "ansino", "anso", "asilo", "asinello", "asino", "asole", "cane", "cani", "canine", "canoe", "canore", "canori", "canoro", "caos", "capo", "capon", "capono", "casi", "casine", "casino", "caso", "casoni", "ciel", "cielo", "cime", "clori", "cloro", "coi", "col", "colei", "coli", "colin", "colino", "colle", "colli", "collin", "collina", "colline", "collino", "collinosa", "collo", "colo", "color", "colore", "colori", "coloro", "colpo", "con", "cono", "console", "consoli", "consolin", "consolino", "consolle", "consolo", "consona", "consoni", "consonin", "coop", "copre", "copri", "copro", "copron", "coprono", "core", "cori", "coro", "corolle", "corpo", "corposa", "corposi", "corposo", "cosa", "cosina", "cosine", "cosmi", "elica", "elisa", "eliso", "eolica", "eolico", "eri", "ero", "eroi", "eros", "icona", "icone", "iena", "ime", "insane", "insano", "insapono", "ire", "isole", "isolo", "lei", "leni", "lenisca", "leniscan", "leniscano", "lenisco", "leniscon", "leniscono", "lineo", "lino", "lisa", "lisca", "liso", "loca", "locan", "locano", "loco", "loro", "losca", "losco", "meli", "melina", "melo", "meni", "menin", "menino", "menisco", "mica", "mie", "mina", "minan", "minano", "mine", "mino", "mio", "nane", "nani", "nano", "nasci", "nasco", "nascon", "nascono", "nasi", "nasino", "naso", "nasoni", "nei", "nel", "nello", "nemica", "nemico", "neo", "neri", "nero", "niello", "noi", "noie", "noir", "oasi", "oca", "ole", "oli", "olin", "olino", "oneri", "onero", "onore", "onori", "onoro", "opa", "opaci", "opaco", "opri", "opro", "ore", "ori", "oro", "osa", "osan", "osano", "oscillo", "osi", "osin", "osino", "oso", "osto", "pac", "paci", "pacioso", "paco", "pancino", "pane", "pani", "panico", "panie", "panin", "pano", "pasci", "pasco", "pascoli", "pascolin", "pascolino", "pascolo", "pascono", "pci", "plori", "ploro", "plot", "poca", "poco", "poemi", "poi", "polemica", "polemico", "poli", "polis", "polisca", "poliscan", "poliscano", "polisco", "poliscon", "poliscono", "polli", "pollin", "pollina", "polline", "pollino", "pollo", "polo", "polso", "pone", "poni", "pool", "pori", "poro", "posa", "posan", "posano", "posi", "posin", "posino", "poso", "post", "posto", "prenasci", "prenasco", "pro", "prona", "prone", "prono", "rei", "renani", "renano", "reo", "rie", "rio", "rione", "roca", "roci", "roco", "rolli", "rollin", "rollino", "rollo", "rospo", "san", "sane", "sani", "sanin", "sano", "sapone", "saponi", "sci", "scie", "scin", "scino", "scio", "scoli", "scolin", "scolino", "scolli", "scollin", "scollino", "scollo", "scolo", "scolori", "scoloro", "scolpo", "scoop", "scopo", "scopre", "scopri", "scopro", "scopron", "scoprono", "score", "scori", "scorie", "scoro", "sim", "sin", "sino", "slot", "smielo", "smina", "sminan", "sminano", "smino", "soap", "soci", "socie", "soie", "sol", "solca", "solcan", "solcano", "solco", "sole", "soli", "solin", "solino", "solo", "son", "soni", "sonica", "sonico", "sonin", "sore", "sos", "sosie", "spa", "spanci", "spancin", "spancino", "spancio", "spani", "spanin", "spano", "spasi", "spasmi", "spole", "spore", "sposa", "sposan", "sposane", "sposano", "sposi", "sposin", "sposino", "sposo", "spot", "sprona", "spronan", "spronano", "sprone", "sprono", "sto", "stoica", "stoico", "stole", "stop", "tlc", "top", "topo", "topoi", "topos", "tosa", "tosan", "tosano", "tosca", "toscane", "toscani", "toscano", "tosco", "tosi", "tosin", "tosino", "toso"], "hint": "anime"}], "week": [{"letters": "tnaovamlltidlsea", "words": ["adiamo", "adiate", "adiste", "adita", "adite", "aia", "aie", "ali", "aliamo", "aliate", "alida", "alide", "alita", "alitan", "alma", "almi", "almo", "alo", "alt", "alte", "alti", "ama", "amai", "aman", "amate", "amati", "ami", "amiate", "amo", "anali", "analiste", "atea", "atei", "dai", "dea", "dei", "desi", "desia", "desiamo", "desian", "desta", "destai", "destan", "desti", "destiamo", "dia", "diamo", "dian", "diate", "dieta", "dista", "distan", "dita", "dite", "edita", "editan", "esima", "esiman", "esimo", "esita", "esitan", "estima", "estiman", "estimo", "idea", "ima", "imo", "laida", "laide", "lama", "lana", "lati", "liana", "lieta", "lima", "liman", "limate", "limo", "lise", "list", "lista", "listan", "liste", "lite", "mai", "mail", "mais", "mal", "mali", "malia", "malie", "malo", "malte", "maltesi", "man", "manate", "mia", "mie", "mieta", "mietan", "mila", "mise", "mista", "miste", "mite", "mola", "molan", "moli", "moliate", "naia", "naie", "nate", "nati", "natia", "natie", "ola", "oli", "olia", "olian", "oliate", "olmi", "omise", "seda", "sedai", "sedi", "sedia", "sediamo", "sei", "set", "seta", "seti", "sia", "siamo", "sian", "siate", "sieda", "sim", "sit", "sita", "site", "slam", "sta", "stai", "stan", "stana", "stia", "stiamo", "stian", "stie", "stil", "stila", "stilan", "stilo", "stima", "stiman", "stimo", "stimola", "stimolan", "tal", "tam", "tamil", "tana", "tant", "tate", "tedi", "tedia", "tediamo", "tedian", "tesi", "tesiamo", "tie", "vai", "vaia", "vaie", "val", "valse", "valsi", "van", "vana", "vate", "vati"]}, {"letters": "lhceileaiaesacteirtcsinoa", "words": ["acacia", "acacie", "acari", "acaro", "accasa", "accasai", "accasar", "accasaron", "accasato", "accasi", "accasin", "accasino", "accatta", "accattai", "accattar", "accattaron", "accatti", "accatto", "accattoni", "acciai", "acciain", "acciaino", "accora", "accorai", "accorata", "accori", "accorin", "accorsa", "accorse", "accorsi", "accorta", "ace", "acri", "aia", "aie", "aironi", "arcaica", "arcaiche", "ari", "arie", "arin", "arino", "arnie", "aro", "arsa", "arse", "arsi", "arto", "asini", "asino", "atoni", "atri", "atta", "attacca", "attaccai", "attaccar", "attaccaron", "attaccarsi", "attacco", "atti", "atto", "attorca", "attorci", "attori", "attorni", "attornia", "attorniai", "attorse", "attorsi", "attracca", "attracco", "attrae", "attrai", "caca", "cacai", "cacar", "cacaron", "cacata", "cacati", "cacato", "cacca", "cairota", "cari", "carin", "carini", "carino", "carni", "caro", "carota", "carta", "cartoni", "casa", "casacca", "casata", "casato", "case", "caseari", "casearie", "caselle", "casi", "casini", "casino", "celle", "cesi", "che", "chele", "cicca", "ciccata", "ciccato", "cicco", "cieca", "cieche", "cita", "citai", "coatta", "coatti", "con", "coni", "conia", "coniai", "coniar", "coniata", "conta", "contai", "contar", "contarci", "contarsi", "contrae", "contrai", "contras", "cori", "corni", "corsa", "corse", "corsi", "corsia", "corsie", "corta", "cotta", "cotti", "crisi", "croata", "esatta", "esatti", "hai", "ielle", "intacca", "intaccai", "intaccar", "intaccati", "intacco", "intarsi", "intasa", "intasai", "intasi", "intrisa", "intrise", "ira", "irata", "irato", "ironia", "ironie", "irta", "irto", "lecita", "lei", "lesa", "lese", "lesi", "lesini", "lesino", "noccia", "nota", "notai", "notar", "notarsi", "notti", "oca", "onta", "ora", "orai", "orata", "ori", "orin", "orini", "orni", "orsi", "otri", "ottica", "ottiche", "racca", "raccato", "raccatta", "raccattai", "raccatti", "racco", "racconta", "rais", "ras", "rasa", "rasai", "rase", "rasi", "rasin", "rasino", "rata", "rato", "ratta", "ratti", "ria", "riatta", "riattacca", "riattacco", "riattai", "riatti", "rie", "rii", "rintocca", "rintoccai", "rintoccati", "risa", "risacca", "risai", "risaia", "risaie", "risata", "risataccia", "rise", "riseca", "risecai", "risei", "risi", "risia", "roca", "rocca", "roccia", "rota", "rotai", "rotaia", "rotaie", "rotta", "rotti", "sacca", "sacco", "sacra", "sacri", "sacro", "sai", "sari", "sarta", "sarto", "sei", "selle", "sia", "sii", "sin", "sino", "sinora", "sinottica", "sinottiche", "tac", "tacca", "tacci", "taccia", "tacciai", "tacciar", "tacciaron", "tacco", "taci", "tacita", "tacitai", "tari", "tarin", "tarino", "taro", "tarsie", "tic", "tie", "tocca", "toccai", "toccar", "toccarsi", "toccati", "toni", "toraci", "toracica", "toraciche", "torca", "torci", "torcia", "tori", "tories", "torni", "tornii", "torse", "torsi", "tra", "trae", "trai", "traini", "traino", "trii", "trini", "trino", "troni"]}, {"letters": "ntmnoaaoendiaell", "words": ["adiamo", "ama", "amai", "aman", "amando", "amano", "amato", "amo", "andai", "andata", "andato", "andiamo", "aneli", "aneliamo", "anelli", "ano", "atona", "atone", "dai", "dama", "dan", "data", "datai", "datan", "datane", "datano", "dato", "dea", "dee", "del", "denota", "denotai", "denotan", "denotano", "dia", "diamo", "dian", "diano", "dio", "dna", "doma", "domai", "doman", "domano", "domata", "domato", "don", "dona", "donai", "donan", "donano", "donata", "donato", "elida", "elidano", "elido", "end", "idea", "idean", "ideano", "idee", "leda", "ledano", "ledi", "lediamo", "ledo", "lena", "lene", "leno", "liana", "liane", "lido", "mai", "mail", "man", "manda", "mandai", "mandan", "mandano", "mandato", "mandi", "mando", "mano", "manona", "manone", "manto", "moda", "mode", "model", "modelli", "modi", "monade", "monadi", "nana", "nane", "nano", "nata", "nato", "nel", "neo", "neon", "neonata", "nodi", "noi", "noia", "noma", "nomade", "nomadi", "nomai", "noman", "nomano", "nomata", "nomato", "non", "nona", "none", "nota", "notai", "notaio", "notan", "notando", "notano", "oda", "odan", "odano", "ode", "odi", "odia", "odian", "odiano", "odiata", "odiato", "odile", "onda", "ondata", "onde", "onta", "tam", "tana", "tane", "tona", "tonai", "tonan", "tonando", "tonano", "tonda", "tonde", "tondi", "tondo"]}, {"letters": "morevmldaisitlet", "words": ["aie", "alesi", "ali", "alt", "alti", "ami", "amo", "amor", "amore", "atleti", "avi", "avo", "del", "dite", "edili", "edite", "elise", "elisi", "elisia", "elisie", "elite", "elmi", "elmo", "ero", "esile", "esili", "esilia", "esiliammo", "esiliamo", "esiliavo", "esima", "esimo", "esita", "esitammo", "esitavo", "ima", "immoli", "imo", "itale", "lati", "lavi", "lavo", "ledi", "lei", "lesi", "lesiva", "lesivo", "lesti", "lider", "lieti", "lima", "limavo", "limo", "lise", "lisi", "list", "liste", "listi", "lite", "livore", "lord", "lorde", "lordi", "mai", "mail", "mais", "mal", "male", "malesi", "mali", "malie", "mia", "mie", "miei", "mieti", "mila", "milite", "mise", "misi", "miste", "misti", "mole", "moli", "molse", "molsi", "morde", "mordi", "more", "ole", "oli", "olia", "oliva", "olmi", "omise", "omisi", "orde", "ordiste", "ordite", "ore", "orli", "orma", "ormai", "ovaie", "ovale", "ovali", "rom", "romita", "rovi", "rovisti", "sei", "set", "seti", "sia", "siamo", "sim", "sit", "sita", "site", "slam", "slavi", "slavo", "smalti", "smaltivo", "smiela", "smielavo", "steli", "stie", "stil", "stile", "stili", "stiliamo", "stilo", "tal", "tale", "tali", "tam", "tamil", "tavole", "tavoli", "tela", "telai", "teli", "tesi", "tesiamo", "tie", "timor", "timore", "vai", "vaie", "val", "vale", "valesti", "vali", "valse", "valsi", "vati", "via", "viale", "vie", "vieti", "vile", "vili", "vis", "visi", "visite", "viste", "visti", "vita", "vitale", "voler", "volermi", "voli", "volse", "volsi", "vomita"]}, {"letters": "repeaoeesdneiulo", "words": ["adulo", "aduno", "adusi", "aduso", "aero", "aree", "aro", "dar", "dare", "dee", "depone", "deposi", "don", "dono", "dope", "dora", "dosa", "dosar", "dosare", "dosi", "dui", "dune", "eluda", "elude", "eludi", "eludo", "eludon", "eludono", "elusa", "elusi", "eluso", "end", "era", "ero", "eroda", "erode", "erodi", "eroe", "eros", "erosa", "erosi", "idee", "ideo", "idonee", "idoneo", "lene", "leno", "leone", "lui", "lune", "luno", "nel", "neo", "nodi", "nuda", "nude", "nudi", "nudo", "oasi", "oda", "ode", "odi", "ole", "onda", "onde", "ondosa", "ondosi", "ondulo", "onora", "onore", "open", "opera", "ora", "ore", "osa", "osar", "osare", "osi", "pedone", "penda", "pende", "pendi", "pendo", "pendule", "pendulo", "pene", "peno", "penosa", "penosi", "peone", "per", "pera", "pero", "podi", "pone", "posa", "posar", "posare", "posi", "rade", "radi", "rado", "radono", "raduno", "ras", "rasi", "raso", "rea", "ree", "reo", "roda", "rode", "rodi", "ronda", "ronde", "rosa", "rosi", "soda", "sodar", "sodare", "sode", "sodi", "son", "sonda", "sondar", "sondare", "sonde", "sondi", "sono", "sora", "sore", "sud", "suda", "sudar", "sudare", "sudaron", "sudarono", "sudi", "sudo", "sudore", "sui", "sul", "uno", "usa", "usar", "usare", "usaron", "usarono", "usi", "uso"]}, {"letters": "enodnroivrdgttmoieailegelcraucsatlac", "words": ["acari", "accula", "accular", "acculare", "acculata", "ace", "acre", "acri", "aera", "aeri", "agi", "agio", "agir", "agiron", "agirono", "ago", "ala", "alacre", "alacri", "alai", "alar", "alare", "alari", "alata", "alati", "alato", "ali", "alita", "alitati", "alitato", "aliti", "alitin", "alitino", "alito", "alme", "almi", "almo", "alo", "alt", "alta", "altare", "altari", "alti", "alto", "altr", "altra", "altre", "altri", "ara", "area", "ari", "aria", "aritmie", "ascia", "ascritta", "ascritti", "ascritto", "atone", "atoni", "atono", "atri", "atti", "attimi", "attimo", "attira", "attirata", "attivo", "atto", "aula", "cala", "calai", "calar", "calare", "calata", "calati", "calato", "cali", "cara", "care", "cari", "caria", "cariati", "cariato", "carta", "catino", "cattivo", "cattivone", "cime", "cimi", "cimin", "cimino", "cimo", "cita", "citati", "citato", "citi", "citin", "citino", "cito", "climi", "clori", "cloro", "crea", "crealo", "creata", "crei", "cremi", "cremin", "cremino", "cremo", "creo", "creoli", "crimine", "cuce", "cul", "cult", "dee", "dei", "diga", "digerita", "digeriti", "digerito", "dio", "dir", "dirmelo", "dirmi", "diro", "dirvi", "dogale", "dogali", "doge", "dogi", "dola", "dolci", "dole", "dolei", "doli", "dome", "domi", "domin", "domino", "don", "doni", "dono", "dori", "dorme", "dormi", "dormir", "dormire", "dormirei", "dormita", "dormiti", "dormito", "dormivo", "dormo", "doro", "droga", "drogar", "drogarci", "drogare", "drogata", "ego", "egual", "eguale", "eguali", "elica", "elimino", "elmi", "elmo", "elogi", "enorme", "enormi", "eolica", "era", "eri", "erta", "gala", "galera", "gara", "gare", "garitta", "gel", "gela", "gelar", "gelata", "geli", "gelo", "gemi", "gemine", "gemino", "gemiti", "gemito", "gemo", "giovi", "giovin", "giovine", "giovino", "giovinotti", "giovo", "giro", "girone", "gironi", "gode", "godei", "godi", "gol", "gola", "gole", "gomiti", "gomito", "gualca", "gualci", "gualcir", "gualcire", "gualcirei", "gualciremo", "gualcita", "gualciti", "gualcito", "guarita", "guariti", "guarito", "guata", "guatar", "guatare", "idee", "idolatria", "idoli", "ieri", "ilare", "ime", "imi", "imita", "imitato", "imito", "imo", "invola", "involar", "involare", "involata", "involi", "involta", "involtai", "involtati", "involtato", "involti", "involto", "ira", "irata", "ire", "ironie", "irta", "itala", "itali", "italica", "ittica", "lacrime", "lacrimi", "lacrimin", "lacrimino", "lacrimo", "lager", "lago", "laica", "lasci", "lascia", "lasciati", "lasciato", "lasciti", "lascito", "lati", "latine", "latino", "latiti", "latitin", "latitino", "latito", "lato", "latra", "latri", "latti", "lattica", "lattine", "lega", "legala", "legar", "legarci", "legarla", "legata", "lego", "lei", "lerci", "lercia", "lerciati", "lerciato", "limi", "limin", "limino", "limita", "limitato", "limito", "limo", "lira", "lire", "liti", "lode", "lodi", "lord", "lorde", "lordi", "lordo", "loro", "luca", "luce", "lucei", "mega", "mela", "melata", "meli", "melo", "melodie", "mera", "mercati", "mercatino", "mercato", "merci", "meri", "merita", "meritati", "meritato", "meriti", "meritin", "meritino", "merito", "merlata", "mia", "mica", "mie", "mila", "mine", "mino", "minor", "minori", "minoro", "mio", "mira", "mirata", "mire", "miti", "mitica", "mito", "mode", "modi", "mogi", "mogie", "mogul", "mola", "molar", "molare", "molata", "molca", "molci", "mole", "moli", "molta", "molti", "molto", "morde", "mordi", "mordo", "mordono", "mori", "morie", "morigerata", "moro", "nei", "neo", "noi", "noie", "nord", "norme", "nota", "notai", "notati", "noti", "notti", "ode", "odi", "ola", "ole", "oleari", "olearia", "oleata", "oli", "olia", "oliati", "oliato", "olmi", "omelia", "omerica", "omino", "onori", "onoro", "orde", "ori", "orme", "oro", "otiti", "ottica", "ottime", "ottimi", "ottimin", "ottimino", "ottimo", "ovine", "ovino", "racimola", "ras", "rata", "rea", "reagir", "reagiron", "reagirono", "real", "reali", "regala", "regali", "regalia", "regalo", "regata", "regi", "regie", "regio", "regola", "regolata", "regoli", "rei", "relitti", "relitto", "remi", "remin", "remino", "remo", "reo", "ria", "riatti", "riattin", "riattino", "riattivo", "riatto", "ricatti", "ricattin", "ricattino", "ricatto", "ride", "rido", "rie", "riera", "rieri", "riga", "rigar", "rigare", "rigata", "rigo", "rilega", "rilegata", "rilego", "rime", "rimi", "rimin", "rimino", "rimo", "rimorde", "rimordi", "rimordo", "rimordono", "rio", "riode", "riti", "ritmi", "ritmin", "ritmino", "ritmo", "rito", "ritta", "ritti", "ritto", "rode", "rodi", "roga", "rogar", "rogare", "rogata", "rom", "romea", "romei", "romita", "romiti", "romito", "rovi", "rovine", "rovino", "rovo", "sacra", "sacrale", "sacrali", "sacre", "sacri", "sacrilega", "sacrilegi", "sacrilegio", "sacrilego", "sala", "salaci", "salai", "salati", "salatino", "salato", "sali", "salica", "salir", "salire", "salirei", "saliremo", "salita", "saliti", "salito", "sarei", "saremo", "sari", "sarta", "scala", "scalai", "scalar", "scalare", "scalari", "scalarlo", "scalata", "scalati", "scalato", "scali", "scarta", "scatti", "scattin", "scattino", "scatto", "sci", "scia", "sciala", "scialar", "scialare", "scialata", "sciati", "sciato", "sciatti", "sciatto", "scremi", "scremin", "scremino", "scremo", "scritta", "scritti", "scritto", "scrittoi", "scrittoio", "slatti", "slattin", "slattino", "slatto", "slitta", "slitti", "slittin", "slittino", "slitto", "tac", "taci", "tacita", "tacitati", "tacitato", "taciti", "tacitin", "tacitino", "tacito", "tal", "talare", "talari", "tale", "tali", "tara", "tare", "tari", "tarla", "tarli", "tarlo", "tasca", "tic", "tie", "timer", "timor", "timori", "tino", "tir", "tira", "tirata", "tlc", "toni", "tono", "tot", "totali", "tra", "tracimi", "tracimin", "tracimino", "tracimo", "trae", "tragedie", "traluca", "traluce", "tralucei", "trasla", "traslai", "traslati", "traslato", "trasli", "tre", "tregua", "tregue", "tremi", "tremila", "tremin", "tremino", "tremiti", "tremito", "tremo", "tremola", "tremoli", "tremori", "trilogie", "trita", "tritati", "tritato", "triti", "tritin", "tritino", "trito", "tritone", "tritoni", "ugola", "ugole", "ulta", "ultra", "ultras", "ultre", "ultri", "vie", "vino", "vita", "vitali", "viti", "vitti", "vittime", "vitto", "voga", "vogar", "vogare", "vogata", "voi", "vola", "volar", "volare", "volata", "voler", "volerci", "voleri", "volerla", "voli", "volta", "voltai", "voltati", "voltato", "volti", "voltin", "voltino", "volto", "vomita", "vomitai", "vomitati", "vomitato", "vomiti", "vomitin", "vomitino", "vomito", "von"]}, {"letters": "prbtsnlioiraduge", "words": ["aeri", "aerin", "aerino", "agi", "agili", "agio", "agir", "agire", "agre", "agri", "albi", "ali", "alido", "alin", "alino", "alt", "alti", "argino", "ari", "arido", "arin", "arino", "bili", "bit", "diga", "dio", "dir", "dira", "dirai", "dire", "diri", "dirla", "dirli", "diurno", "don", "doni", "dosi", "dosin", "dui", "duo", "dura", "durai", "dure", "duri", "durin", "durino", "egra", "egri", "era", "erga", "ergi", "eri", "eriga", "gai", "gare", "gin", "gira", "girai", "giri", "girl", "giura", "giurai", "giuri", "giuria", "grido", "guido", "ilare", "ilari", "ira", "ire", "irido", "lager", "lido", "ligure", "liguri", "lino", "lira", "lire", "liso", "nido", "nodi", "noi", "noir", "odi", "odin", "osi", "osin", "pnl", "psi", "ragion", "rail", "rea", "real", "reali", "regali", "regalin", "regalino", "regi", "regio", "ria", "rido", "ridon", "riga", "rigai", "rio", "riso", "rison", "rudi", "ruga", "sigari", "sin", "sino", "snido", "snodi", "sodi", "sodin", "son", "soni", "srl", "tiare", "tir", "tira", "tirali", "tiri", "tirin", "tirino", "udir", "udirai", "udire", "urga", "urge", "urgi", "urino", "urla", "urlai", "urli", "urlin", "urlino"]}], "duel": {"letters": "relgaiuordcsllhi", "words": ["adir", "adire", "aduli", "adulo", "adusi", "aduso", "aeri", "aie", "aiuole", "ardi", "ardir", "ardire", "ardue", "ardui", "arduo", "ari", "arie", "cda", "cdr", "chi", "ciel", "cielo", "cogli", "coglie", "coglier", "col", "colei", "colera", "colerai", "coli", "colui", "cui", "cul", "culi", "culo", "dai", "dar", "dare", "darei", "dia", "dichi", "dici", "dico", "dir", "dira", "dire", "duchi", "due", "dui", "duo", "elida", "eluda", "eludi", "elusi", "eluso", "era", "eradichi", "eradico", "erari", "eri", "gli", "glucosi", "gol", "gole", "guida", "guidar", "guidare", "gusci", "ira", "ire", "isole", "isolerai", "isoli", "lei", "lira", "lire", "lochi", "loschi", "luci", "lucida", "lucidar", "lucidare", "luco", "ludici", "ludico", "lui", "ole", "oleari", "oli", "olia", "oliar", "oliare", "osi", "radi", "radichi", "radici", "radico", "raid", "rail", "rare", "rari", "rea", "rei", "ria", "ricusi", "ricuso", "rida", "ridar", "ridare", "riduci", "riduco", "rie", "riera", "riluci", "riluco", "riusi", "riuso", "sci", "scia", "sciar", "sciare", "scie", "scogli", "scogliera", "scolerai", "scoli", "scudi", "scuole", "sicule", "siculi", "siculo", "soci", "socia", "socie", "soglia", "soglie", "sol", "sole", "solerai", "soli", "solida", "soul", "sud", "suda", "sudai", "sudar", "sudare", "sudari", "sudi", "sudici", "sue", "sugli", "sugo", "sui", "sul", "suo", "suole", "suolerai", "suoli", "udir", "udire", "ugole", "usci", "uscir", "uscire", "usi", "uso"]}};
+function prep(g){const N=Math.round(Math.sqrt(g.letters.length));return {letters:[...g.letters],N,words:g.words,set:new Set(g.words),hint:g.hint}}
+const GIOCA=DATA.gioca.map(prep),DUEL=prep(DATA.duel);
+const VARIANTS=[
+  {id:"classica",name:"Classica",glyph:"4×4",color:"#fffaf0",info:"Regola classica: 1 punto per 3 lettere, +1 per ogni lettera in più."},
+  {id:"grande",name:"5×5",glyph:"5×5",color:"#d4f7e8",info:"Griglia 5×5: più lettere, più parole. Regola classica."},
+  {id:"bonus",name:"Bonus",glyph:"×3",color:"#ffe0da",info:"Due caselle moltiplicano la parola che ci passa sopra: ×2 e ×3."},
+  {id:"lunghe",name:"Lunghe",glyph:"4+",color:"#dbe6ff",info:"Valgono solo parole di almeno 4 lettere."},
+  {id:"combo",name:"Combo",glyph:"⚡",color:"#fff1c7",info:"Trova una parola entro 5 secondi dalla precedente: la combo sale e ogni parola vale +1 per livello di combo."},
+  {id:"gigante",name:"6×6",glyph:"6×6",color:"#e7dcff",info:"La griglia più grande: 6×6 e 3 minuti."},
+  {id:"uniche",name:"Uniche",glyph:"★",color:"#ffd9ec",info:"Una parola che nessun altro ha trovato vale doppio. Il punteggio resta provvisorio fino a domenica a mezzanotte."}
+];
+const WEEK=DATA.week.map((g,i)=>Object.assign(prep(g),{v:VARIANTS[i],dur:i===5?180:120,min:i===3?4:3,bonus:i===2?{5:3,10:2}:{}}));
+const DAYS=["Lunedì","Martedì","Mercoledì","Giovedì","Venerdì","Sabato","Domenica"];
+const D3=["LUN","MAR","MER","GIO","VEN","SAB","DOM"];
+const MONTHS=["gen","feb","mar","apr","mag","giu","lug","ago","set","ott","nov","dic"];
+const PLAYERS=["lupo_grigio","marta.b","enigmista","Giulia","Luca","Sara","Paolo","volpe77","nonna_ada","teo.r","Elena","bruno_v"];
+const SKILL={};PLAYERS.forEach(p=>SKILL[p]=.6+hash(p+"#s")*.9);
+const PLAYER_LEVEL={Paolo:3,Giulia:9,Luca:12};
+const INFO={
+  week:["La Settimana","Ogni giorno a mezzanotte il bradipo sale di un ramo e si apre una griglia nuova, uguale per tutti. Le griglie perse si recuperano fino a domenica. Un tentativo per griglia. La classifica somma le 7 griglie."],
+  xp:["XP e livelli","Ogni punto che fai diventa XP. Con gli XP sali di livello. Al livello 5 si aprono le Sfide."],
+  serie:["Serie","Gioca almeno una partita al giorno. Al decimo giorno ricevi un aiuto da +10 secondi e la serie riparte. Se salti un giorno, riparte da zero."],
+  aiuto:["Aiuto +10 s","Dieci secondi in più su una griglia della Settimana. Massimo uno per griglia. Le regole non cambiano."],
+  gioca:["Gioca","5×5, 2 minuti, una griglia nuova ogni volta. Alla fine vedi anche le parole che ti sono sfuggite."],
+  parole:["Parole trovate","Tutte le parole diverse che hai trovato almeno una volta, in qualsiasi modalità."],
+  sfide:["Sfide","Sfida un amico sulla stessa griglia. Ognuno gioca quando vuole. Una parola trovata solo da te vale doppio."],
+  provv:["Punteggio provvisorio","La domenica vale doppio chi trova una parola che nessun altro ha. Chi gioca dopo di te può cambiarlo: diventa definitivo a mezzanotte."]
+};
+function base(w){return Math.max(0,w.length-2)}
+function hash(s){let h=2166136261;for(let i=0;i<s.length;i++)h=Math.imul(h^s.charCodeAt(i),16777619);return (h>>>0)/4294967296}
+function adjN(a,b,N){return a!==b&&Math.abs((a/N|0)-(b/N|0))<=1&&Math.abs(a%N-b%N)<=1}
+function findPath(g,word){const L=g.letters,N=g.N,T=L.length;
+  function dfs(i,k,u){if(L[i]!==word[k])return null;u.push(i);if(k===word.length-1)return u.slice();for(let j=0;j<T;j++)if(!u.includes(j)&&adjN(i,j,N)){const r=dfs(j,k+1,u);if(r)return r}u.pop();return null}
+  for(let i=0;i<T;i++){const r=dfs(i,0,[]);if(r)return r}return null}
+function xpNeed(n){return Math.round(60*Math.pow(n,1.4))}
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const fmt=n=>n.toLocaleString("it-IT");
+
+const I={
+  play:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="2"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="2"/></svg>',
+  swords:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 17.5 3 6V3h3l11.5 11.5M13 19l6-6M16 16l4 4M19 21l2-2M9.5 6.5 14 2h3v3l-4.5 4.5M5 14l-2 2 2 2 2-2"/></svg>',
+  user:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>',
+  bell:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>',
+  trophy:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3"/></svg>',
+  back:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>',
+  close:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>',
+  gear:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>',
+  lock:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>',
+  flame:'<svg viewBox="0 0 24 24"><path d="M12 1.5c1.2 3.8 6 6.3 6 11.8a6 6 0 0 1-12 0c0-2.4 1-4 2.4-5.2.2 1.8 1.1 2.9 2.2 3.3-.7-3.6.3-7.2 1.4-9.9z" fill="#ff7a3d" stroke="#1d1a3a" stroke-width="2" stroke-linejoin="round"/><path d="M12 11c.8 1.8 3 2.8 3 5a3 3 0 0 1-6 0c0-1.3.7-2.2 1.5-2.8.2.9.6 1.4 1.1 1.6-.3-1.4 0-2.7.4-3.8z" fill="#ffd34d"/></svg>',
+  book:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5V5a2 2 0 0 1 2-2h14v16H6a2 2 0 0 0-2 2 2 2 0 0 0 2 2h14"/></svg>',
+  check:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5 10 17 19 7"/></svg>',
+  map:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2z"/><path d="M9 4v14M15 6v14"/></svg>',
+  sound:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H2v6h4l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14"/></svg>',
+  vibra:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><rect x="7" y="3" width="10" height="18" rx="2"/><path d="M3 8v8M21 8v8"/></svg>',
+  moon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>',
+  leaf:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.5 19 2c1 2 2 4.2 1 9.5a7 7 0 0 1-9 8.5z"/><path d="M2 21c0-3 1.9-5.4 5.1-6"/></svg>'
+};
+const STAR=(fill)=>`<svg viewBox="0 0 60 60"><path d="M30 3l7.6 15.4 17 2.5-12.3 12 2.9 16.9L30 41.8 14.8 49.8l2.9-16.9L5.4 20.9l17-2.5z" fill="${fill}" stroke="#1d1a3a" stroke-width="3.5" stroke-linejoin="round"/></svg>`;
+
+/* ---------- stato ---------- */
+let S;
+function initState(){S={
+  onboarded:false,level:1,xp:0,collection:new Set(),longest:"",games:0,
+  streak:0,playedToday:false,cycles:0,aiuti:0,
+  weekNo:0,day:4,week:{},variantsPlayed:new Set(),
+  friends:[],challenges:[],record:{w:0,l:0},medals:new Set(),
+  season:null,sky:"auto",sound:true,vibra:true,remind:true,
+  notifs:[{id:1,kind:"friend",who:"Paolo",t:"Paolo vuole essere tuo amico",unread:true},
+          {id:2,kind:"day",t:"Griglia di venerdì: Combo",unread:true}],
+  game:null,last:null,lastDuel:null,giocaIdx:0,
+  ui:{sumSel:null,sumTab:"trovate",rank:"generale",grank:"generale",help:false,opp:null,wlen:"tutte"}
+}}
+initState();
+const weekDate=d=>new Date(2026,10,9+7*S.weekNo+d);
+const dayLabel=d=>`${DAYS[d]} ${weekDate(d).getDate()} ${MONTHS[weekDate(d).getMonth()]}`;
+function season(){if(S.season)return S.season;const m=weekDate(S.day).getMonth();return m<=1||m===11?"inverno":m<=4?"primavera":m<=7?"estate":"autunno"}
+function isNight(){if(S.sky==="notte")return true;if(S.sky==="giorno")return false;const h=new Date().getHours();return h<7||h>=20}
+const unread=()=>S.notifs.filter(n=>n.unread).length;
+const duelsOpen=()=>S.level>=5;
+const toPlay=()=>S.challenges.filter(c=>c.status==="tocca").length;
+const weekTodo=()=>{let n=0;for(let d=0;d<=S.day;d++)if(!S.week[d])n++;return n};
+function cumXP(l){let s=0;for(let n=1;n<l;n++)s+=xpNeed(n);return s}
+const totalXP=()=>cumXP(S.level)+S.xp;
+const xpTo=l=>Math.max(0,cumXP(l)-totalXP());
+
+/* ---------- avversari simulati ---------- */
+function othersOf(d){if(d>S.day)return [];return PLAYERS.filter(p=>hash(p+"|"+S.weekNo+"|"+d)<(d===S.day?.55:.8))}
+let _ow={};
+function otherWords(p,d){const k=p+d+S.weekNo;if(_ow[k])return _ow[k];const g=WEEK[d],P={3:.12,4:.09,5:.05,6:.025,7:.012};
+  return _ow[k]=g.words.filter(w=>w.length>=g.min&&hash(w+"@"+p+d)<(P[w.length]||.005)*SKILL[p]*(g.N===6?.5:1))}
+function scoreList(d,words,who){const g=WEEK[d];let s=0;
+  if(g.v.id==="uniche"){const o=new Set();othersOf(d).filter(p=>p!==who).forEach(p=>otherWords(p,d).forEach(w=>o.add(w)));if(who!=="me"&&S.week[d])S.week[d].words.forEach(w=>o.add(w));
+    words.forEach(w=>s+=o.has(w)?base(w):2*base(w));return s}
+  words.forEach(w=>{let m=1;if(g.v.id==="bonus"){(findPath(g,w)||[]).forEach(i=>{if(g.bonus[i])m*=g.bonus[i]})}s+=base(w)*m});
+  if(g.v.id==="combo"&&who!=="me")s+=Math.round(words.length*.6*SKILL[who]);return s}
+function dayRanking(d,scope){const rows=othersOf(d).filter(p=>scope==="generale"||S.friends.includes(p)).map(p=>({n:p,v:scoreList(d,otherWords(p,d),p),aiuto:hash(p+"aiuto"+d)<.18}));
+  const me=S.week[d];if(me)rows.push({n:"Tu",v:me.final,me:true,aiuto:me.aiuto});return rows.sort((a,b)=>b.v-a.v)}
+function weekRanking(scope){const tot={};PLAYERS.forEach(p=>tot[p]=0);for(let d=0;d<=S.day;d++)othersOf(d).forEach(p=>tot[p]+=scoreList(d,otherWords(p,d),p));
+  const rows=Object.entries(tot).filter(([n,v])=>v>0&&(scope==="generale"||S.friends.includes(n))).map(([n,v])=>({n,v}));
+  rows.push({n:"Tu",v:Object.values(S.week).reduce((s,r)=>s+r.final,0),me:true});return rows.sort((a,b)=>b.v-a.v)}
+function refreshUnique(){if(S.week[6])S.week[6].final=scoreList(6,S.week[6].words,"me")}
+
+/* ---------- audio ---------- */
+let AC=null;
+function beep(f,d=.09,type="triangle",v=.08){if(!S.sound)return;try{AC=AC||new (window.AudioContext||window.webkitAudioContext)();const o=AC.createOscillator(),g=AC.createGain();o.type=type;o.frequency.value=f;g.gain.value=v;g.gain.exponentialRampToValueAtTime(.0001,AC.currentTime+d);o.connect(g).connect(AC.destination);o.start();o.stop(AC.currentTime+d)}catch(e){}}
+function fanfare(){[523,659,784,1047].forEach((f,i)=>setTimeout(()=>beep(f,i===3?.3:.12),i*110))}
+function buzz(ms){if(!S.vibra)return;try{navigator.vibrate&&navigator.vibrate(ms)}catch(e){}}
+
+/* ---------- router ---------- */
+const VIEWS={home:vHome,partita:vGame,riepilogo:vSummary,profilo:vProfile,sfide:vDuels,esito:vDuelResult};
+let route="home";
+function go(r){if(location.hash==="#"+r)render();else location.hash=r}
+function current(){const h=location.hash.slice(1);return VIEWS[h]?h:"home"}
+window.addEventListener("hashchange",()=>{if(S.game&&current()!=="partita"){location.hash="partita";return}render()});
+const after={};
+function render(){
+  route=current();
+  if(route==="partita"&&!S.game){location.hash="home";return}
+  if(route==="riepilogo"&&!S.last){location.hash="home";return}
+  if(route==="esito"&&!S.lastDuel){location.hash="sfide";return}
+  document.getElementById("view").innerHTML=VIEWS[route]();
+  document.getElementById("mapAside").innerHTML=mapHTML();
+  after[route]&&after[route]();
+  if(!S.onboarded&&route==="home"&&!document.querySelector(".scrim"))welcome();
+}
+let rz;window.addEventListener("resize",()=>{clearTimeout(rz);rz=setTimeout(()=>{if(route==="home")drawScene();if(route==="partita")fitBoard()},120)});
+
+/* ---------- SCENA ---------- */
+const SEASONS={
+  autunno:{sky:["#ffb877","#ffe2b8"],night:["#28245a","#5a4a8a"],hills:["#e98d4f","#c96a35","#a8522a"],bark:"#7a4a2c",leaf:["#ff6a2b","#ffa22e","#e0402a","#ffc53d"],fall:"leaf",label:"Autunno"},
+  inverno:{sky:["#9fc9f5","#e6f2ff"],night:["#1b2350","#3a4a86"],hills:["#ffffff","#e4eefb","#cddcf2"],bark:"#6a4a38",leaf:[],fall:"snow",label:"Inverno",snow:true},
+  primavera:{sky:["#8fd6f0","#e2f8ea"],night:["#22285a","#47558e"],hills:["#9ad97a","#73c060","#56a64c"],bark:"#7a5236",leaf:["#ff8fbf","#ffc4dc","#ffffff","#8fdc6c"],fall:"petal",label:"Primavera"},
+  estate:{sky:["#59bff5","#c9eeff"],night:["#16245a","#2f4b8e"],hills:["#7fd16a","#5cb553","#43963f"],bark:"#6b4630",leaf:["#3fae4f","#64c95b","#2f8a3f","#9ee05e"],fall:null,label:"Estate"}
+};
+let SC=null; // geometria della scena corrente
+function bez(p0,c1,c2,p1,t){const u=1-t;return {x:u*u*u*p0.x+3*u*u*t*c1.x+3*u*t*t*c2.x+t*t*t*p1.x,y:u*u*u*p0.y+3*u*u*t*c1.y+3*u*t*t*c2.y+t*t*t*p1.y}}
+function sceneGeom(W,H){
+  const top=Math.max(175,H*.2),bottom=H-Math.max(170,H*.2);
+  const xs=[.30,.70,.30,.70,.30,.70,.50];
+  const nodes=xs.map((x,i)=>({x:W*x,y:bottom-(bottom-top)*i/6}));
+  const pts=[{x:W*.05,y:H+40},...nodes,{x:W*.9,y:-40}];
+  const segs=[];for(let i=0;i<pts.length-1;i++){const p0=pts[Math.max(0,i-1)],p1=pts[i],p2=pts[i+1],p3=pts[Math.min(pts.length-1,i+2)];
+    segs.push([p1,{x:p1.x+(p2.x-p0.x)/5,y:p1.y+(p2.y-p0.y)/5},{x:p2.x-(p3.x-p1.x)/5,y:p2.y-(p3.y-p1.y)/5},p2])}
+  const d="M"+pts[0].x+" "+pts[0].y+segs.map(s=>` C${s[1].x} ${s[1].y} ${s[2].x} ${s[2].y} ${s[3].x} ${s[3].y}`).join("");
+  return {W,H,nodes,segs,d};
+}
+function drawScene(){
+  const wrap=document.getElementById("scene");if(!wrap)return;
+  const W=390,H=Math.round(W*wrap.clientHeight/Math.max(1,wrap.clientWidth));SC=sceneGeom(W,H);
+  const s=SEASONS[season()],night=isNight(),sky=night?s.night:s.sky,ink="#1d1a3a";
+  // particelle
+  const falls=[];if(s.fall){for(let i=0;i<12;i++){const x=hash("f"+i)*W,dur=9+hash("d"+i)*8,del=-hash("e"+i)*16;
+    const sh=s.fall==="snow"?`<circle r="${2.5+hash("s"+i)*2.5}" fill="#fff" stroke="${ink}" stroke-width="1"/>`:`<ellipse rx="${s.fall==="petal"?5:7}" ry="${s.fall==="petal"?4:3.5}" fill="${s.leaf[i%s.leaf.length]}" stroke="${ink}" stroke-width="1.5"/>`;
+    falls.push(`<g transform="translate(${x},0)"><g class="fall" style="animation-duration:${dur}s;animation-delay:${del}s">${sh}</g></g>`)}}
+  // stelle o nuvole
+  const sky2=night?Array.from({length:28},(_,i)=>`<circle cx="${hash("sx"+i)*W}" cy="${hash("sy"+i)*H*.6}" r="${1+hash("sr"+i)*1.8}" fill="#fff" opacity="${.5+hash("so"+i)*.5}"/>`).join("")
+    :[[60,H*.3,1],[300,H*.16,.8],[250,H*.5,.7]].map(([x,y,k],i)=>`<g class="cloud" style="animation-duration:${40+i*15}s;animation-direction:alternate"><g transform="translate(${x},${y}) scale(${k})">
+      <g fill="${ink}"><circle cx="-24" cy="4" r="17"/><circle cx="0" cy="-6" r="23"/><circle cx="26" cy="4" r="17"/><rect x="-42" y="4" width="86" height="18" rx="9"/></g>
+      <g fill="#fff"><circle cx="-24" cy="4" r="14"/><circle cx="0" cy="-6" r="20"/><circle cx="26" cy="4" r="14"/><rect x="-39" y="6" width="80" height="13" rx="6"/></g></g></g>`).join("");
+  // foglie lungo il ramo e rametti
+  const tw=[],lv=[];
+  SC.segs.forEach((sg,i)=>{[.35,.7].forEach((t,k)=>{const p=bez(...sg,t),side=(i+k)%2?1:-1,len=30+hash("tw"+i+k)*18;
+    const e={x:p.x+side*len,y:p.y-len*.7};
+    tw.push(`<path d="M${p.x} ${p.y} Q ${p.x+side*len*.4} ${p.y-len*.2} ${e.x} ${e.y}" stroke="${ink}" stroke-width="9" stroke-linecap="round" fill="none"/><path d="M${p.x} ${p.y} Q ${p.x+side*len*.4} ${p.y-len*.2} ${e.x} ${e.y}" stroke="${s.bark}" stroke-width="5" stroke-linecap="round" fill="none"/>`);
+    if(s.leaf.length){for(let j=0;j<4;j++){const a=hash("la"+i+k+j)*360,ox=e.x+(hash("lx"+i+k+j)-.5)*26,oy=e.y+(hash("ly"+i+k+j)-.5)*22,c=s.leaf[(i+j)%s.leaf.length];
+      lv.push(s.fall==="petal"&&j%2?`<g transform="translate(${ox},${oy})"><circle r="7" fill="${c}" stroke="${ink}" stroke-width="2"/><circle r="2.5" fill="#ffd34d"/></g>`
+        :`<ellipse cx="${ox}" cy="${oy}" rx="11" ry="6" fill="${c}" stroke="${ink}" stroke-width="2" transform="rotate(${a} ${ox} ${oy})"/>`)}}
+    if(s.snow)lv.push(`<ellipse cx="${e.x}" cy="${e.y-3}" rx="9" ry="4" fill="#fff" stroke="${ink}" stroke-width="1.5"/>`)})});
+  // nodi
+  const nodes=SC.nodes.map((p,d)=>{const r=S.week[d],fut=d>S.day,today=d===S.day,v=WEEK[d].v;
+    const face=r?"#ffc53d":fut?"#cdd3e3":v.color,R=today?33:28;
+    return `<g class="node" data-node="${d}" tabindex="0" role="button" aria-label="${DAYS[d]}: ${v.name}${r?", fatta":fut?", bloccata":today?", oggi":", da recuperare"}" transform="translate(${p.x},${p.y})">
+      ${today&&!r?`<circle class="pulse" r="${R}" fill="none" stroke="#ffc53d" stroke-width="6"/>`:""}
+      <circle r="${R}" cy="5" fill="${ink}"/>
+      <circle class="face" r="${R}" fill="${face}" stroke="${ink}" stroke-width="3.5"/>
+      <ellipse rx="${R*.55}" ry="${R*.22}" cy="${-R*.55}" fill="#fff" opacity=".45"/>
+      <text y="${v.glyph.length>2?7:9}" text-anchor="middle" font-family="Lilita One, Arial Rounded MT Bold, sans-serif" font-size="${v.glyph.length>2?(today?21:18):(today?27:23)}" fill="${fut?"#9aa3bd":ink}">${v.glyph}</text>
+      <g transform="translate(0,${R+14})"><rect x="-27" y="-11" width="54" height="22" rx="11" fill="${r?"#25c88d":today?"#ff5e4b":"#fffaf0"}" stroke="${ink}" stroke-width="2.5"/>
+        <text y="5" text-anchor="middle" font-family="Lilita One, Arial Rounded MT Bold, sans-serif" font-size="13" fill="${r||today?"#fff":ink}">${r?r.final+" pt":D3[d]}</text></g>
+      ${fut?`<g transform="translate(${R*.72},${-R*.72})"><circle r="11" fill="#cdd3e3" stroke="${ink}" stroke-width="2.5"/><path d="M-4 -1v-3a4 4 0 0 1 8 0v3M-6 -1h12v8h-12z" fill="none" stroke="${ink}" stroke-width="2.2" stroke-linejoin="round"/></g>`
+       :!r&&!today?`<g transform="translate(${R*.72},${-R*.72})"><circle r="11" fill="#ff5e4b" stroke="${ink}" stroke-width="2.5"/><text y="5.5" text-anchor="middle" font-family="Lilita One, sans-serif" font-size="16" fill="#fff">!</text></g>`
+       :r?`<g transform="translate(${R*.72},${-R*.72})"><circle r="11" fill="#25c88d" stroke="${ink}" stroke-width="2.5"/><path d="M-5 0l3.5 3.5L5 -4" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></g>`:""}
+    </g>`}).join("");
+  // bradipo
+  const now=new Date(),frac=(now.getHours()*60+now.getMinutes())/1440,d=S.day;
+  let pos,tan;if(d<6){const sg=SC.segs[d+1];pos=bez(...sg,.3+frac*.4);const q=bez(...sg,.32+frac*.4);tan={x:q.x-pos.x,y:q.y-pos.y}}else{pos=SC.nodes[6];tan={x:1,y:-.2}}
+  const flip=tan.x<0?-1:1;let ang=Math.atan2(tan.y,Math.abs(tan.x))*180/Math.PI;ang=Math.max(-40,Math.min(40,ang));
+  const bubbleX=Math.min(W-80,Math.max(80,pos.x+(flip>0?-10:10))),bubbleY=pos.y+82;
+  const todayR=S.week[Math.min(d,6)];
+  wrap.innerHTML=`<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid slice">
+    <defs><linearGradient id="skyg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${sky[0]}"/><stop offset="1" stop-color="${sky[1]}"/></linearGradient></defs>
+    <rect width="${W}" height="${H}" fill="url(#skyg)"/>
+    ${sky2}
+    ${night?`<g transform="translate(${W*.9},${H*.47})"><circle r="30" fill="#fff6d8" stroke="${ink}" stroke-width="3.5"/><circle cx="-9" cy="-6" r="5" fill="#efe3b8"/><circle cx="8" cy="9" r="4" fill="#efe3b8"/></g>`
+      :`<g transform="translate(${W*.9},${H*.47})"><circle r="44" fill="#ffe27a" opacity=".35"/><circle r="30" fill="#ffd84d" stroke="${ink}" stroke-width="3.5"/></g>`}
+    <path d="M0 ${H*.72} Q ${W*.25} ${H*.64} ${W*.5} ${H*.7} T ${W} ${H*.66} V${H} H0Z" fill="${s.hills[0]}" stroke="${ink}" stroke-width="3" ${night?'opacity=".55"':""}/>
+    <path d="M0 ${H*.82} Q ${W*.3} ${H*.74} ${W*.6} ${H*.81} T ${W} ${H*.78} V${H} H0Z" fill="${s.hills[1]}" stroke="${ink}" stroke-width="3" ${night?'opacity=".6"':""}/>
+    <path d="M0 ${H*.92} Q ${W*.35} ${H*.86} ${W*.7} ${H*.92} T ${W} ${H*.9} V${H} H0Z" fill="${s.hills[2]}" stroke="${ink}" stroke-width="3" ${night?'opacity=".7"':""}/>
+    <g>${tw.join("")}</g>
+    <path d="${SC.d}" stroke="${ink}" stroke-width="30" stroke-linecap="round" fill="none"/>
+    <path d="${SC.d}" stroke="${s.bark}" stroke-width="23" stroke-linecap="round" fill="none"/>
+    <path d="${SC.d}" stroke="rgba(255,255,255,.22)" stroke-width="5" stroke-linecap="round" fill="none" transform="translate(-3,-6)"/>
+    ${s.snow?`<path d="${SC.d}" stroke="#fff" stroke-width="9" stroke-linecap="round" fill="none" transform="translate(0,-9)"/>`:""}
+    <g>${lv.join("")}</g>
+    <g transform="translate(${pos.x},${pos.y+9}) rotate(${ang*flip}) scale(${flip*1.25},1.25)">${slothSVG()}</g>
+    ${nodes}
+    ${d<=6?`<g class="node bubble-pop" data-node="${Math.min(d,6)}" transform="translate(${bubbleX},${bubbleY})">
+      <path d="M-62 -18 H62 a12 12 0 0 1 12 12 V12 a12 12 0 0 1 -12 12 H8 L0 34 L-8 24 H-62 a12 12 0 0 1 -12 -12 V-6 a12 12 0 0 1 12 -12z" transform="scale(1,-1)" fill="#fffaf0" stroke="${ink}" stroke-width="3"/>
+      <text y="5" text-anchor="middle" font-family="Lilita One, Arial Rounded MT Bold, sans-serif" font-size="16" fill="${ink}">${todayR?(d<6?"Domani: "+WEEK[d+1].v.name:"Settimana finita!"):"Oggi: "+WEEK[d].v.name+"!"}</text></g>`:""}
+    <g>${falls.join("")}</g>
+  </svg>`;
+}
+function slothSVG(){const ink="#1d1a3a";return `<g class="sloth-bob">
+  <g stroke="${ink}" stroke-width="3" stroke-linecap="round" fill="none">
+   <path d="M-26 -2 Q-34 14 -20 26"/><path d="M-12 -2 Q-16 14 -6 26"/><path d="M8 -2 Q4 14 12 26"/><path d="M22 -2 Q26 14 18 26"/></g>
+  <g stroke="#8a6646" stroke-width="8" stroke-linecap="round" fill="none">
+   <path d="M-26 -2 Q-34 14 -20 26"/><path d="M-12 -2 Q-16 14 -6 26"/><path d="M8 -2 Q4 14 12 26"/><path d="M22 -2 Q26 14 18 26"/></g>
+  <path d="M-30 -5 l2 6 M-26 -6 l1 6 M-15 -5 l2 6 M5 -5 l2 6 M19 -5 l2 6 M23 -6 l1 6" stroke="${ink}" stroke-width="2.2" stroke-linecap="round"/>
+  <ellipse cx="-2" cy="30" rx="28" ry="16" fill="#9a7552" stroke="${ink}" stroke-width="3"/>
+  <path d="M-20 26 q5 4 10 0 M-4 36 q5 4 10 0 M8 24 q5 4 10 0" stroke="#6f5038" stroke-width="2" fill="none" stroke-linecap="round"/>
+  <circle cx="26" cy="30" r="15" fill="#b08a63" stroke="${ink}" stroke-width="3"/>
+  <ellipse cx="27" cy="32" rx="11.5" ry="9.5" fill="#f4e7cf"/>
+  <ellipse cx="21.5" cy="30" rx="4.6" ry="2.8" fill="#4a3426" transform="rotate(-20 21.5 30)"/>
+  <ellipse cx="32.5" cy="30" rx="4.6" ry="2.8" fill="#4a3426" transform="rotate(20 32.5 30)"/>
+  <g class="blink"><circle cx="22.4" cy="30" r="1.6" fill="#fff"/><circle cx="31.6" cy="30" r="1.6" fill="#fff"/></g>
+  <ellipse cx="27" cy="35" rx="2.4" ry="1.7" fill="${ink}"/>
+  <path d="M23.5 38.2 Q27 41 30.5 38.2" stroke="${ink}" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+  <ellipse cx="18" cy="37" rx="2.4" ry="1.4" fill="#ff9c8a" opacity=".7"/><ellipse cx="36" cy="37" rx="2.4" ry="1.4" fill="#ff9c8a" opacity=".7"/>
+</g>`}
+function slothHead(){return `<svg viewBox="-2 12 58 40" class="head"><g transform="translate(-1,0)"><circle cx="27" cy="31" r="17" fill="#b08a63" stroke="#1d1a3a" stroke-width="3"/>
+  <ellipse cx="27" cy="33" rx="13" ry="10.5" fill="#f4e7cf"/><ellipse cx="21" cy="31" rx="5" ry="3" fill="#4a3426" transform="rotate(-20 21 31)"/><ellipse cx="33" cy="31" rx="5" ry="3" fill="#4a3426" transform="rotate(20 33 31)"/>
+  <circle cx="22" cy="31" r="1.7" fill="#fff"/><circle cx="32" cy="31" r="1.7" fill="#fff"/><ellipse cx="27" cy="36" rx="2.5" ry="1.8" fill="#1d1a3a"/><path d="M23 39.5 Q27 42.5 31 39.5" stroke="#1d1a3a" stroke-width="2" fill="none" stroke-linecap="round"/></g></svg>`}
+
+/* ---------- HOME ---------- */
+function vHome(){
+  const need=xpNeed(S.level),todo=weekTodo();
+  return `<div class="scene-wrap" id="scene"></div>
+  <div class="hud">
+    <button class="lvl" data-info="xp" aria-label="Livello ${S.level}"><span class="star">${STAR("#ffc53d")}<b class="num">${S.level}</b></span><span class="xpbar"><i style="width:${S.xp/need*100}%"></i></span></button>
+    <button class="pill" data-sheet="serie" aria-label="Serie ${S.streak} su 10">${I.flame}<span class="num">${S.streak}/10</span></button>
+    <button class="btn round btn-sm" data-sheet="notizie" aria-label="Notizie" style="width:46px;height:46px">${I.bell}${unread()?`<span class="badge num">${unread()}</span>`:""}</button>
+  </div>
+  <div class="weekpill">
+    <button class="pill" data-sheet="classifica" aria-label="Classifica della settimana"><span>${weekDate(0).getDate()}–${weekDate(6).getDate()} ${MONTHS[weekDate(6).getMonth()].toUpperCase()}</span><span style="width:30px;height:30px;border-radius:50%;background:var(--gold);border:2.5px solid var(--ink);display:grid;place-items:center">${I.trophy.replace('stroke-width="2.6"','stroke-width="3" width="18" height="18"')}</span></button>
+    <button class="info" data-info="week" aria-label="Come funziona la settimana">i</button>
+  </div>
+  <div class="dock">
+    <div><button class="btn round" data-go="profilo" aria-label="Profilo">${I.user}</button><span class="lab white">Profilo</span></div>
+    <div><button class="btn btn-blue btn-big play" data-act="start-gioca">${I.play} Gioca</button><span class="lab white">5×5 · 2 min</span></div>
+    <div><button class="btn round ${duelsOpen()?"btn-coral":""}" data-go="sfide" aria-label="Sfide">${I.swords}${duelsOpen()?(toPlay()?`<span class="badge num">${toPlay()}</span>`:""):`<span class="lockb">${I.lock}</span>`}</button><span class="lab white">Sfide</span></div>
+  </div>`;
+}
+after.home=function(){drawScene()};
+
+/* ---------- SHEET: giorno, classifiche, ecc. ---------- */
+function sheet(html,mode=""){const o=document.getElementById("overlay");o.innerHTML=`<div class="scrim ${mode==="mid"?"centered":""}" data-scrim><div class="sheet ${mode}" role="dialog" aria-modal="true">${html}</div></div>`;const b=o.querySelector(".sheet button:not(.info)");b&&b.focus({preventScroll:true})}
+function closeSheet(){document.getElementById("overlay").innerHTML="";nextModal()}
+const X=`<button class="x" data-close aria-label="Chiudi">${I.close}</button>`;
+function podium(rows){const top=rows.slice(0,3);const order=[1,0,2],h=[72,54,40],col=["#ffc53d","#cdd3e3","#f0a46b"];
+  return `<div class="podium">${order.map(i=>{const r=top[i];return r?`<div class="p"><span class="avatar" style="${r.me?"background:var(--blue);color:#fff":""}">${r.n[0]}</span><span class="nm">${esc(r.n)}</span><span class="blk" style="height:${h[i]}px;background:${col[i]}">${r.v}</span></div>`:`<div class="p"></div>`}).join("")}</div>`}
+function rankRows(rows,max,peek,start=0){const meI=rows.findIndex(r=>r.me);let show=rows.slice(start,start+max);if(meI>=start+max)show=rows.slice(start,start+max-1).concat([rows[meI]]);
+  return show.map(r=>{const i=rows.indexOf(r);const tag=peek&&!r.me?`button data-peek="${esc(r.n)}"`:"div";return `<${tag} class="rank ${r.me?"me":""}"><span class="pos num">${i+1}</span><span class="avatar">${r.n[0]}</span><span class="nm">${esc(r.n)}${r.aiuto?` <span class="chip gold" style="font-size:.7rem;padding:0 6px">+10s</span>`:""}</span><span class="sc num">${r.v}</span></${tag.split(" ")[0]}>`}).join("")}
+function daySheet(d){lastDay=d;
+  const g=WEEK[d],r=S.week[d],fut=d>S.day,sc=S.ui.grank,rows=fut?[]:dayRanking(d,sc);
+  let body;
+  if(fut)body=`<div class="panel center" style="padding:18px"><h2>Si apre ${DAYS[d].toLowerCase()}</h2><p class="muted" style="margin-top:4px">a mezzanotte</p></div>`;
+  else if(r)body=`<div class="row between panel" style="padding:12px 16px"><div><span class="muted" style="font-size:.75rem;text-transform:uppercase">Il tuo punteggio</span><h1 class="num" style="font-size:2.2rem">${r.final}</h1></div>
+     <div class="center"><h1 class="num" style="font-size:2.2rem">${rows.findIndex(x=>x.me)+1}º</h1><span class="muted" style="font-size:.75rem">su ${rows.length}</span></div>${d===6?`<button class="info" data-info="provv">i</button>`:""}</div>`;
+  else body=`${S.aiuti?`<button class="toggle-help" data-act="togglehelp" aria-pressed="${S.ui.help}"><span class="token">+10s</span><span class="grow"><b style="font-family:var(--f-display);font-size:1.1rem;font-weight:400">Usa un aiuto</b><br><span class="muted" style="font-size:.8rem">ne hai ${S.aiuti}</span></span><span class="check">${S.ui.help?I.check:""}</span></button>`:""}
+     <button class="btn btn-gold btn-big btn-block" data-act="start-week" data-day="${d}">${d===S.day?"Gioca":"Recupera"}</button>`;
+  sheet(`<div class="sheet-head"><span class="vbadge" style="background:${g.v.color}">${g.v.glyph}</span><div class="grow"><h2>${g.v.name}</h2><span class="muted">${dayLabel(d)}</span></div><button class="info" data-info="v${d}">i</button>${X}</div>
+    <div class="facts"><span class="chip blue">${g.N}×${g.N}</span><span class="chip blue">${g.dur/60} min</span><span class="chip blue">${g.min}+ lettere</span>${!fut?`<span class="chip">${othersOf(d).length+(r?1:0)} giocatori</span>`:""}</div>
+    ${body}
+    ${fut?"":`<div class="tabs"><button data-grank="generale" aria-pressed="${sc==="generale"}">Generale</button><button data-grank="amici" aria-pressed="${sc==="amici"}">Amici</button></div>
+     ${rows.length?`${podium(rows)}<div>${rows.length>3?rankRows(rows,3,!!r,3):""}</div>`:`<p class="center muted" style="padding:10px">${sc==="amici"?"Nessun amico ha giocato.":"Ancora nessuno: sii il primo!"}</p>`}
+     ${!r&&rows.length?`<p class="center muted" style="font-size:.8rem">Le parole degli altri si vedono dopo che hai giocato</p>`:""}`}`);
+}
+function rankSheet(){const sc=S.ui.rank,rows=weekRanking(sc);
+  sheet(`<div class="sheet-head"><span class="vbadge" style="background:var(--gold)">${I.trophy.replace('stroke-width="2.6"','stroke-width="2.6" width="30" height="30"')}</span><div class="grow"><h2>Classifica</h2><span class="muted">settimana ${weekDate(0).getDate()}–${weekDate(6).getDate()} ${MONTHS[weekDate(6).getMonth()]}</span></div>${X}</div>
+    <div class="tabs"><button data-rank="generale" aria-pressed="${sc==="generale"}">Generale</button><button data-rank="amici" aria-pressed="${sc==="amici"}">Amici</button></div>
+    ${sc==="amici"&&!S.friends.length?`<p class="center muted" style="padding:20px">Ancora nessun amico.<br>Le richieste arrivano nelle notizie.</p>`:`${podium(rows)}<div>${rankRows(rows,5,false,3)}</div>`}`)}
+function serieSheet(){
+  sheet(`<div class="sheet-head"><span class="vbadge" style="background:var(--coral-l)">${I.flame.replace("<svg",'<svg width="34" height="34"')}</span><div class="grow"><h2>Serie ${S.streak}/10</h2><span class="muted">${S.playedToday?"oggi fatto":"oggi da fare"}</span></div><button class="info" data-info="serie">i</button>${X}</div>
+    <div style="display:grid;grid-template-columns:repeat(10,1fr);gap:5px">${Array.from({length:10},(_,i)=>`<span style="aspect-ratio:1;border-radius:10px;border:2.5px solid var(--ink);display:grid;place-items:center;font-family:var(--f-display);font-size:.8rem;background:${i<S.streak?"var(--coral)":i===9?"var(--gold-l)":"var(--paper-2)"};color:${i<S.streak?"#fff":"var(--ink)"}">${i===9?"+10s":i+1}</span>`).join("")}</div>
+    <div class="row panel" style="padding:12px"><span class="token ${S.aiuti?"":"off"}">+10s</span><div class="grow"><h2 class="num">${S.aiuti} ${S.aiuti===1?"aiuto":"aiuti"}</h2><span class="muted" style="font-size:.85rem">da usare nella Settimana</span></div><button class="info" data-info="aiuto">i</button></div>`)}
+function notifSheet(){S.notifs.forEach(n=>{if(n.kind!=="friend")n.unread=false});
+  sheet(`<div class="sheet-head"><span class="vbadge" style="background:var(--blue-l)">${I.bell.replace("<svg",'<svg width="30" height="30"')}</span><h2>Notizie</h2>${X}</div>
+  <div style="display:flex;flex-direction:column;gap:8px">${S.notifs.slice(0,6).map(n=>`<div class="drow"><span class="avatar">${n.who?n.who[0]:"!"}</span><span class="grow">${esc(n.t)}</span>
+    ${n.kind==="friend"&&!n.done?`<button class="btn btn-sm" data-friend="${n.id}" data-ans="no" aria-label="Ignora">${I.close}</button><button class="btn btn-sm btn-mint" data-friend="${n.id}" data-ans="yes" aria-label="Accetta">${I.check}</button>`:n.go?`<button class="btn btn-sm btn-gold" data-ngo="${n.go}">Vai</button>`:""}</div>`).join("")}</div>`)}
+function infoSheet(k){let t,b;if(k[0]==="v"&&!isNaN(+k.slice(1))){const v=WEEK[+k.slice(1)].v;t=v.name;b=v.info}else[t,b]=INFO[k];
+  const prev=document.getElementById("overlay").innerHTML;
+  sheet(`<div class="sheet-head"><span class="info" style="width:40px;height:40px;font-size:1.3rem">i</span><h2>${t}</h2>${X}</div><p style="font-size:1.05rem">${esc(b)}</p>`,"mid");
+  infoReturn=prev&&!prev.includes("sheet mid")?prev:null}
+let infoReturn=null;
+function wordsSheet(){const f=S.ui.wlen,ws=[...S.collection].filter(w=>f==="tutte"||(f==="7+"?w.length>=7:w.length===+f)).sort();
+  sheet(`<div class="sheet-head"><span class="vbadge" style="background:var(--blue-l)">${I.book.replace("<svg",'<svg width="30" height="30"')}</span><div class="grow"><h2 class="num">${fmt(S.collection.size)} parole</h2></div><button class="info" data-info="parole">i</button>${X}</div>
+  <div class="tabs">${["tutte","3","4","5","6","7+"].map(x=>`<button data-wlen="${x}" aria-pressed="${f===x}">${x==="tutte"?"Tutte":x}</button>`).join("")}</div>
+  <div class="wgrid" style="max-height:46vh">${ws.length?ws.map(w=>`<span class="wchip">${w}</span>`).join(""):`<p class="muted">Nessuna parola qui.</p>`}</div>`)}
+function medalsSheet(){sheet(`<div class="sheet-head"><span class="vbadge" style="background:var(--gold)">${STAR("#fffaf0").replace("<svg",'<svg width="36" height="36"')}</span><h2 class="num" style="flex:1">${S.medals.size}/15 medaglie</h2>${X}</div>
+  <div class="medals">${MEDALS.map(m=>`<button class="medal" data-medal="${m[0]}"><span class="m ${m[4]} ${S.medals.has(m[0])?"":"off"}">${m[2]}</span><span class="n">${m[1]}</span></button>`).join("")}</div>`)}
+function settingsSheet(){const sw=(k,ic,t)=>`<div class="setrow">${I[ic]}<b class="grow" style="font-family:var(--f-display);font-weight:400;font-size:1.15rem">${t}</b><button class="sw" data-toggle="${k}" aria-pressed="${S[k]}" aria-label="${t}"></button></div>`;
+  sheet(`<div class="sheet-head"><span class="vbadge" style="background:var(--paper-2)">${I.gear.replace("<svg",'<svg width="30" height="30"')}</span><h2>Impostazioni</h2>${X}</div>
+  ${sw("sound","sound","Suoni")}${sw("vibra","vibra","Vibrazione")}${sw("remind","bell","Promemoria serie")}
+  <div class="setrow">${I.moon}<b style="font-family:var(--f-display);font-weight:400;font-size:1.15rem">Cielo</b></div>
+  <div class="tabs">${[["auto","Auto"],["giorno","Giorno"],["notte","Notte"]].map(([k,t])=>`<button data-sky="${k}" aria-pressed="${S.sky===k}">${t}</button>`).join("")}</div>
+  <div class="setrow">${I.leaf}<b style="font-family:var(--f-display);font-weight:400;font-size:1.15rem">Stagione</b></div>
+  <div class="tabs">${[["","Auto"],["autunno","Aut"],["inverno","Inv"],["primavera","Pri"],["estate","Est"]].map(([k,t])=>`<button data-season="${k}" aria-pressed="${(S.season||"")===k}">${t}</button>`).join("")}</div>`)}
+const SHEETS={classifica:rankSheet,serie:serieSheet,notizie:notifSheet,parole:wordsSheet,medaglie:medalsSheet,impostazioni:settingsSheet};
+let openSheet=null;
+
+/* ---------- PARTITA ---------- */
+function startGame(kind,opt){
+  let grid,dur=120,min=3,bonus={},variant="classica",label;
+  if(kind==="gioca"||kind==="guided"){grid=GIOCA[S.giocaIdx%GIOCA.length];S.giocaIdx++;label=kind==="guided"?"Prima partita":"Gioca 5×5"}
+  else if(kind==="week"){const w=WEEK[opt.day];grid=w;dur=w.dur+(opt.aiuto?10:0);min=w.min;bonus=w.bonus;variant=w.v.id;label=`${DAYS[opt.day]} · ${w.v.name}`}
+  else{grid=DUEL;label=`Sfida con ${opt.opp}`;variant="versus"}
+  let hint=null;if(kind==="guided"){const w=grid.hint||grid.words.find(x=>x.length===4);hint={word:w,path:findPath(grid,w),step:0}}
+  S.game={kind,day:opt.day,aiuto:opt.aiuto,opp:opt.opp,cid:opt.cid,grid,variant,dur:dur*1000,left:dur*1000,min,bonus,
+    found:[],score:0,combo:0,maxCombo:0,lastAt:0,path:[],running:false,countdown:kind==="guided"?0:3,label,hint,paused:kind==="guided"};
+  document.getElementById("overlay").innerHTML="";go("partita");
+}
+function vGame(){const g=S.game,N=g.grid.N;
+  return `<div class="screen pattern">
+    <div class="gtop"><button class="x" data-act="quit" aria-label="Esci">${I.close}</button><div class="title outline-text">${esc(g.label)}</div>${g.aiuto?`<span class="chip gold">+10s</span>`:`<span style="width:38px"></span>`}</div>
+    <div class="gstats"><span class="pill timer num ${g.left<=15000?"low":""}" id="timer"><span style="width:30px;height:30px;border-radius:50%;background:var(--blue);border:2.5px solid var(--ink);color:#fff;display:grid;place-items:center"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2M9 2h6"/></svg></span>${mmss(g.left)}</span>
+      <span class="combo" id="combo"></span>
+      <span class="pill score num" id="score"><span style="width:30px;height:30px;display:grid;place-items:center">${STAR("#ffc53d")}</span>${g.score}</span></div>
+    ${g.hint&&g.hint.step<3?coachHTML():`<div class="coach" style="min-height:0;margin-top:0"></div>`}
+    <div class="board-area" id="barea"><div class="board-wrap" id="bw">
+      <div class="board n${N}" id="board">${g.grid.letters.map((l,i)=>`<div class="tile ${g.hint&&g.hint.step===0&&g.hint.path.includes(i)?"hint":""}" data-i="${i}">${l}${g.bonus[i]?`<span class="bonus ${g.bonus[i]===2?"x2":""}">×${g.bonus[i]}</span>`:""}</div>`).join("")}<svg class="path"><polyline points=""/></svg></div>
+      ${g.countdown?`<div class="countdown" id="cd"><b>${g.countdown}</b></div>`:""}</div></div>
+    <div class="current" id="cur" aria-live="polite"></div>
+    <div class="strip" id="found"></div>
+  </div>`}
+function coachHTML(){const h=S.game.hint;const T=[`Trascina: <b>${h.word.toUpperCase()}</b>`,`Punti = <b>XP</b>!`,`<b>Giallo</b> = parola nuova!`];
+  return `<div class="coach" id="coach">${slothHead()}<div class="say bubble-pop">${T[h.step]}</div></div>`}
+function mmss(ms){const s=Math.ceil(ms/1000);return `${Math.floor(s/60)}:${String(s%60).padStart(2,"0")}`}
+function fitBoard(){const a=document.getElementById("barea"),bw=document.getElementById("bw");if(!a||!bw)return;const s=Math.floor(Math.min(a.clientWidth,a.clientHeight-8));bw.style.width=s+"px";bw.style.height=s+"px";
+  const t=document.querySelector("#board .tile");if(t){const fs=t.clientWidth*.55;document.querySelectorAll("#board .tile").forEach(x=>x.style.fontSize=fs+"px")}}
+let tick=null;
+after.partita=function(){const g=S.game;fitBoard();bindBoard();
+  if(g.countdown){const cd=()=>{g.countdown--;const el=document.getElementById("cd");if(!el)return;if(g.countdown<=0){el.remove();startClock()}else{el.innerHTML=`<b>${g.countdown}</b>`;beep(520);setTimeout(cd,700)}};beep(520);setTimeout(cd,700)}
+  else if(!g.paused)startClock()};
+function setTimer(){const g=S.game,t=document.getElementById("timer");if(!t)return;t.lastChild.textContent=mmss(g.left);t.classList.toggle("low",g.left<=15000)}
+function startClock(){const g=S.game;g.countdown=0;g.paused=false;g.running=true;g.t0=performance.now()-(g.dur-g.left);beep(880,.15);clearInterval(tick);
+  tick=setInterval(()=>{const g=S.game;if(!g||!g.running){clearInterval(tick);return}g.left=Math.max(0,g.dur-(performance.now()-g.t0));setTimer();
+    if(g.left<=10000&&Math.ceil(g.left/1000)!==g.lastTick){g.lastTick=Math.ceil(g.left/1000);beep(300,.05,"sine",.04)}
+    if(g.combo>=2&&performance.now()-g.lastAt>5000)g.combo=0;const c=document.getElementById("combo");if(c)c.textContent=g.variant==="combo"&&g.combo>=2?`COMBO ×${g.combo}`:"";
+    if(g.left<=0)endGame()},100)}
+function bindBoard(){const board=document.getElementById("board");if(!board)return;const g=S.game;let active=false;
+  const tileAt=(x,y)=>{const el=document.elementFromPoint(x,y);const t=el&&el.closest(".tile");if(!t||!board.contains(t))return -1;const r=t.getBoundingClientRect();return Math.hypot(x-r.left-r.width/2,y-r.top-r.height/2)<=r.width*.5?+t.dataset.i:-1};
+  const draw=()=>{board.querySelectorAll(".tile").forEach((t,i)=>t.classList.toggle("sel",g.path.includes(i)));drawPath(board,g.path);const w=g.path.map(i=>g.grid.letters[i]).join("");document.getElementById("cur").innerHTML=w?`<span class="w">${w}</span>`:""};
+  board.addEventListener("pointerdown",e=>{if(g.countdown||!S.game)return;const i=tileAt(e.clientX,e.clientY);if(i<0)return;active=true;g.path=[i];board.setPointerCapture(e.pointerId);draw();beep(400+g.path.length*40,.04,"sine",.03);e.preventDefault()});
+  board.addEventListener("pointermove",e=>{if(!active)return;const i=tileAt(e.clientX,e.clientY);if(i<0)return;const p=g.path;if(i===p[p.length-1])return;
+    if(p.length>1&&i===p[p.length-2]){p.pop();draw();return}if(!p.includes(i)&&adjN(p[p.length-1],i,g.grid.N)){p.push(i);draw();beep(400+p.length*40,.04,"sine",.03)}});
+  const up=()=>{if(!active)return;active=false;submit()};board.addEventListener("pointerup",up);board.addEventListener("pointercancel",up)}
+function drawPath(board,path){const tiles=board.querySelectorAll(".tile"),br=board.getBoundingClientRect();board.querySelector("polyline").setAttribute("points",path.map(i=>{const r=tiles[i].getBoundingClientRect();return `${r.left-br.left+r.width/2},${r.top-br.top+r.height/2}`}).join(" "))}
+const isNew=w=>!S.collection.has(w);
+function submit(){const g=S.game,w=g.path.map(i=>g.grid.letters[i]).join(""),cur=document.getElementById("cur"),board=document.getElementById("board");let fb,cls;
+  if(w.length<g.min){fb=g.min>3&&w.length>=3?"Min 4!":"Corta";cls="short"}
+  else if(g.found.includes(w)){fb="Già presa";cls="dup"}
+  else if(!g.grid.set.has(w)){fb="No!";cls="no"}
+  else{let mult=1;g.path.forEach(i=>{if(g.bonus[i])mult*=g.bonus[i]});
+    const now=performance.now();g.combo=(g.combo>=1&&now-g.lastAt<=5000)?g.combo+1:1;g.lastAt=now;g.maxCombo=Math.max(g.maxCombo,g.combo);
+    const extra=g.variant==="combo"&&g.combo>=2?g.combo-1:0,pts=base(w)*mult+extra;g.found.push(w);g.score+=pts;
+    fb=`+${pts}`;cls="ok";buzz(15);beep(520+Math.min(g.combo,8)*50,.12);if(w.length>=6)setTimeout(()=>beep(990,.15),90);
+    const t=board.querySelectorAll(".tile")[g.path[g.path.length-1]],br=document.getElementById("bw").getBoundingClientRect(),r=t.getBoundingClientRect();
+    const f=document.createElement("div");f.className="floater";f.textContent="+"+pts+(mult>1?" ×"+mult:"");f.style.left=(r.left-br.left+r.width/2)+"px";f.style.top=(r.top-br.top-10)+"px";document.getElementById("bw").appendChild(f);setTimeout(()=>f.remove(),900);
+    const sc=document.getElementById("score");sc.lastChild.textContent=g.score;
+    document.getElementById("found").innerHTML=g.found.slice().reverse().map(x=>`<span class="wchip ${isNew(x)?"new":""}">${x}</span>`).join("");
+    if(w.length>=7)toast(`${w.length} lettere!`);
+    if(g.hint&&g.hint.step<3){if(g.hint.step===0){g.hint.step=1;board.querySelectorAll(".hint").forEach(x=>x.classList.remove("hint"));startClock()}else if(g.found.length>=3&&g.hint.step===1)g.hint.step=2;else if(g.found.length>=6&&g.hint.step===2)g.hint.step=3;
+      const c=document.getElementById("coach");if(c)c.outerHTML=g.hint.step<3?coachHTML():"";fitBoard()}}
+  cur.innerHTML=`${w?`<span class="w">${w}</span>`:""}<span class="fb ${cls}">${fb}</span>`;
+  if(cls==="no"){board.classList.remove("shake");void board.offsetWidth;board.classList.add("shake");beep(160,.15,"sawtooth",.04);buzz([20,40,20])}
+  setTimeout(()=>{if(!S.game)return;g.path=[];board.querySelectorAll(".tile").forEach(t=>t.classList.remove("sel"));board.querySelector("polyline").setAttribute("points","")},cls==="ok"?160:260);
+  clearTimeout(g.fbT);g.fbT=setTimeout(()=>{const c=document.getElementById("cur");if(c&&!g.path.length)c.innerHTML=""},1100)}
+
+/* ---------- fine partita ---------- */
+const MEDALS=[
+  ["parola","Prima parola","1","Trova la tua prima parola.","base"],["partita","Prima partita","P","Finisci la tua prima partita.","base"],
+  ["p100","Cento parole","100","Trova 100 parole diverse.","base"],["p1000","Mille parole","1k","Trova 1.000 parole diverse.","base"],
+  ["p10000","Diecimila","10k","Trova 10.000 parole diverse.","base"],["l7","Settebello","7+","Una parola di 7 lettere o più.","base"],
+  ["l9","Nove lettere","9+","Una parola di 9 lettere o più.","base"],["w30","Raccolto","30","30 parole in una sola partita.","base"],
+  ["lv10","Livello 10","L10","Raggiungi il livello 10.","base"],["sett1","Prima settimana","S1","Gioca la tua prima griglia della Settimana.","week"],
+  ["sett7","Settimana piena","7/7","Gioca tutte e 7 le griglie di una settimana.","week"],["puntuale","Puntuale","7·7","Gioca le 7 griglie, ognuna nel suo giorno.","week"],
+  ["tutto","Tuttofare","V7","Gioca almeno una griglia di ogni variante.","week"],["primo","Primo posto","1º","Primo in classifica generale su una griglia, a settimana chiusa.","week"],
+  ["ciclo","Ciclo completo","10","Completa una serie di 10 giorni.","serie"]];
+const pending=[];
+function award(id,list){if(!S.medals.has(id)){S.medals.add(id);list.push(MEDALS.find(m=>m[0]===id))}}
+function addXP(n){S.xp+=n;while(S.xp>=xpNeed(S.level)){S.xp-=xpNeed(S.level);S.level++}}
+function endGame(){const g=S.game;if(!g)return;g.running=false;clearInterval(tick);beep(440,.2);setTimeout(()=>beep(330,.3),180);buzz(80);
+  const got=[],newWords=g.found.filter(isNew);newWords.forEach(w=>S.collection.add(w));g.found.forEach(w=>{if(w.length>S.longest.length)S.longest=w});S.games++;
+  let final=g.score,provisional=false;
+  if(g.kind==="week"){S.week[g.day]={words:g.found.slice(),score:g.score,final:g.score,aiuto:!!g.aiuto,onDay:g.day===S.day};
+    if(g.variant==="uniche"){refreshUnique();final=S.week[g.day].final;provisional=true}
+    S.variantsPlayed.add(g.variant);award("sett1",got);if(S.variantsPlayed.size>=7)award("tutto",got);
+    if(Object.keys(S.week).length===7){award("sett7",got);if(Object.values(S.week).every(r=>r.onDay))award("puntuale",got)}}
+  let gift=false,up=false;if(!S.playedToday){S.playedToday=true;S.streak++;up=true;if(S.streak>=10){S.streak=0;S.cycles++;S.aiuti++;gift=true;award("ciclo",got)}}
+  if(g.found.length)award("parola",got);award("partita",got);
+  if(S.collection.size>=100)award("p100",got);if(S.collection.size>=1000)award("p1000",got);if(S.collection.size>=10000)award("p10000",got);
+  if(g.found.some(w=>w.length>=7))award("l7",got);if(g.found.some(w=>w.length>=9))award("l9",got);if(g.found.length>=30)award("w30",got);
+  const before=S.level,xpBefore=S.xp;addXP(final);if(S.level>=10)award("lv10",got);
+  S.last={kind:g.kind,day:g.day,grid:g.grid,found:g.found.slice(),score:g.score,final,provisional,newWords,label:g.label,before,xpBefore,levels:S.level-before,got,up,gift,aiuto:g.aiuto};
+  S.ui.sumSel=null;S.ui.sumTab="trovate";if(g.kind==="guided")S.onboarded=true;
+  if(S.level>before)pending.push(()=>levelModal(before));if(gift)pending.push(giftModal);got.forEach(m=>pending.push(()=>medalModal(m)));
+  const kind=g.kind,cid=g.cid;S.game=null;if(kind==="duel"){finishDuel(cid);return}go("riepilogo")}
+function nextModal(){if(infoReturn){const h=infoReturn;infoReturn=null;document.getElementById("overlay").innerHTML=h;return}const f=pending.shift();if(f)setTimeout(f,400)}
+function vSummary(){const r=S.last,need=xpNeed(S.level);let pos=null,tot=0;if(r.kind==="week"){const rows=dayRanking(r.day,"generale");pos=rows.findIndex(x=>x.me)+1;tot=rows.length}
+  return `<div class="screen pattern sum">
+    <div class="gtop"><span style="width:38px"></span><div class="title outline-text">${esc(r.label)}</div><span style="width:38px"></span></div>
+    <div class="burst"><svg viewBox="-100 -100 200 200">${Array.from({length:14},(_,i)=>`<path d="M0 0 L${Math.cos(i/14*6.283)*100} ${Math.sin(i/14*6.283)*100} L${Math.cos((i+.5)/14*6.283)*100} ${Math.sin((i+.5)/14*6.283)*100}Z" fill="${i%2?"#ffd768":"#ffc53d"}" opacity=".55"/>`).join("")}
+      <circle r="58" fill="#ffc53d" stroke="#1d1a3a" stroke-width="4"/></svg><div class="v"><b class="num">+${r.final}</b><span>XP</span></div></div>
+    <div class="panel" style="padding:12px 14px"><div class="lvlrow"><span style="width:44px;height:44px;position:relative;display:grid;place-items:center;flex:none">${STAR("#ffc53d")}<b style="position:relative;font-family:var(--f-display);font-weight:400;font-size:1.1rem" class="num">${S.level}</b></span>
+      <span class="xpbar grow"><i id="xpfill" style="width:${r.levels?0:r.xpBefore/need*100}%"></i></span><span class="num" style="font-family:var(--f-display);font-size:.95rem">${S.xp}/${need}</span></div></div>
+    <div class="trio">
+      <div class="bub"><b class="num" style="color:var(--gold-d)">+${r.newWords.length}</b><span>nuove</span></div>
+      <div class="bub"><b class="num">${r.found.length}</b><span>parole</span></div>
+      ${pos?`<div class="bub"><b class="num">${pos}º<small style="font-size:.9rem">/${tot}</small></b><span>${r.provisional?"provvisorio":"classifica"}</span>${r.provisional?`<button class="info" data-info="provv">i</button>`:""}</div>`
+        :`<div class="bub"><b class="num" style="color:var(--coral-d)">${S.streak}/10</b><span>serie</span></div>`}
+    </div>
+    <div class="row" style="gap:10px"><button class="btn btn-block" data-act="sumwords">${I.book} Parole</button>
+      ${r.kind==="week"?`<button class="btn btn-block" data-act="open-day" data-day="${r.day}">${I.trophy} Classifica</button>`:`<button class="btn btn-blue btn-block" data-act="start-gioca">Ancora</button>`}</div>
+    <button class="btn btn-gold btn-big btn-block" data-go="home">Home</button>
+  </div>`}
+after.riepilogo=function(){const r=S.last;if(!r.animated){r.animated=true;setTimeout(()=>{const f=document.getElementById("xpfill");if(f)f.style.width=(S.xp/xpNeed(S.level)*100)+"%"},300);fanfare();if(r.kind==="guided")pending.push(afterGuided);nextModal()}};
+function sumWordsSheet(){const r=S.last,missed=r.kind==="gioca"||r.kind==="guided";
+  const list=S.ui.sumTab==="mancate"?r.grid.words.filter(w=>!r.found.includes(w)).sort((a,b)=>b.length-a.length||a.localeCompare(b)):r.found.slice().sort((a,b)=>b.length-a.length||a.localeCompare(b));
+  sheet(`<div class="sheet-head"><h2>Parole</h2>${X}</div>
+    ${missed?`<div class="tabs"><button data-sumtab="trovate" aria-pressed="${S.ui.sumTab!=="mancate"}">Trovate ${r.found.length}</button><button data-sumtab="mancate" aria-pressed="${S.ui.sumTab==="mancate"}">Mancate ${r.grid.words.length-r.found.length}</button></div>`:""}
+    <div class="row" style="align-items:flex-start;gap:12px;min-height:0">
+      <div class="miniboard board n${r.grid.N} ${S.ui.sumSel?"hl":""}" id="miniboard" style="--n:${r.grid.N}">${r.grid.letters.map(l=>`<div class="tile">${l}</div>`).join("")}<svg class="path"><polyline points=""/></svg></div>
+      <div class="wgrid grow" style="max-height:44vh">${list.map(w=>`<button class="wchip ${r.newWords.includes(w)?"new":""}" data-sumword="${w}" aria-pressed="${S.ui.sumSel===w}">${w}</button>`).join("")||'<p class="muted">Nessuna.</p>'}</div></div>`);
+  const mb=document.getElementById("miniboard");if(mb&&S.ui.sumSel){const p=findPath(r.grid,S.ui.sumSel)||[];mb.querySelectorAll(".tile").forEach((t,i)=>t.classList.toggle("sel",p.includes(i)));drawPath(mb,p)}}
+
+/* ---------- PROFILO ---------- */
+function vProfile(){const need=xpNeed(S.level);
+  return `<div class="screen pattern">
+    <div class="ptop"><button class="x" data-go="home" aria-label="Indietro">${I.back}</button><div class="ptitle">Profilo</div><button class="x" data-sheet="impostazioni" aria-label="Impostazioni">${I.gear}</button></div>
+    <div class="pbody">
+      <div class="panel hero"><span class="bigstar">${STAR("#ffc53d")}<b class="num">${S.level}</b></span>
+        <div class="grow"><h2 style="font-size:1.6rem">Livello ${S.level}</h2><div class="xpbar" style="margin-top:6px;height:18px"><i style="width:${S.xp/need*100}%"></i></div><span class="muted num" style="font-size:.85rem">${S.xp} / ${need} XP</span></div><button class="info" data-info="xp">i</button></div>
+      <div class="tiles4">
+        <button class="ptile" data-sheet="parole"><span class="ic" style="color:var(--blue)">${I.book}</span><b class="num">${fmt(S.collection.size)}</b><span>parole</span></button>
+        <div class="ptile"><span class="ic" style="color:var(--mint-d)">${I.play}</span><b style="text-transform:uppercase">${S.longest||"—"}</b><span>la più lunga</span></div>
+        <button class="ptile" data-sheet="serie"><span class="ic">${I.flame}</span><b class="num">${S.streak}/10</b><span>serie</span></button>
+        <button class="ptile" data-sheet="serie"><span class="token" style="width:34px;height:34px;font-size:.7rem;border-width:2.5px;box-shadow:0 2px 0 var(--ink)">+10s</span><b class="num">${S.aiuti}</b><span>aiuti</span></button>
+      </div>
+      <button class="panel" data-sheet="medaglie" style="padding:12px;text-align:left;flex:1;min-height:0;display:flex;flex-direction:column;gap:8px;overflow:hidden">
+        <div class="row between"><h2>Medaglie</h2><span class="chip gold num">${S.medals.size}/15</span></div>
+        <div class="medals">${MEDALS.map(m=>`<span class="medal"><span class="m ${m[4]} ${S.medals.has(m[0])?"":"off"}" style="width:48px;height:48px">${m[2]}</span></span>`).join("")}</div></button>
+      <button class="btn btn-sm" data-act="mapsheet" style="align-self:center">${I.map} Mappa del prototipo</button>
+    </div></div>`}
+
+/* ---------- SFIDE ---------- */
+function vDuels(){
+  const head=`<div class="ptop"><button class="x" data-go="home" aria-label="Indietro">${I.back}</button><div class="ptitle">Sfide</div><button class="info" data-info="sfide" style="width:38px;height:38px">i</button></div>`;
+  if(!duelsOpen())return `<div class="screen pattern">${head}<div class="pbody"><div class="panel lockcard">
+    <svg class="biglock" viewBox="0 0 120 120"><path d="M34 54V40a26 26 0 0 1 52 0v14" fill="none" stroke="#1d1a3a" stroke-width="16" stroke-linecap="round"/><path d="M34 54V40a26 26 0 0 1 52 0v14" fill="none" stroke="#cdd3e3" stroke-width="9" stroke-linecap="round"/>
+      <rect x="18" y="52" width="84" height="58" rx="16" fill="#ffc53d" stroke="#1d1a3a" stroke-width="5"/><circle cx="60" cy="76" r="8" fill="#1d1a3a"/><rect x="56" y="78" width="8" height="18" rx="4" fill="#1d1a3a"/></svg>
+    <h1 style="font-size:2rem">Livello 5</h1>
+    <div style="width:100%"><div class="xpbar blue" style="height:20px"><i style="width:${Math.min(100,totalXP()/cumXP(5)*100)}%"></i></div><p class="muted num" style="margin-top:6px">mancano ${fmt(xpTo(5))} XP</p></div>
+    ${S.challenges.length?`<span class="chip coral">${S.challenges.length} ${S.challenges.length===1?"sfida ti aspetta":"sfide ti aspettano"}</span>`:""}
+    ${S.friends.length?`<div class="row" style="justify-content:center">${S.friends.map(f=>`<span class="avatar" title="${f}">${f[0]}</span>`).join("")}</div>`:""}
+    <button class="btn btn-blue btn-big" data-act="start-gioca">${I.play} Gioca</button></div></div></div>`;
+  const list=S.challenges.slice(0,5);
+  return `<div class="screen pattern">${head}<div class="pbody">
+    <div class="panel row between" style="padding:12px 16px"><div class="center grow"><h1 class="num" style="color:var(--mint-d)">${S.record.w}</h1><span class="muted" style="font-size:.75rem">VINTE</span></div><div class="center grow"><h1 class="num" style="color:var(--coral-d)">${S.record.l}</h1><span class="muted" style="font-size:.75rem">PERSE</span></div></div>
+    <div style="flex:1;min-height:0;display:flex;flex-direction:column;gap:8px;overflow:hidden">${list.length?list.map(c=>`<div class="drow"><span class="avatar">${c.opp[0]}</span><span class="grow"><b style="font-family:var(--f-display);font-weight:400;font-size:1.1rem">${c.opp}</b><br><span class="muted" style="font-size:.8rem">${
+      c.status==="tocca"?"tocca a te":c.status==="attesa"?`hai fatto ${c.me} · aspetti`:c.status==="bloccata"?`aspetta il livello 5`:`${c.me} a ${c.them}`}</span></span>${
+      c.status==="tocca"?`<button class="btn btn-sm btn-gold" data-cplay="${c.id}">Gioca</button>`:c.status==="attesa"?`<button class="btn btn-sm" data-csim="${c.id}" title="Solo nel prototipo">Simula</button>`:c.status==="conclusa"?`<span class="chip ${c.win?"mint":"coral"}">${c.win?"Vinta":"Persa"}</span>`:`<span class="chip">${I.lock.replace("<svg",'<svg width="14" height="14"')}</span>`}</div>`).join("")
+      :`<div class="panel center" style="padding:24px"><h2>Nessuna sfida</h2><p class="muted">Sfida un amico!</p></div>`}</div>
+    <button class="btn btn-coral btn-big btn-block" data-act="newduel">${I.swords} Nuova sfida</button></div></div>`}
+function newDuelSheet(){if(!S.friends.length){sheet(`<div class="sheet-head"><h2>Nuova sfida</h2>${X}</div><div class="panel center" style="padding:20px"><h2>Nessun amico</h2><p class="muted">Gli amici arrivano dal portale</p></div><button class="btn btn-gold btn-block" data-sheet="notizie">Notizie</button>`);return}
+  const sel=S.ui.opp||S.friends[0];
+  sheet(`<div class="sheet-head"><h2>Chi sfidi?</h2><button class="info" data-info="sfide">i</button>${X}</div>
+  <div style="display:flex;flex-direction:column;gap:8px">${S.friends.map(f=>{const lv=PLAYER_LEVEL[f]||1;return `<button class="drow" data-pick="${f}" style="${sel===f?"background:var(--gold-l);border-width:4px":""}"><span class="avatar">${f[0]}</span><span class="grow" style="text-align:left"><b style="font-family:var(--f-display);font-weight:400;font-size:1.1rem">${f}</b><br><span class="muted" style="font-size:.8rem">livello ${lv}</span></span>${lv<5?`<span class="chip">${I.lock.replace("<svg",'<svg width="14" height="14"')} in attesa</span>`:""}</button>`}).join("")}</div>
+  <div class="facts" style="justify-content:center"><span class="chip blue">4×4</span><span class="chip blue">2 min</span><span class="chip blue">uniche ×2</span></div>
+  <button class="btn btn-coral btn-big btn-block" data-act="send-duel">Sfida ${sel}</button>`)}
+function oppWords(o){const P={3:.25,4:.18,5:.1,6:.05};return DUEL.words.filter(w=>hash(w+"@"+o)<(P[w.length]||.03))}
+function versus(m,t){const A=new Set(m),B=new Set(t),uA=m.filter(w=>!B.has(w)),uB=t.filter(w=>!A.has(w)),c=m.filter(w=>B.has(w));return {uA,uB,c,sA:uA.reduce((s,w)=>s+2*base(w),0)+c.reduce((s,w)=>s+base(w),0),sB:uB.reduce((s,w)=>s+2*base(w),0)+c.reduce((s,w)=>s+base(w),0)}}
+function finishDuel(id){const c=S.challenges.find(x=>x.id===id);c.myWords=S.last.found;c.me=S.last.score;c.xpGiven=S.last.score;
+  if(c.oppPlayed)resolveDuel(c);else{c.status=c.lockedOpp?"bloccata":"attesa";toast(`Fatto! Ora tocca a ${c.opp}`);go("sfide");nextModal()}}
+function resolveDuel(c){const v=versus(c.myWords||[],oppWords(c.opp));Object.assign(c,{status:"conclusa",win:v.sA>v.sB,me:v.sA,them:v.sB});
+  if(v.sA>v.sB)S.record.w++;else S.record.l++;const extra=v.sA-(c.xpGiven||0);if(extra>0)addXP(extra);c.xpGiven=v.sA;S.lastDuel={c,v};go("esito")}
+function vDuelResult(){const {c,v}=S.lastDuel,win=v.sA>v.sB;
+  return `<div class="screen pattern sum">
+    <div class="gtop"><span style="width:38px"></span><div class="title outline-text">Sfida con ${c.opp}</div><span style="width:38px"></span></div>
+    <h1 class="center outline-text" style="font-size:3rem">${win?"Vinta!":v.sA===v.sB?"Pari!":"Persa!"}</h1>
+    <div class="panel vs"><div><span class="avatar" style="margin:0 auto;width:54px;height:54px">T</span><div class="s num ${win?"win":""}">${v.sA}</div><span class="muted">Tu</span></div><span style="font-family:var(--f-display);font-size:1.4rem">VS</span><div><span class="avatar" style="margin:0 auto;width:54px;height:54px">${c.opp[0]}</span><div class="s num ${v.sB>v.sA?"win":""}">${v.sB}</div><span class="muted">${c.opp}</span></div></div>
+    <div class="trio"><div class="bub"><b class="num" style="color:var(--gold-d)">${v.uA.length}</b><span>solo tue ×2</span></div><div class="bub"><b class="num">${v.c.length}</b><span>in comune</span></div><div class="bub"><b class="num" style="color:var(--blue)">${v.uB.length}</b><span>solo sue ×2</span></div></div>
+    <div class="row"><button class="btn btn-block" data-go="sfide">Sfide</button><button class="btn btn-coral btn-block" data-crematch="${c.id}">Rivincita</button></div>
+    <button class="btn btn-gold btn-big btn-block" data-go="home">Home</button></div>`}
+after.esito=function(){fanfare();nextModal()};
+
+/* ---------- modali ---------- */
+function toast(t){const el=document.createElement("div");el.className="toast";el.setAttribute("role","status");el.textContent=t;document.getElementById("app").appendChild(el);setTimeout(()=>el.remove(),2200)}
+function welcome(){sheet(`<svg viewBox="-40 -14 110 70" width="170" height="108">${slothSVG().replace('class="sloth-bob"','')}<path d="M-40 -2 H70" stroke="#1d1a3a" stroke-width="12" stroke-linecap="round"/><path d="M-40 -2 H70" stroke="#7a4a2c" stroke-width="7" stroke-linecap="round"/></svg>
+  <h1 style="font-size:2.4rem">Paroliere</h1><p class="muted" style="font-size:1.05rem">Trascina, trova parole, sali di livello.</p>
+  <button class="btn btn-gold btn-big btn-block" data-act="start-guided">Gioca</button>`,"mid")}
+function afterGuided(){sheet(`<svg viewBox="-40 -14 110 70" width="150" height="96">${slothSVG().replace('class="sloth-bob"','')}<path d="M-40 -2 H70" stroke="#1d1a3a" stroke-width="12" stroke-linecap="round"/><path d="M-40 -2 H70" stroke="#7a4a2c" stroke-width="7" stroke-linecap="round"/></svg>
+  <h1>Ogni giorno salgo di un ramo</h1><p class="muted" style="font-size:1.05rem">Una griglia nuova al giorno, uguale per tutti.</p><button class="btn btn-gold btn-big btn-block" data-close>Vediamo!</button>`,"mid")}
+function levelModal(before){fanfare();const un=before<5&&S.level>=5;
+  sheet(`<span style="width:130px;height:130px;position:relative;display:grid;place-items:center" class="bubble-pop">${STAR("#ffc53d")}<b class="num" style="position:relative;font-family:var(--f-display);font-weight:400;font-size:2.8rem">${S.level}</b></span>
+  <h1 style="font-size:2.2rem">Livello ${S.level}!</h1>${un?`<span class="chip coral" style="font-size:1.1rem">${I.swords.replace("<svg",'<svg width="20" height="20"')} Sfide aperte</span><button class="btn btn-coral btn-big btn-block" data-act="close-go" data-to="sfide">Sfide</button>`:""}
+  <button class="btn ${un?"":"btn-gold btn-big"} btn-block" data-close>Ok</button>`,"mid")}
+function giftModal(){fanfare();sheet(`<span class="token bubble-pop" style="width:110px;height:110px;font-size:1.8rem">+10s</span><h1 style="font-size:2rem">Serie completata!</h1><p class="muted">Un aiuto per la Settimana</p><button class="btn btn-gold btn-big btn-block" data-close>Evviva</button>`,"mid")}
+function medalModal(m){beep(784,.1);setTimeout(()=>beep(1175,.25),120);sheet(`<span class="medal"><span class="m big ${m[4]}">${m[2]}</span></span><h1 style="font-size:2rem">${m[1]}</h1><p class="muted">${esc(m[3])}</p><button class="btn btn-gold btn-big btn-block" data-close>Ok</button>`,"mid")}
+
+/* ---------- mappa ---------- */
+function mapHTML(){return `<h2>Prototipo</h2><p>Nessun server: avversari e classifiche simulati. Griglie vere dal dizionario del progetto. Su telefono la mappa è nel Profilo.</p>
+  <h3>Vai a</h3><div class="sim"><button data-go="home">Home · Settimana</button><button data-act="start-gioca">Partita libera</button><button data-go="profilo">Profilo</button><button data-go="sfide">Sfide</button><button data-sheet="classifica">Classifica</button></div>
+  <h3>Simula</h3><div class="sim">
+    <button data-act="sim-reset">Nuovo giocatore</button><button data-act="sim-skipob">Salta la partita guidata</button>
+    <button data-act="sim-xp">+300 XP</button><button data-act="sim-l5">Arriva al livello 5</button>
+    <button data-act="sim-day">Giorno dopo</button><button data-act="sim-skip">Salta un giorno</button>
+    <button data-act="sim-s9">Serie a 9</button><button data-act="sim-friends">Amici: Giulia e Luca</button><button data-act="sim-chal">Giulia ti sfida</button></div>
+  <h3>Scena</h3><div class="tabs" style="margin-top:6px">${[["","Auto"],["autunno","Aut"],["inverno","Inv"],["primavera","Pri"],["estate","Est"]].map(([k,t])=>`<button data-season="${k}" aria-pressed="${(S.season||"")===k}">${t}</button>`).join("")}</div>
+  <div class="tabs" style="margin-top:6px">${[["auto","Auto"],["giorno","Giorno"],["notte","Notte"]].map(([k,t])=>`<button data-sky="${k}" aria-pressed="${S.sky===k}">${t}</button>`).join("")}</div>`}
+
+/* ---------- azioni ---------- */
+function refreshSheet(){if(openSheet)openSheet()}
+function onAct(el){const d=el.dataset;
+  if(d.close!==undefined){if(!infoReturn)openSheet=null;closeSheet();return}
+  if(d.go){openSheet=null;document.getElementById("overlay").innerHTML="";go(d.go);return}
+  if(d.node!==undefined){const n=+d.node;openSheet=()=>daySheet(n);S.ui.help=false;openSheet();return}
+  if(d.sheet){openSheet=SHEETS[d.sheet];openSheet();return}
+  if(d.info){infoSheet(d.info);return}
+  if(d.grank){S.ui.grank=d.grank;refreshSheet();return}
+  if(d.rank){S.ui.rank=d.rank;refreshSheet();return}
+  if(d.wlen){S.ui.wlen=d.wlen;refreshSheet();return}
+  if(d.sumtab){S.ui.sumTab=d.sumtab;S.ui.sumSel=null;sumWordsSheet();return}
+  if(d.sumword){S.ui.sumSel=S.ui.sumSel===d.sumword?null:d.sumword;const sc=(document.querySelector(".sheet .wgrid")||{}).scrollTop||0;sumWordsSheet();const w=document.querySelector(".sheet .wgrid");if(w)w.scrollTop=sc;return}
+  if(d.medal){const m=MEDALS.find(x=>x[0]===d.medal);const prev=document.getElementById("overlay").innerHTML;sheet(`<span class="medal"><span class="m big ${m[4]} ${S.medals.has(m[0])?"":"off"}">${m[2]}</span></span><h1>${m[1]}</h1><p class="muted">${esc(m[3])}</p><button class="btn btn-block" data-close>Ok</button>`,"mid");infoReturn=prev;return}
+  if(d.toggle){S[d.toggle]=!S[d.toggle];refreshSheet();return}
+  if(d.sky){S.sky=d.sky;render();refreshSheet();return}
+  if(d.season!==undefined){S.season=d.season||null;render();refreshSheet();return}
+  if(d.friend){const n=S.notifs.find(x=>x.id==+d.friend);n.done=true;n.unread=false;if(d.ans==="yes"){S.friends.push(n.who);n.t=`${n.who} è tuo amico!`}else n.t=`Richiesta di ${n.who} ignorata`;render();refreshSheet();return}
+  if(d.ngo){document.getElementById("overlay").innerHTML="";openSheet=null;go(d.ngo);return}
+  if(d.pick){S.ui.opp=d.pick;newDuelSheet();return}
+  if(d.cplay){const c=S.challenges.find(x=>x.id==+d.cplay);startGame("duel",{opp:c.opp,cid:c.id});return}
+  if(d.csim){resolveDuel(S.challenges.find(x=>x.id==+d.csim));return}
+  if(d.crematch){const c=S.challenges.find(x=>x.id==+d.crematch);S.challenges.unshift({id:Date.now(),opp:c.opp,status:"tocca",oppPlayed:false,lockedOpp:(PLAYER_LEVEL[c.opp]||1)<5});toast(`Rivincita a ${c.opp}!`);go("sfide");return}
+  switch(d.act){
+    case "start-guided":startGame("guided",{});break;
+    case "start-gioca":openSheet=null;startGame("gioca",{});break;
+    case "close-go":document.getElementById("overlay").innerHTML="";go(d.to);nextModal();break;
+    case "togglehelp":S.ui.help=!S.ui.help;refreshSheet();break;
+    case "start-week":{const day=+d.day,aiuto=S.ui.help&&S.aiuti>0;if(aiuto)S.aiuti--;S.ui.help=false;openSheet=null;startGame("week",{day,aiuto});break}
+    case "open-day":{const n=+d.day;openSheet=()=>daySheet(n);openSheet();break}
+    case "sumwords":openSheet=null;sumWordsSheet();break;
+    case "quit":{const g=S.game;sheet(`<h1>Esci?</h1><p class="muted">${g.kind==="week"?"Il tentativo conta comunque.":"Conta il punteggio fatto."}</p><div class="row" style="width:100%"><button class="btn btn-block" data-close>No</button><button class="btn btn-coral btn-block" data-act="endgame">Esci</button></div>`,"mid");break}
+    case "endgame":document.getElementById("overlay").innerHTML="";if(S.game&&S.game.hint)S.game.hint.step=3;endGame();break;
+    case "newduel":S.ui.opp=null;newDuelSheet();break;
+    case "send-duel":{const opp=S.ui.opp||S.friends[0],locked=(PLAYER_LEVEL[opp]||1)<5;S.challenges.unshift({id:Date.now(),opp,status:"tocca",oppPlayed:false,lockedOpp:locked});document.getElementById("overlay").innerHTML="";toast(locked?`${opp} la vedrà al livello 5`:`Sfida inviata a ${opp}!`);render();break}
+    case "mapsheet":sheet(`<div class="sheet-head"><h2>Mappa</h2>${X}</div><div class="map" style="overflow:auto;min-height:0">${mapHTML()}</div>`);break;
+    case "sim-reset":clearInterval(tick);pending.length=0;infoReturn=null;openSheet=null;_ow={};initState();document.getElementById("overlay").innerHTML="";go("home");break;
+    case "sim-skipob":S.onboarded=true;document.getElementById("overlay").innerHTML="";render();break;
+    case "sim-xp":{const b=S.level;addXP(300);render();toast("+300 XP");if(S.level>b)levelModal(b);break}
+    case "sim-l5":{const b=S.level;if(S.level<5){S.level=5;S.xp=0;render();levelModal(b)}break}
+    case "sim-day":newDay(false);break;
+    case "sim-skip":newDay(true);break;
+    case "sim-s9":S.streak=9;S.playedToday=false;render();toast("Serie a 9");break;
+    case "sim-friends":["Giulia","Luca"].forEach(f=>{if(!S.friends.includes(f))S.friends.push(f)});render();toast("Giulia e Luca amici");break;
+    case "sim-chal":if(!S.friends.includes("Giulia"))S.friends.push("Giulia");S.challenges.unshift({id:Date.now(),opp:"Giulia",status:"tocca",oppPlayed:true});S.notifs.unshift({id:Date.now(),who:"Giulia",t:"Giulia ti ha sfidato",go:"sfide",unread:true});render();toast("Giulia ti sfida!");break;
+  }}
+document.addEventListener("click",e=>{const el=e.target.closest("button,[data-scrim],[data-node]");if(!el)return;
+  if(el.hasAttribute("data-scrim")){if(e.target===el){if(!infoReturn)openSheet=null;closeSheet()}return}
+  if(el.dataset.peek){const n=el.dataset.peek;const day=lastDay;const ws=otherWords(n,day);const mine=S.week[day]?S.week[day].words:[];const back=openSheet,prev=document.getElementById("overlay").innerHTML;
+    sheet(`<div class="sheet-head"><span class="avatar">${esc(n[0])}</span><h2 style="flex:1">${esc(n)}</h2>${X}</div><div class="wgrid" style="max-height:50vh">${ws.sort((a,b)=>b.length-a.length).map(w=>`<span class="wchip ${mine.includes(w)?"mine":""}">${w}</span>`).join("")}</div>`);openSheet=back;infoReturn=prev;return}
+  onAct(el)});
+document.addEventListener("keydown",e=>{if(e.key==="Escape"&&document.querySelector(".scrim")){openSheet=null;closeSheet()}
+  if((e.key==="Enter"||e.key===" ")&&e.target.dataset&&e.target.dataset.node!==undefined){e.preventDefault();onAct(e.target)}});
+let lastDay=4;
+function newDay(skip){for(let k=0;k<(skip?2:1);k++){if(!S.playedToday)S.streak=0;S.playedToday=false;S.day++;
+    if(S.day>6){for(let d=0;d<7;d++){if(S.week[d]){const rows=dayRanking(d,"generale");if(rows[0]&&rows[0].me)S.medals.add("primo")}}S.weekNo++;S.day=0;S.week={};_ow={}}}
+  refreshUnique();S.notifs.unshift({id:Date.now(),kind:"day",t:`Griglia di ${DAYS[S.day].toLowerCase()}: ${WEEK[S.day].v.name}`,unread:true});
+  document.getElementById("overlay").innerHTML="";openSheet=null;go("home");toast(skip?"Giorno saltato: serie a zero":`${DAYS[S.day]}!`)}
+render();
+})();
+</script>
