@@ -405,13 +405,13 @@ Dipendenze ammesse:
 
 ## 11. Progressione e modalità (design, non ancora implementato)
 
-Decisioni prese il 2026-11-13. Sostituiscono, per l'esperienza del giocatore, la vecchia "Allenamento" con configurazione libera. Il prototipo visivo `docs/prototipo-gamification.html` è precedente a queste decisioni e serve solo come riferimento grafico: contiene cose ora escluse (ELO, missioni, gradi, salvataggi della serie).
+Decisioni prese il 2026-11-13. Sostituiscono, per l'esperienza del giocatore, la vecchia "Allenamento" con configurazione libera. Il prototipo navigabile `docs/prototipo-gamification.html` segue questa sezione (avversari e classifiche simulati).
 
 ### 11.1 Grandezze
 - **XP (punti esperienza)**: unica grandezza di progresso. Non si spende. Si guadagna in tutte le modalità: l'XP di una partita è il suo punteggio totale, calcolato con la regola di punteggio di quella modalità (anche le parole già trovate in passato valgono pieno). Altre fonti si aggiungeranno (per esempio le missioni, ora rimandate).
 - **Livello**: deriva dall'XP accumulato, senza un massimo. Per salire dal livello `n` a `n+1` servono `round(60 · n^1.4)` XP (1→2: 60, 4→5: 418, 9→10: 1.300). Valori arbitrari, da ritarare sui dati reali; ipotesi di partenza: circa 50 XP per partita in Gioca, quindi livello 5 dopo circa 18 partite, livello 10 dopo circa 110. Non ogni livello sblocca qualcosa.
 - **Parole trovate**: numero di forme distinte trovate almeno una volta, in qualsiasi modalità (andato, andata, andati contano 3). È anche un elenco consultabile dal profilo.
-- **Serie**: giorni consecutivi in cui il giocatore ha finito almeno una partita, in qualsiasi modalità. Conta il giorno in cui si gioca, non la data della griglia; abbandonare una partita conta come finirla. Nessun salvataggio: un giorno senza partite riporta la serie a zero.
+- **Serie**: giorni consecutivi in cui il giocatore ha finito almeno una partita, in qualsiasi modalità. Conta il giorno in cui si gioca, non la data della griglia; abbandonare una partita conta come finirla. Ragiona a cicli di 10 giorni (sfasati rispetto alla settimana): al decimo giorno il giocatore riceve un aiuto (§11.7) e la serie riparte da zero. Nessun salvataggio: un giorno senza partite riporta la serie a zero senza premio.
 
 Fuori perimetro per ora: ELO, valute da spendere, missioni, statistiche aggregate su tutti i giocatori (percentili, rarità), record personali di punteggio.
 
@@ -419,15 +419,10 @@ Fuori perimetro per ora: ELO, valute da spendere, missioni, statistiche aggregat
 - La prima partita è guidata: spiega il trascinamento e cosa sono XP e parole trovate.
 - Disponibili da subito: **Gioca**, **Settimana**, **Profilo**, **Impostazioni**.
 - Le funzioni non ancora sbloccate sono visibili con un lucchetto e il livello richiesto.
-- Gli utenti già esistenti ripartono da zero (XP, livello, parole trovate, serie).
+- Gli utenti già esistenti ripartono da zero (XP, livello, parole trovate, serie). Lo storico precedente non viene conservato: il modello dati va rifattorizzato in modo coerente con questa sezione.
 
-### 11.3 Sblocchi per livello (arbitrari, da confermare)
-| Livello | Sblocco |
-|---|---|
-| 1 | Gioca, Settimana, Profilo, Impostazioni |
-| 5 | Amici e sfide (duelli 1 contro 1) |
-| 10 | Gioca: scelta della griglia (4×4, 5×5, 6×6) |
-| 15 | Gioca: scelta della durata |
+### 11.3 Sblocchi per livello
+L'unico sblocco è al **livello 5: amici e sfide** (duelli 1 contro 1). Gli altri livelli non sbloccano nulla.
 
 Sfide e amici prima dello sblocco:
 - Le richieste di amicizia arrivano e si vedono anche prima del livello 5.
@@ -483,18 +478,20 @@ Premi unici, non ricorrenti. Prime 15:
 
 Le medaglie legate al punteggio esistono solo per la Settimana (la 14).
 
-### 11.7 Serie e oggetti (da progettare)
-- La serie ragiona a cicli di 10 giorni, sfasati rispetto alla settimana.
-- Idea: completare un ciclo dà un oggetto cumulabile da usare nelle partite della Settimana (per esempio secondi in più).
-- Rischio: un oggetto che dà vantaggio nella Settimana rompe il principio "stessa griglia, stesse condizioni" e premia la presenza invece della bravura nella classifica. Da decidere prima di implementarlo (vedi 11.9).
+### 11.7 Aiuti
+- Ogni ciclo di serie completato (10 giorni) dà un **aiuto: +10 secondi**. Gli aiuti si accumulano.
+- Si usano nelle griglie della Settimana, al massimo uno per griglia, scelto prima di iniziare. L'aiuto allunga solo il tempo: griglia e regole restano le stesse.
+- Proposta del prototipo, da confermare: in classifica il punteggio ottenuto con un aiuto porta il segno "+10 s".
 
 ### 11.8 Impostazioni
 Suoni, vibrazione, tema chiaro o scuro, promemoria.
 
-### 11.9 Domande aperte
-- Oggetti della serie: quali, quanti se ne possono usare per griglia, se sono visibili in classifica, se valgono anche nella classifica generale.
-- Dopo i 10 giorni la serie riparte da zero o continua a contare, con un premio ogni 10?
-- Le medaglie danno XP?
-- Le sfide (duelli) danno XP pari al punteggio Versus?
-- Lo storico delle partite giocate prima del reset resta visibile nel profilo?
-- Quali statistiche mostra il profilo oltre a XP, livello, parole trovate e serie?
+### 11.9 Altre decisioni
+- Le medaglie non danno XP.
+- Le sfide danno XP pari al punteggio Versus ottenuto.
+- Il profilo mostra livello, XP, parole trovate (con elenco), serie e aiuti, medaglie, parola più lunga.
+
+### 11.10 Domande aperte
+- Domenica (parole uniche): l'XP si assegna subito sul punteggio provvisorio e si corregge alla chiusura, o solo alla chiusura?
+- Gli aiuti si possono usare anche nelle sfide?
+- Il segno "+10 s" in classifica (§11.7).
