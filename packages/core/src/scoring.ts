@@ -1,3 +1,4 @@
+import { pathMultiplier } from './bonus.js';
 import { cellPosition, POSITION_MULTIPLIER } from './grid.js';
 import { TILE_VALUES } from './tile.js';
 import type { GameConfig, Grid } from './types.js';
@@ -48,7 +49,25 @@ export function wordValue(word: string, path: number[], grid: Grid, options: Sco
     }
   }
 
-  return value;
+  // Caselle moltiplicatrici (variante "Bonus"): moltiplicano il valore dell'intera parola.
+  return value * pathMultiplier(path, grid.multipliers);
+}
+
+/** Finestra entro cui una parola fa salire la combo (variante "Combo"). */
+export const COMBO_WINDOW_MS = 5_000;
+
+/**
+ * Livello di combo di una parola trovata a `atMs` dall'inizio: 1 se è la prima o se è passato troppo tempo dalla
+ * precedente, altrimenti il livello della precedente + 1.
+ */
+export function comboLevel(previous: { atMs: number; combo: number } | undefined, atMs: number): number {
+  if (previous && atMs - previous.atMs <= COMBO_WINDOW_MS) return previous.combo + 1;
+  return 1;
+}
+
+/** Punti in più per il livello di combo: nessuno al livello 1, +1 per ogni livello successivo. */
+export function comboBonus(level: number): number {
+  return Math.max(0, level - 1);
 }
 
 export const classicScoring: ScoringRule = {

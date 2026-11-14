@@ -1,3 +1,4 @@
+import { drawBonusMultipliers } from './bonus.js';
 import { createRng } from './rng.js';
 import { drawGrid } from './grid.js';
 import { solve } from './solver.js';
@@ -23,6 +24,9 @@ export function generateGrid(config: GameConfig, wordIndex: WordIndex): Generate
     const grid = drawGrid(rng, config.size);
     const solutions = solve(grid, wordIndex, config.minWordLength);
     if (solutions.length >= config.minWords) {
+      if (config.bonusCells && config.bonusCells.length > 0) {
+        grid.multipliers = drawBonusMultipliers(config.seed, config.size, config.bonusCells);
+      }
       return { grid, solutions, attempts: attempt };
     }
   }

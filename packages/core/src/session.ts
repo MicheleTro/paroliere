@@ -1,5 +1,5 @@
 import { neighbors } from './grid.js';
-import { getScoringRule } from './scoring.js';
+import { comboBonus, comboLevel, getScoringRule } from './scoring.js';
 import { tileLetterCount } from './tile.js';
 import type { GameConfig, Grid, Solution } from './types.js';
 
@@ -7,6 +7,10 @@ export interface FoundWord {
   word: string;
   path: number[];
   points: number;
+  /** Millisecondi dall'inizio della partita in cui la parola è stata trovata. */
+  atMs: number;
+  /** Livello di combo al momento della parola (1 = nessuna combo). Conta nei punti solo con `config.combo`. */
+  combo: number;
 }
 
 export interface RejectedWord {
@@ -125,8 +129,11 @@ export function submitPath(
   }
 
   const scoringRule = getScoringRule(session.config.scoring);
-  const points = scoringRule.scoreWord(word, path, session.grid, session.config);
-  const foundWord: FoundWord = { word, path, points };
+  const atMs = now - session.startedAt;
+  const combo = comboLevel(session.foundWords[session.foundWords.length - 1], atMs);
+  const points =
+    scoringRule.scoreWord(word, path, session.grid, session.config) + (session.config.combo ? comboBonus(combo) : 0);
+  const foundWord: FoundWord = { word, path, points, atMs, combo };
 
   const nextSession: GameSession = {
     ...session,
