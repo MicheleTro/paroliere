@@ -20,6 +20,9 @@ const envSchema = z.object({
 
 export const config = envSchema.parse(process.env);
 export const portalUrl = config.PORTAL_URL.replace(/\/+$/, '');
-/** Dove mandare chi non ha una sessione: il portale lo fa entrare e lo riporta qui. */
-export const loginUrl = `${portalUrl}/launch/${config.SERVICE_ID}`;
+/**
+ * Dove mandare chi non ha una sessione: il portale lo fa entrare e lo riporta qui. Con DEV_LOGIN (solo sviluppo)
+ * si entra invece come utente di prova, senza uscire dal sito locale.
+ */
+export const loginUrl = config.DEV_LOGIN ? '/api/auth/dev?user=dev' : `${portalUrl}/launch/${config.SERVICE_ID}`;
 export const isProduction = process.env.NODE_ENV === 'production';

@@ -32,8 +32,12 @@ function appendToOverrides(word: string): void {
   fs.appendFileSync(ADD_OVERRIDES_PATH, `${separator}${word}\n`);
 }
 
+/** La segnalazione di parole mancanti è disattivata per i giocatori; per riattivarla basta mettere true. */
+const USER_REPORTS_ENABLED = false;
+
 export function registerReportRoutes(app: FastifyInstance): void {
   app.post('/reports/words', { preHandler: requireAuth }, async (request, reply) => {
+    if (!USER_REPORTS_ENABLED) return reply.code(403).send({ error: 'Segnalazione non disponibile' });
     const body = reportSchema.safeParse(request.body);
     if (!body.success) return reply.code(400).send({ error: body.error.flatten() });
 

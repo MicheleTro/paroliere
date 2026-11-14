@@ -3,7 +3,7 @@ import { z } from 'zod';
 
 import { config, loginUrl, portalUrl } from '../config.js';
 import { db } from '../db/client.js';
-import { users } from '../db/schema.js';
+import { profiles, users } from '../db/schema.js';
 import { verifyPortalToken } from './portal-token.js';
 import { ADMIN_GROUP, requireAuth } from './require-auth.js';
 import { clearedSessionCookie, sessionCookie, signSession, type PlayerSession } from './session.js';
@@ -52,13 +52,32 @@ export function registerAuthRoutes(app: FastifyInstance): void {
   // Solo sviluppo (DEV_LOGIN=true, mai in produzione): entra senza portale. /api/auth/dev?user=mario&admin=1
   if (config.DEV_LOGIN) {
     app.get('/auth/dev', async (request, reply) => {
-      const q = z.object({ user: z.string().min(1).max(32).default('dev'), admin: z.string().optional() }).parse(request.query);
+      const q = z
+        .object({
+          user: z.string().min(1).max(32).default('dev'),
+          admin: z.string().optional(),
+          /** Solo sviluppo: porta l'utente a quel totale di XP (es. xp=2000 per sbloccare le sfide). */
+          xp: z.coerce.number().int().min(0).max(10_000_000).optional(),
+          /** Solo sviluppo: salta il benvenuto e la prima partita guidata (onboarded=1). */
+          onboarded: z.string().optional(),
+        })
+        .parse(request.query);
       const session: PlayerSession = {
         sub: `dev-${q.user}`,
         username: q.user,
         groups: q.admin ? [ADMIN_GROUP, 'membri'] : ['membri'],
       };
       await rememberUser(session);
+      if (q.xp !== undefined || q.onboarded) {
+        const changes = {
+          ...(q.xp !== undefined ? { totalXp: q.xp } : {}),
+          ...(q.onboarded ? { onboardedAt: new Date() } : {}),
+        };
+        await db
+          .insert(profiles)
+          .values({ userId: session.sub, ...changes })
+          .onConflictDoUpdate({ target: profiles.userId, set: changes });
+      }
       return reply.header('Set-Cookie', sessionCookie(await signSession(session))).redirect('/');
     });
   }

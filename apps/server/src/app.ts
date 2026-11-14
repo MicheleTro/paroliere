@@ -8,9 +8,10 @@ import Fastify, { type FastifyInstance } from 'fastify';
 import { registerAdminRoutes } from './admin/routes.js';
 import { registerAuthRoutes } from './auth/routes.js';
 import { registerChallengeRoutes } from './challenges/routes.js';
-import { registerHistoryRoutes } from './history/routes.js';
+import { registerMeRoutes } from './me/routes.js';
+import { registerPlayRoutes } from './plays/routes.js';
+import { registerWeekRoutes } from './week/routes.js';
 import { registerReportRoutes } from './reports/routes.js';
-import { registerStatsRoutes } from './stats/routes.js';
 
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 
@@ -27,7 +28,8 @@ function registerFrontend(app: FastifyInstance): void {
 
   void app.register(fastifyStatic, {
     root: webDir,
-    wildcard: false,
+    // I file si cercano a ogni richiesta (non una volta all'avvio): una nuova compilazione si vede senza riavviare
+    wildcard: true,
     setHeaders(res, path) {
       const name = basename(path);
       const revalidate = name === 'index.html' || name === 'sw.js' || name === 'manifest.webmanifest' || name === 'manifest.json';
@@ -71,8 +73,9 @@ export function buildApp(): FastifyInstance {
     async (api) => {
       registerAuthRoutes(api);
       registerChallengeRoutes(api);
-      registerHistoryRoutes(api);
-      registerStatsRoutes(api);
+      registerPlayRoutes(api);
+      registerWeekRoutes(api);
+      registerMeRoutes(api);
       registerReportRoutes(api);
       registerAdminRoutes(api);
     },
