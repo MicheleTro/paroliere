@@ -1,43 +1,75 @@
+/*
+ * Tema del gioco: mondo a fumetto (docs/prototipo-gamification.html). Un solo aspetto voluto: la scena della home ha
+ * giorno e notte, ma l'interfaccia non ha un tema scuro. I nomi --color-* sono quelli storici delle schermate: qui
+ * sono mappati sulla nuova palette, così tutte le schermate prendono il nuovo aspetto.
+ */
+@import './fonts.css';
+
 :root {
   color-scheme: light;
 
-  --color-bg: #f3f4fb;
-  --color-bg-soft: #e9ebf8;
-  --color-surface: #ffffff;
-  --color-surface-alt: #f5f6fc;
-  --color-border: #e4e6f2;
-  --color-ink: #191a24;
-  --color-ink-soft: #6c7089;
-  --color-ink-faint: #9599ae;
+  /* Palette del prototipo */
+  --ink: #1d1a3a;
+  --ink-2: #4b4775;
+  --paper: #fffaf0;
+  --paper-2: #f3ead8;
+  --blue: #2f6bff;
+  --blue-d: #1c45c2;
+  --blue-l: #dbe6ff;
+  --gold: #ffc53d;
+  --gold-d: #d99500;
+  --gold-l: #fff1c7;
+  --coral: #ff5e4b;
+  --coral-d: #cf3a28;
+  --coral-l: #ffe0da;
+  --mint: #25c88d;
+  --mint-d: #139466;
+  --mint-l: #d4f7e8;
+  --grey: #cdd3e3;
+  --grey-d: #9aa3bd;
+  --tile: #fffaf0;
+  --tile-sel: #ffd45e;
 
-  --color-accent: #5b5ff0;
-  --color-accent-soft: #8285f6;
+  --f-display: 'Lilita One', 'Arial Rounded MT Bold', 'Trebuchet MS', system-ui, sans-serif;
+  --f-body: 'Nunito', 'Segoe UI', system-ui, sans-serif;
+
+  /* Nomi storici → palette del prototipo */
+  --color-bg: var(--blue);
+  --color-bg-soft: var(--blue-l);
+  --color-surface: var(--paper);
+  --color-surface-alt: var(--paper-2);
+  --color-border: var(--ink);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-2);
+  --color-ink-faint: #7d789e;
+
+  --color-accent: var(--blue);
+  --color-accent-soft: #5b8cff;
   --color-accent-contrast: #ffffff;
-  --color-accent-wash: #edeeff;
+  --color-accent-wash: var(--blue-l);
 
-  --color-stamp: #f5a623;
-  --color-stamp-soft: #ffce76;
+  --color-stamp: var(--gold);
+  --color-stamp-soft: #ffd768;
 
-  --color-success: #1fa971;
-  --color-success-wash: #e7f8ef;
-  --color-warning: #d98c00;
-  --color-warning-wash: #fff3dd;
-  --color-danger: #e5484d;
-  --color-danger-wash: #fdeaea;
-  --color-disabled: #d9dbea;
+  --color-success: var(--mint-d);
+  --color-success-wash: var(--mint-l);
+  --color-warning: var(--gold-d);
+  --color-warning-wash: var(--gold-l);
+  --color-danger: var(--coral-d);
+  --color-danger-wash: var(--coral-l);
+  --color-disabled: var(--grey);
 
-  --radius-sm: 10px;
-  --radius-md: 16px;
-  --radius-lg: 24px;
+  --radius-sm: 12px;
+  --radius-md: 18px;
+  --radius-lg: 22px;
   --radius-pill: 999px;
 
-  --shadow-card: 0 1px 2px rgba(25, 26, 36, 0.04), 0 10px 28px rgba(25, 26, 36, 0.07);
-  --shadow-pop: 0 10px 24px rgba(91, 95, 240, 0.28);
-  --shadow-float: 0 4px 16px rgba(25, 26, 36, 0.1);
+  --shadow-card: 0 6px 0 rgba(29, 26, 58, 0.35);
+  --shadow-pop: 0 5px 0 var(--ink);
+  --shadow-float: 0 4px 0 var(--ink);
 
-  --font-heading: var(--font-body);
-  --font-body:
-    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-heading: var(--f-display);
+  --font-body: var(--f-body);
 
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
@@ -49,43 +81,44 @@
 
 html,
 body {
+  height: 100%;
+  overflow: hidden; /* la pagina non scorre mai: solo gli elenchi lunghi scorrono, dentro la loro casella (.scroll-box) */
   margin: 0;
   padding: 0;
-  background: var(--color-bg);
-  color: var(--color-ink);
-  font-family: var(--font-body);
+  background: #2a3f9e;
+  color: var(--ink);
+  font-family: var(--f-body);
+  font-weight: 700;
+  font-size: 15px;
+  line-height: 1.35;
   -webkit-tap-highlight-color: transparent;
-}
-
-body {
-  background-image: radial-gradient(circle at 12% 0%, var(--color-accent-wash) 0%, transparent 55%),
-    radial-gradient(circle at 100% 15%, rgba(245, 166, 35, 0.12) 0%, transparent 40%);
-  background-attachment: fixed;
 }
 
 #app {
   display: flex;
   justify-content: center;
-  min-height: 100vh;
+  height: 100vh;
+  height: 100dvh;
+  min-height: 0;
 }
 
 h1,
 h2,
 h3 {
-  font-family: var(--font-heading);
-  color: var(--color-ink);
+  font-family: var(--f-display);
+  font-weight: 400;
+  letter-spacing: 0.01em;
+  color: var(--ink);
   margin: 0;
+  text-wrap: balance;
 }
 
 h1 {
-  font-size: 1.5rem;
-  font-weight: 800;
-  letter-spacing: -0.01em;
+  font-size: 1.6rem;
 }
 
 h2 {
-  font-size: 1rem;
-  font-weight: 700;
+  font-size: 1.15rem;
 }
 
 p {
@@ -93,30 +126,85 @@ p {
 }
 
 button {
-  font-family: var(--font-body);
+  font-family: var(--f-body);
+  font-weight: 800;
+  color: inherit;
+  -webkit-tap-highlight-color: transparent;
 }
 
-input {
-  font-family: var(--font-body);
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline: 3px solid var(--gold);
+  outline-offset: 2px;
 }
 
-/* Layout */
+input,
+select {
+  font-family: var(--f-body);
+  font-weight: 700;
+}
+
+.num {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Layout: lo sfondo è il cielo blu a pallini del prototipo, i contenuti stanno su carta */
+
+.pattern {
+  background: radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.13) 2.5px, transparent 3.5px) 0 0 / 24px 24px,
+    linear-gradient(180deg, #3d7bff, #2a55e0);
+}
 
 .page {
   display: flex;
+  flex: 1 1 auto;
   flex-direction: column;
   align-items: stretch;
-  gap: 18px;
-  width: min(94vw, 440px);
+  gap: clamp(8px, 1.8dvh, 16px);
+  width: min(100%, 440px);
+  min-height: 0;
+  max-height: 100%;
   padding-bottom: 8px;
 }
 
-.card {
+/* i titoli sulla carta blu: bianchi col contorno, come nel prototipo */
+.page > h1 {
+  text-align: center;
+}
+
+.page > h1,
+.page > .header > h1 {
+  color: #fff;
+  text-shadow: -2px -2px 0 var(--ink), 2px -2px 0 var(--ink), -2px 2px 0 var(--ink), 2px 2px 0 var(--ink), 0 4px 0 var(--ink);
+}
+
+/* Elenco lungo: occupa lo spazio che resta e scorre al suo interno */
+.scroll-box {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Schermate di amministrazione: lunghe tabelle, scorrono dentro la schermata */
+.page.admin,
+.detail {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.card,
+.panel {
   width: 100%;
   border-radius: var(--radius-lg);
-  background: var(--color-surface);
+  background: var(--paper);
+  border: 3px solid var(--ink);
   box-shadow: var(--shadow-card);
-  padding: 18px 20px;
+  padding: 14px 16px;
+  color: var(--ink);
 }
 
 .section {
@@ -127,44 +215,49 @@ input {
 }
 
 .section-title {
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--color-ink-faint);
+  font-family: var(--f-display);
+  font-weight: 400;
+  font-size: 1rem;
+  letter-spacing: 0.04em;
+  color: #fff;
+  text-shadow: 0 2px 0 var(--ink);
 }
 
-/* Buttons */
+/* Pulsanti */
 
 .btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  font-family: var(--font-body);
-  font-size: 1rem;
-  font-weight: 700;
+  gap: 8px;
+  font-family: var(--f-display);
+  font-weight: 400;
+  font-size: 1.1rem;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
   line-height: 1;
-  padding: 0 22px;
-  height: 48px;
-  border-radius: var(--radius-pill);
-  border: none;
+  padding: 10px 18px;
+  min-height: 52px;
+  border: 3px solid var(--ink);
+  border-radius: 18px;
+  background: var(--paper);
+  color: var(--ink);
+  box-shadow: 0 5px 0 var(--ink);
   cursor: pointer;
   white-space: nowrap;
-  transition: transform 0.12s ease, box-shadow 0.12s ease, background-color 0.12s ease, opacity 0.12s ease,
-    border-color 0.12s ease;
-  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.06s, box-shadow 0.06s;
 }
 
 .btn:active {
-  transform: scale(0.96);
+  transform: translateY(3px);
+  box-shadow: 0 2px 0 var(--ink);
 }
 
 .btn:disabled {
+  filter: grayscale(1);
+  opacity: 0.6;
   cursor: default;
-  opacity: 0.5;
   transform: none;
-  box-shadow: none;
 }
 
 .btn-block {
@@ -172,45 +265,74 @@ input {
 }
 
 .btn-sm {
-  height: 38px;
-  padding: 0 16px;
-  font-size: 0.88rem;
+  min-height: 40px;
+  font-size: 0.95rem;
+  padding: 6px 12px;
+  border-radius: 14px;
+  box-shadow: 0 4px 0 var(--ink);
 }
 
-.btn-primary {
-  background: linear-gradient(135deg, var(--color-accent), var(--color-accent-soft));
-  color: var(--color-accent-contrast);
-  box-shadow: var(--shadow-pop);
+.btn-primary,
+.btn-blue {
+  background: linear-gradient(180deg, #5b8cff, var(--blue));
+  color: #fff;
+  text-shadow: 0 2px 0 var(--blue-d);
+}
+
+.btn-gold {
+  background: linear-gradient(180deg, #ffd768, var(--gold));
+}
+
+.btn-coral {
+  background: linear-gradient(180deg, #ff8270, var(--coral));
+  color: #fff;
+  text-shadow: 0 2px 0 var(--coral-d);
+}
+
+.btn-mint {
+  background: linear-gradient(180deg, #4fdba7, var(--mint));
+  color: #fff;
+  text-shadow: 0 2px 0 var(--mint-d);
 }
 
 .btn-secondary {
-  background: var(--color-surface);
-  color: var(--color-ink);
-  border: 1.5px solid var(--color-border);
+  background: var(--paper);
+  color: var(--ink);
 }
 
 .btn-ghost {
   background: transparent;
-  color: var(--color-ink-soft);
+  color: #fff;
+  border-color: transparent;
+  box-shadow: none;
 }
 
 .btn-danger {
-  background: var(--color-danger-wash);
-  color: var(--color-danger);
+  background: var(--coral-l);
+  color: var(--coral-d);
 }
 
 .btn-icon {
+  display: inline-grid;
+  place-items: center;
   width: 44px;
   height: 44px;
   padding: 0;
-  border-radius: var(--radius-pill);
-  border: none;
-  background: var(--color-surface-alt);
+  border: 3px solid var(--ink);
+  border-radius: 50%;
+  background: var(--paper);
+  box-shadow: 0 3px 0 var(--ink);
   font-size: 1.05rem;
   flex-shrink: 0;
+  cursor: pointer;
 }
 
-/* Selectable chips (option groups) */
+.btn-icon:active {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 var(--ink);
+}
+
+/* Scelte (opzioni di una sfida, filtri) */
 
 .chip-group {
   display: flex;
@@ -219,24 +341,25 @@ input {
 }
 
 .chip {
-  font-family: var(--font-body);
-  font-size: 0.92rem;
-  font-weight: 700;
-  padding: 0 18px;
-  height: 42px;
-  border-radius: var(--radius-pill);
-  border: 1.5px solid var(--color-border);
-  background: var(--color-surface);
-  color: var(--color-ink-soft);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--f-display);
+  font-weight: 400;
+  font-size: 1rem;
+  padding: 3px 14px;
+  min-height: 38px;
+  border: 2.5px solid var(--ink);
+  border-radius: 12px;
+  background: var(--paper);
+  color: var(--ink);
   cursor: pointer;
-  transition: all 0.12s ease;
+  white-space: nowrap;
 }
 
 .chip.selected {
-  border-color: transparent;
-  background: var(--color-accent);
-  color: var(--color-accent-contrast);
-  box-shadow: 0 6px 16px rgba(91, 95, 240, 0.3);
+  background: var(--gold);
+  box-shadow: 0 3px 0 var(--ink);
 }
 
 .chip:disabled {
@@ -250,76 +373,87 @@ input {
   gap: 5px;
 }
 
-/* Status badges */
+/* Etichette di stato */
 
 .badge {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
-  padding: 4px 10px;
+  font-family: var(--f-display);
+  font-weight: 400;
+  font-size: 0.85rem;
+  padding: 2px 10px;
+  border: 2.5px solid var(--ink);
   border-radius: var(--radius-pill);
-  background: var(--color-surface-alt);
-  color: var(--color-ink-soft);
+  background: var(--paper-2);
+  color: var(--ink);
 }
 
 .badge-success {
-  background: var(--color-success-wash);
-  color: var(--color-success);
+  background: var(--mint);
+  color: #fff;
 }
 
 .badge-warning {
-  background: var(--color-warning-wash);
-  color: var(--color-warning);
+  background: var(--gold);
 }
 
 .badge-accent {
-  background: var(--color-accent-wash);
-  color: var(--color-accent);
+  background: var(--blue-l);
 }
 
-/* Inputs */
+/* Campi */
 
 .field {
   display: flex;
   flex-direction: column;
   gap: 6px;
   font-size: 0.85rem;
-  font-weight: 600;
-  color: var(--color-ink-soft);
+  font-weight: 800;
+  color: var(--ink-2);
 }
 
-.field input {
+.field input,
+.field select {
   font-size: 1rem;
-  font-weight: 500;
-  padding: 12px 16px;
-  height: 48px;
-  border-radius: var(--radius-md);
-  border: 1.5px solid var(--color-border);
-  background: var(--color-surface-alt);
-  color: var(--color-ink);
-  transition: border-color 0.12s ease, background-color 0.12s ease;
-}
-
-.field input:focus {
-  outline: none;
-  border-color: var(--color-accent);
-  background: var(--color-surface);
+  padding: 10px 14px;
+  height: 46px;
+  border-radius: 14px;
+  border: 3px solid var(--ink);
+  background: #fff;
+  color: var(--ink);
 }
 
 .error-text {
-  color: var(--color-danger);
+  color: var(--coral-d);
+  background: var(--coral-l);
+  border: 2.5px solid var(--ink);
+  border-radius: 14px;
+  padding: 6px 12px;
   font-size: 0.88rem;
-  font-weight: 600;
+  font-weight: 800;
   text-align: center;
   margin: 0;
 }
 
 .empty-text {
-  color: var(--color-ink-faint);
+  color: #fff;
+  text-shadow: 0 2px 0 var(--ink);
   text-align: center;
   padding: 8px 0;
+}
+
+.card .empty-text,
+.panel .empty-text {
+  color: var(--ink-2);
+  text-shadow: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
 }

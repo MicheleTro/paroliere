@@ -48,30 +48,32 @@ export function deleteUser(id: string): Promise<void> {
   return adminRequest(`/admin/users/${id}`, { method: 'DELETE', body: '{}' });
 }
 
-export interface AdminWordStat {
-  gridSize: number;
-  durationMs: number;
+export interface AdminProfile {
+  totalXp: number;
+  level: number;
+  words: number;
   gamesPlayed: number;
+  streakDays: number;
+  streakCycles: number;
+  items: { itemId: string; name: string; quantity: number }[];
   longestWord: string | null;
-  longestWordLength: number;
-  averageWordLength: number;
-  averageWordsPerGame: number;
-  lastPlayedAt: string | null;
+  medals: string[];
 }
 
-export interface AdminRecentGame {
+export interface AdminRecentPlay {
   id: string;
+  mode: 'gioca' | 'settimana' | 'sfida';
+  status: 'started' | 'finished' | 'abandoned';
   size: number;
   durationMs: number;
   score: number;
   wordCount: number;
-  source: 'local' | 'challenge';
   startedAt: string;
 }
 
 export interface AdminUserStats {
-  wordStats: AdminWordStat[];
-  recentGames: AdminRecentGame[];
+  profile: AdminProfile;
+  recentPlays: AdminRecentPlay[];
 }
 
 export function getUserStats(id: string): Promise<AdminUserStats> {
@@ -96,4 +98,50 @@ export function approveReportedWord(id: string): Promise<void> {
 
 export function discardReportedWord(id: string): Promise<void> {
   return adminRequest(`/admin/reported-words/${id}/discard`, { method: 'POST', body: '{}' });
+}
+
+// --- Preset di partita e piano della Settimana ---
+
+export interface AdminPreset {
+  id: string;
+  slug: string;
+  name: string;
+  description: string;
+  size: 4 | 5 | 6;
+  durationMs: number;
+  minWordLength: number;
+  minWords: number;
+  bonusCells: number[];
+  combo: boolean;
+  pointMode: 'standard' | 'speciale';
+  positionBonus: boolean;
+  active: boolean;
+}
+
+export type AdminPresetFields = Omit<AdminPreset, 'id' | 'slug'>;
+
+export interface AdminPlanDay {
+  dayIndex: number;
+  presetId: string;
+  name: string;
+}
+
+export function listPresets(): Promise<AdminPreset[]> {
+  return adminRequest('/admin/presets');
+}
+
+export function createPreset(preset: AdminPresetFields & { slug: string }): Promise<AdminPreset> {
+  return adminRequest('/admin/presets', { method: 'POST', body: JSON.stringify(preset) });
+}
+
+export function updatePreset(id: string, changes: Partial<AdminPresetFields>): Promise<AdminPreset> {
+  return adminRequest(`/admin/presets/${id}`, { method: 'PUT', body: JSON.stringify(changes) });
+}
+
+export function getWeekPlan(): Promise<AdminPlanDay[]> {
+  return adminRequest('/admin/week-plan');
+}
+
+export async function saveWeekPlan(plan: { dayIndex: number; presetId: string }[]): Promise<void> {
+  await adminRequest('/admin/week-plan', { method: 'PUT', body: JSON.stringify(plan) });
 }

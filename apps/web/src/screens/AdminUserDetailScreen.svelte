@@ -37,64 +37,44 @@
     <p class="empty-text">Caricamento...</p>
   {:else if stats}
     <section class="card">
-      <h2>Statistiche per tipologia</h2>
-      {#if stats.wordStats.length === 0}
-        <p class="empty-text">Nessuna partita registrata</p>
-      {:else}
-        <table>
-          <thead>
-            <tr>
-              <th>Griglia</th>
-              <th>Durata</th>
-              <th>Partite</th>
-              <th>Parola più lunga</th>
-              <th>Media lettere</th>
-              <th>Media parole/partita</th>
-              <th>Ultima partita</th>
-            </tr>
-          </thead>
-          <tbody>
-            {#each stats.wordStats as row (`${row.gridSize}-${row.durationMs}`)}
-              <tr>
-                <td>{row.gridSize}x{row.gridSize}</td>
-                <td>{Math.round(row.durationMs / 1000)}s</td>
-                <td>{row.gamesPlayed}</td>
-                <td>{row.longestWord ? `${row.longestWord} (${row.longestWordLength})` : '—'}</td>
-                <td>{row.averageWordLength.toFixed(1)}</td>
-                <td>{row.averageWordsPerGame.toFixed(1)}</td>
-                <td>{formatDate(row.lastPlayedAt)}</td>
-              </tr>
-            {/each}
-          </tbody>
-        </table>
-      {/if}
+      <h2>Progresso</h2>
+      <p>
+        Livello {stats.profile.level} · {stats.profile.totalXp} XP · {stats.profile.words} parole · {stats.profile.gamesPlayed} partite
+      </p>
+      <p>
+        Serie {stats.profile.streakDays}/10 · cicli completati {stats.profile.streakCycles} · oggetti: {stats.profile.items.length === 0 ? 'nessuno' : stats.profile.items.map((i) => i.name + " ×" + i.quantity).join(", ")}
+        {#if stats.profile.longestWord}· parola più lunga: {stats.profile.longestWord}{/if}
+      </p>
+      <p>Medaglie: {stats.profile.medals.length === 0 ? 'nessuna' : stats.profile.medals.join(', ')}</p>
     </section>
 
     <section class="card">
       <h2>Partite recenti</h2>
-      {#if stats.recentGames.length === 0}
+      {#if stats.recentPlays.length === 0}
         <p class="empty-text">Nessuna partita registrata</p>
       {:else}
         <table>
           <thead>
             <tr>
               <th>Data</th>
+              <th>Modalità</th>
               <th>Griglia</th>
               <th>Durata</th>
               <th>Punteggio</th>
               <th>Parole</th>
-              <th>Tipo</th>
+              <th>Stato</th>
             </tr>
           </thead>
           <tbody>
-            {#each stats.recentGames as game (game.id)}
+            {#each stats.recentPlays as play (play.id)}
               <tr>
-                <td>{formatDate(game.startedAt)}</td>
-                <td>{game.size}x{game.size}</td>
-                <td>{Math.round(game.durationMs / 1000)}s</td>
-                <td>{game.score}</td>
-                <td>{game.wordCount}</td>
-                <td>{game.source === 'challenge' ? 'sfida' : 'allenamento'}</td>
+                <td>{formatDate(play.startedAt)}</td>
+                <td>{play.mode}</td>
+                <td>{play.size}x{play.size}</td>
+                <td>{Math.round(play.durationMs / 1000)}s</td>
+                <td>{play.score}</td>
+                <td>{play.wordCount}</td>
+                <td>{play.status === 'started' ? 'in corso' : play.status === 'abandoned' ? 'abbandonata' : 'finita'}</td>
               </tr>
             {/each}
           </tbody>

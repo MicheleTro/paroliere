@@ -10,22 +10,21 @@
   } from '@paroliere/core';
   import AdminScreen from './screens/AdminScreen.svelte';
   import HomeScreen from './screens/HomeScreen.svelte';
-  import ConfigScreen, { type GameSettings } from './screens/ConfigScreen.svelte';
+  import ProfileScreen from './screens/ProfileScreen.svelte';
   import PlayScreen from './screens/PlayScreen.svelte';
   import SummaryScreen from './screens/SummaryScreen.svelte';
   import ChallengesScreen from './screens/ChallengesScreen.svelte';
   import CreateChallengeScreen from './screens/CreateChallengeScreen.svelte';
   import ChallengeDetailScreen from './screens/ChallengeDetailScreen.svelte';
   import ChallengeMatchSummaryScreen from './screens/ChallengeMatchSummaryScreen.svelte';
-  import AppShell from './lib/AppShell.svelte';
-  import { randomSeed } from './lib/random-seed.js';
-  import { saveGame, syncGame } from './lib/history.js';
-  import { getWordStats, type WordStats } from './lib/stats.js';
+  import Screen from './lib/Screen.svelte';
+  import { abandonPlay, finishPlay, markOnboarded, startPlay, type FinishedPlay } from './lib/plays.js';
+  import { settings } from './lib/settings.svelte.js';
+  import { startWeekDay, WEEK_NAME } from './lib/week.js';
   import { playAlreadyFound, playRejected, playWordAccepted } from './lib/sound.js';
-  import HistoryScreen from './screens/HistoryScreen.svelte';
   import { adminAuth } from './lib/admin.svelte.js';
   import { auth, checkSession, logout, watchPortalSession } from './lib/auth.svelte.js';
-  import { submitChallengeResult, type ChallengeDetail, type SubmitResultResponse } from './lib/challenges.js';
+  import { abandonChallenge, submitChallengeResult, type ChallengeDetail, type SubmitResultResponse } from './lib/challenges.js';
   import type { WordPopupData } from './lib/word-popup.js';
   import { setDisplayForms } from './lib/display.js';
   import type { NewGameConfig, WorkerResponse } from './worker/dictionary-worker.js';
@@ -34,10 +33,9 @@
 
   type Screen =
     | 'home'
-    | 'config'
     | 'playing'
     | 'summary'
-    | 'history'
+    | 'profile'
     | 'challenges'
     | 'challenge-create'
     | 'challenge-detail'
@@ -47,7 +45,12 @@
   let ready = $state(false);
   let session: GameSession | undefined = $state();
   let summary: SessionSummary | undefined = $state();
-  let typeStats: WordStats | undefined = $state();
+  let playResult: FinishedPlay | undefined = $state();
+  let playError: string | undefined = $state();
+  let currentPlayId: string | undefined;
+  /** Che partita è in corso o appena finita (cambia riepilogo e uscita). */
+  let playKind: 'gioca' | 'settimana' = $state('gioca');
+  let starting = $state(false);
   let now = $state(performance.now());
   let popup: WordPopupData | null = $state(null);
   let popupTimeout: ReturnType<typeof setTimeout> | undefined;
@@ -56,8 +59,18 @@
   let lastConfig: NewGameConfig | undefined;
   let rafId: number | undefined;
 
+  /** La partita appena iniziata ha chiuso un ciclo di serie: il riepilogo mostra il regalo. */
+  let giftPending = $state(false);
+  /** Prima partita guidata (benvenuto): il bradipo suggerisce una parola. */
+  let guided = $state(false);
+  const guide = $derived.by(() => {
+    if (!guided || !session) return undefined;
+    const words = session.allSolutions;
+    const pick = words.find((s) => s.word.length === 4) ?? words.find((s) => s.word.length >= 4) ?? words[0];
+    return pick ? { word: pick.word, path: pick.path } : undefined;
+  });
   let selectedChallengeId: string | undefined = $state();
-  let challengeMatchContext: { challengeId: string } | undefined;
+  let challengeMatchContext: { challengeId: string } | undefined = $state();
   let challengeResult: SubmitResultResponse | undefined = $state();
   let challengeSubmitError: string | undefined = $state();
 
@@ -86,38 +99,44 @@
     worker.postMessage({ type: 'newGame', config });
   }
 
-  function goToConfig(): void {
-    screen = 'config';
+  /** Gioca: il server decide seed e inizio (e riprende una partita già iniziata, se c'è). */
+  async function startGioca(wantsGuide = false): Promise<void> {
+    if (!ready || starting) return;
+    guided = wantsGuide === true;
+    starting = true;
+    try {
+      const play = await startPlay();
+      if (play.config.dictionaryVersion !== dictionaryVersion) {
+        alert('Il dizionario locale non corrisponde a quello del server: ricarica la pagina e riprova.');
+        return;
+      }
+      currentPlayId = play.id;
+      giftPending = play.streakCycleCompleted === true;
+      playKind = 'gioca';
+      challengeMatchContext = undefined;
+      playResult = undefined;
+      playError = undefined;
+      requestNewGame({ ...play.config, durationMs: play.remainingMs });
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Impossibile iniziare la partita');
+    } finally {
+      starting = false;
+    }
   }
 
-  function startNewGame(settings: GameSettings): void {
-    requestNewGame({
-      seed: randomSeed(),
-      size: settings.size,
-      durationMs: settings.durationMs,
-      minWordLength: settings.minWordLength,
-      minWords: 50,
-      scoring: 'classic',
-      pointMode: settings.pointMode,
-      positionBonus: settings.positionBonus,
-      generatorVersion: 1,
-    });
-  }
-
-  function repeatGame(): void {
-    if (!session) return;
-    const config = session.config;
-    requestNewGame({
-      seed: randomSeed(),
-      size: config.size,
-      durationMs: config.durationMs,
-      minWordLength: config.minWordLength,
-      minWords: config.minWords,
-      scoring: config.scoring,
-      pointMode: config.pointMode,
-      positionBonus: config.positionBonus,
-      generatorVersion: config.generatorVersion,
-    });
+  /** Settimana: il server consegna la griglia già pronta e l'ora di inizio (un solo tentativo per griglia). */
+  async function startWeekGame(day: number, help: boolean): Promise<void> {
+    const play = await startWeekDay(day, help);
+    currentPlayId = play.id;
+    giftPending = play.streakCycleCompleted === true;
+    playKind = 'settimana';
+    challengeMatchContext = undefined;
+    playResult = undefined;
+    playError = undefined;
+    const config: GameConfig = { ...play.config, durationMs: play.remainingMs };
+    session = createSession(config, play.grid, play.solutions, performance.now());
+    screen = 'playing';
+    startTimerLoop();
   }
 
   function goToChallenges(): void {
@@ -126,6 +145,30 @@
 
   function goHome(): void {
     screen = 'home';
+  }
+
+  const screenTitle = $derived(
+    screen === 'challenges'
+      ? 'Sfide'
+      : screen === 'challenge-create'
+        ? 'Nuova sfida'
+        : screen === 'challenge-detail'
+          ? 'Sfida'
+          : screen === 'challenge-match-summary'
+            ? 'Partita'
+            : undefined,
+  );
+
+  /** La freccia in alto: torna al livello sopra (non sempre alla home). */
+  function goBack(): void {
+    switch (screen) {
+      case 'challenge-create':
+      case 'challenge-detail':
+        screen = 'challenges';
+        break;
+      default:
+        screen = 'home';
+    }
   }
 
   function openChallenge(challengeId: string): void {
@@ -139,6 +182,7 @@
       return;
     }
     challengeMatchContext = { challengeId: challenge.id };
+    currentPlayId = undefined;
     requestNewGame({
       seed,
       size: challenge.config.size,
@@ -181,37 +225,48 @@
     stopTimerLoop();
     if (!session) return;
     summary = summarize(session);
-    typeStats = undefined;
-    const { size, durationMs } = session.config;
+    // Percorsi e momenti: il server rivaluta tutto, il client non dichiara punteggi (RF-22)
+    const words = session.foundWords.map((f) => ({ path: f.path, atMs: Math.round(f.atMs) }));
 
     if (challengeMatchContext) {
       const { challengeId } = challengeMatchContext;
-      const paths = session.foundWords.map((f) => f.path);
       challengeResult = undefined;
       challengeSubmitError = undefined;
-      submitChallengeResult(challengeId, paths)
-        .then((result) => {
-          challengeResult = result;
-          return getWordStats(size, durationMs);
-        })
-        .then((stats) => (typeStats = stats))
-        .catch((err) => {
-          if (!challengeResult) {
-            challengeSubmitError = err instanceof Error ? err.message : 'Errore imprevisto';
-          } else {
-            console.error('Statistiche match sfida non riuscite', err);
-          }
-        })
+      submitChallengeResult(challengeId, words)
+        .then((result) => (challengeResult = result))
+        .catch((err) => (challengeSubmitError = err instanceof Error ? err.message : 'Errore imprevisto'))
         .finally(() => (screen = 'challenge-match-summary'));
       return;
     }
 
+    playResult = undefined;
+    playError = undefined;
     screen = 'summary';
-    saveGame(session.config, summary, Date.now())
-      .then((record) => syncGame(record))
-      .then(() => getWordStats(size, durationMs))
-      .then((stats) => (typeStats = stats))
-      .catch((err) => console.error('Sync/statistiche allenamento non riuscite', err));
+    if (guided) void markOnboarded().catch(() => {});
+    guided = false;
+    if (!currentPlayId) return;
+    finishPlay(currentPlayId, words)
+      .then((result) => (playResult = result))
+      .catch((err) => (playError = err instanceof Error ? err.message : 'Errore imprevisto'));
+  }
+
+  /** Uscita volontaria (già confermata): niente punteggio, niente riepilogo, la partita non conta. */
+  function quitGame(): void {
+    stopTimerLoop();
+    const challengeId = challengeMatchContext?.challengeId;
+    const playId = currentPlayId;
+    session = undefined;
+    summary = undefined;
+    popup = null;
+    if (challengeId) {
+      challengeMatchContext = undefined;
+      screen = 'challenge-detail';
+      void abandonChallenge(challengeId).catch((err) => console.error('Uscita dalla sfida non registrata', err));
+    } else {
+      screen = 'home';
+      if (playId) void abandonPlay(playId).catch((err) => console.error('Uscita dalla partita non registrata', err));
+    }
+    currentPlayId = undefined;
   }
 
   function showPopup(data: WordPopupData): void {
@@ -223,7 +278,7 @@
   }
 
   function vibrate(pattern: number | number[]): void {
-    navigator.vibrate?.(pattern);
+    if (settings.values.vibration) navigator.vibrate?.(pattern);
   }
 
   function handleSubmit(path: number[]): void {
@@ -277,41 +332,64 @@
   });
 
   navigator.storage?.persist?.().catch(() => {});
-  void checkSession();
+  void checkSession().then(() => {
+    if (auth.status === 'authenticated') void settings.load();
+  });
   watchPortalSession(() => screen === 'playing');
 </script>
 
-<main class:play-mode={screen === 'playing' && !!session}>
+<main class="app-root">
   {#if auth.status === 'checking'}
-    <p>Caricamento...</p>
+    <div class="screen pattern"><p class="status outline-text">Caricamento…</p></div>
   {:else if auth.status === 'unauthenticated'}
-    <p>Accesso tramite whoru…</p>
+    <div class="screen pattern"><p class="status outline-text">Accesso tramite whoru…</p></div>
   {:else if adminAuth.open && auth.user?.isAdmin}
-    <AdminScreen />
+    <div class="screen pattern"><div class="content"><AdminScreen /></div></div>
   {:else if screen === 'playing' && session}
-    <PlayScreen {session} {now} {popup} onSubmit={handleSubmit} />
-  {:else}
-    <AppShell
+    <PlayScreen
+      {session}
+      {now}
+      {popup}
+      title={playKind === 'settimana' && !challengeMatchContext ? WEEK_NAME : challengeMatchContext ? 'Sfida' : 'Gioca'}
+      onSubmit={handleSubmit}
+      onQuit={quitGame}
+      {guide}
+      stars={playKind === 'gioca' && !challengeMatchContext}
+      duel={!!challengeMatchContext}
+      quitWarning={playKind === 'settimana' && !challengeMatchContext
+        ? 'Perderai il punteggio e anche il tentativo: la griglia di ' + WEEK_NAME + ' si gioca una sola volta.'
+        : undefined}
+    />
+  {:else if screen === 'home'}
+    <HomeScreen
+      {ready}
+      portalUrl={auth.user?.portalUrl}
+      onNewGame={startGioca}
+      onPlayDay={startWeekGame}
+      onProfile={() => (screen = 'profile')}
+      onChallenges={goToChallenges}
+    />
+  {:else if screen === 'profile'}
+    <ProfileScreen
+      onBack={goHome}
+      portalUrl={auth.user?.portalUrl}
       username={auth.user?.username ?? ''}
-      showHome={screen !== 'home'}
-      onHome={goHome}
       onLogout={logout}
-    >
-      {#if screen === 'home'}
-        <HomeScreen
-          {ready}
-          onNewGame={goToConfig}
-          portalUrl={auth.user?.portalUrl}
-          onChallenges={goToChallenges}
-          onHistory={() => (screen = 'history')}
-          onAdmin={auth.user?.isAdmin ? () => (adminAuth.open = true) : undefined}
+      onAdmin={auth.user?.isAdmin ? () => (adminAuth.open = true) : undefined}
+    />
+  {:else}
+    <Screen onBack={goBack} title={screenTitle}>
+      {#if screen === 'summary' && session && summary}
+        <SummaryScreen
+          {session}
+          {summary}
+          result={playResult}
+          error={playError}
+          mode={playKind}
+          gift={giftPending}
+          onNewGame={() => startGioca()}
+          onHome={goHome}
         />
-      {:else if screen === 'history'}
-        <HistoryScreen />
-      {:else if screen === 'config'}
-        <ConfigScreen onStart={startNewGame} onBack={goHome} />
-      {:else if screen === 'summary' && session && summary}
-        <SummaryScreen {session} {summary} {typeStats} onNewGame={goToConfig} onRepeat={repeatGame} onHome={goHome} />
       {:else if screen === 'challenges'}
         <ChallengesScreen onOpen={openChallenge} onCreate={() => (screen = 'challenge-create')} />
       {:else if screen === 'challenge-create'}
@@ -322,31 +400,20 @@
         <ChallengeMatchSummaryScreen
           {session}
           {summary}
-          {typeStats}
           result={challengeResult}
           error={challengeSubmitError}
           onBack={backToChallengeDetail}
         />
       {/if}
-    </AppShell>
+    </Screen>
   {/if}
 </main>
 
 <style>
-  main {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    width: 100%;
-    min-height: 100vh;
-    padding: calc(16px + env(safe-area-inset-top, 0px)) 16px calc(16px + env(safe-area-inset-bottom, 0px));
-  }
-
-  main.play-mode {
-    height: 100dvh;
-    min-height: 100dvh;
-    max-height: 100dvh;
-    overflow: hidden;
-    padding: calc(10px + env(safe-area-inset-top, 0px)) 12px calc(10px + env(safe-area-inset-bottom, 0px));
+  .status {
+    margin: auto;
+    font-family: var(--f-display);
+    font-size: 1.4rem;
+    text-align: center;
   }
 </style>

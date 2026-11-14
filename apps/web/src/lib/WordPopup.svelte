@@ -9,35 +9,55 @@
   let { popup }: Props = $props();
 </script>
 
-<div class="slot">
+<div class="slot" aria-live="polite">
   {#if popup}
-    <div class="popup" class:green={popup.tone === 'green'} class:yellow={popup.tone === 'yellow'} class:red={popup.tone === 'red'}>
+    <div class="fb" class:ok={popup.tone === 'green'} class:dup={popup.tone === 'yellow'} class:no={popup.tone === 'red'}>
       <span class="word">{displayWord(popup.word).toUpperCase()}</span>
-      {#if popup.subtitle}
-        <span class="subtitle">{popup.subtitle}</span>
-      {/if}
+      {#if popup.subtitle}<span class="subtitle">{popup.subtitle}</span>{/if}
     </div>
   {/if}
 </div>
 
 <style>
   .slot {
-    height: 4rem;
+    height: 3rem;
     display: flex;
     align-items: center;
     justify-content: center;
   }
 
-  .popup {
+  .fb {
     display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 1px;
-    padding: 8px 22px;
-    border-radius: var(--radius-pill);
-    background: var(--color-surface);
-    box-shadow: var(--shadow-float);
+    align-items: baseline;
+    gap: 8px;
+    font-family: var(--f-display);
+    font-size: 1.05rem;
+    padding: 4px 14px;
+    border-radius: 12px;
+    border: 3px solid var(--ink);
     animation: pop-in 0.16s ease-out;
+  }
+
+  .fb.ok {
+    background: var(--mint);
+  }
+
+  .fb.dup {
+    background: var(--gold);
+  }
+
+  .fb.no {
+    background: var(--coral);
+    color: #fff;
+  }
+
+  .word {
+    letter-spacing: 0.03em;
+  }
+
+  .subtitle {
+    font-size: 0.8rem;
+    opacity: 0.9;
   }
 
   @keyframes pop-in {
@@ -45,46 +65,10 @@
       transform: scale(0.85) translateY(4px);
       opacity: 0;
     }
+
     to {
       transform: scale(1) translateY(0);
       opacity: 1;
     }
-  }
-
-  .popup.green {
-    background: var(--color-success-wash);
-  }
-
-  .popup.green .word {
-    color: var(--color-success);
-  }
-
-  .popup.yellow {
-    background: var(--color-warning-wash);
-  }
-
-  .popup.yellow .word {
-    color: var(--color-warning);
-  }
-
-  .popup.red {
-    background: var(--color-danger-wash);
-  }
-
-  .popup.red .word {
-    color: var(--color-danger);
-  }
-
-  .word {
-    font-size: 1.3rem;
-    font-weight: 800;
-    letter-spacing: 0.03em;
-    color: var(--color-ink);
-  }
-
-  .subtitle {
-    font-size: 0.78rem;
-    font-weight: 600;
-    color: var(--color-ink-soft);
   }
 </style>

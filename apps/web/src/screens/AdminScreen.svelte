@@ -1,9 +1,10 @@
 <script lang="ts">
   import { closeAdmin } from '../lib/admin.svelte.js';
   import AdminUsersScreen from './AdminUsersScreen.svelte';
+  import AdminWeekScreen from './AdminWeekScreen.svelte';
   import AdminWordsScreen from './AdminWordsScreen.svelte';
 
-  type View = 'menu' | 'users' | 'words';
+  type View = 'menu' | 'users' | 'words' | 'week';
 
   let view: View = $state('menu');
 </script>
@@ -12,6 +13,8 @@
   <AdminUsersScreen onBack={() => (view = 'menu')} />
 {:else if view === 'words'}
   <AdminWordsScreen onBack={() => (view = 'menu')} />
+{:else if view === 'week'}
+  <AdminWeekScreen onBack={() => (view = 'menu')} />
 {:else}
   <div class="page menu">
     <div class="header">
@@ -23,6 +26,12 @@
       <span class="icon">👤</span>
       <span class="label">Gestione utenti</span>
       <span class="hint">Elenco, statistiche e cancellazione account</span>
+    </button>
+
+    <button type="button" class="tile" onclick={() => (view = 'week')}>
+      <span class="icon">📅</span>
+      <span class="label">Sloth's week</span>
+      <span class="hint">Preset delle partite e piano dei giorni</span>
     </button>
 
     <button type="button" class="tile" onclick={() => (view = 'words')}>

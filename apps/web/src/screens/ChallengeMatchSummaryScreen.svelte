@@ -1,28 +1,26 @@
 <script lang="ts">
   import type { GameSession, SessionSummary } from '@paroliere/core';
-  import GameStatsSummary from '../lib/GameStatsSummary.svelte';
+  import ProgressSummary from '../lib/ProgressSummary.svelte';
   import GridView from '../lib/GridView.svelte';
   import type { SubmitResultResponse } from '../lib/challenges.js';
-  import type { WordStats } from '../lib/stats.js';
 
   interface Props {
     session: GameSession;
     summary: SessionSummary;
-    typeStats?: WordStats;
     result?: SubmitResultResponse;
     error?: string;
     onBack: () => void;
   }
 
-  let { session, summary, typeStats, result, error, onBack }: Props = $props();
+  let { session, summary, result, error, onBack }: Props = $props();
 </script>
 
 <div class="page">
   <h1>{error ? 'Invio non riuscito' : 'Partita inviata'}</h1>
 
-  <GameStatsSummary
+  <ProgressSummary
     wordsFound={{ found: summary.foundWords.length, total: summary.totalWords, percentage: summary.foundPercentage }}
-    {typeStats}
+    progress={result?.progress}
   />
 
   <GridView

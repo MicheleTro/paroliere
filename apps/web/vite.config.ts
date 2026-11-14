@@ -11,8 +11,8 @@ export default defineConfig({
         name: 'Paroliere',
         short_name: 'Paroliere',
         description: 'Gioco di parole stile Paroliere/Boggle, in italiano.',
-        theme_color: '#f4ecd8',
-        background_color: '#f4ecd8',
+        theme_color: '#2f6bff',
+        background_color: '#2a3f9e',
         display: 'standalone',
         start_url: '/',
         icons: [
@@ -21,6 +21,8 @@ export default defineConfig({
         ],
       },
       workbox: {
+        // Anche i font locali si tengono in cache: il gioco funziona (e ha lo stesso aspetto) senza rete
+        globPatterns: ['**/*.{js,css,html,svg,woff2,webmanifest}'],
         // Le pagine /api (ritorno dal portale con il token, logout, accesso di sviluppo) devono arrivare
         // al server: senza questa esclusione il service worker risponderebbe con index.html e il login non
         // si completerebbe mai.

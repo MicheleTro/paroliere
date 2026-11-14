@@ -1,4 +1,5 @@
 import { apiRequest } from './api.js';
+import type { Progress } from './plays.js';
 
 // Sfide 1 contro 1 su invito (decisione whoru #28): si lanciano solo contro un amico del portale, un solo match.
 
@@ -35,8 +36,6 @@ export interface ChallengeSummary {
 }
 
 export interface ChallengeConfig extends ChallengeConfigInput {
-  id: string;
-  generatorVersion: 1;
   dictionaryVersion: string;
 }
 
@@ -49,6 +48,10 @@ export interface ChallengeScore {
   userId: string;
   username?: string;
   score: number | null;
+  /** XP guadagnati con la sfida. */
+  xp?: number;
+  /** Ha usato l'aiuto +10 s. */
+  usedHelp?: boolean;
   words: ChallengeWord[];
 }
 
@@ -63,6 +66,7 @@ export interface ChallengeDetail {
   /** Solo quando la sfida è giocabile. */
   seed?: number;
   startedByMe: string | null;
+  helpUsedByMe?: boolean;
   submittedByMe: boolean;
   opponentSubmitted: boolean;
   scores?: ChallengeScore[];
@@ -80,11 +84,15 @@ export interface Notifications {
   toPlay: number;
   /** Richieste di amicizia ricevute (dal portale); null se il portale non risponde. */
   friendRequests: number | null;
+  /** Falso finché non si arriva al livello 5. */
+  unlocked?: boolean;
 }
 
 export interface SubmitResultResponse {
   found: { word: string; path: number[]; points: number }[];
   settled: boolean;
+  /** XP, parole nuove e medaglie: presente quando questo invio ha chiuso la sfida. */
+  progress?: Progress;
 }
 
 export function listFriends(): Promise<{ friends: Friend[]; incomingRequests: number }> {
@@ -115,12 +123,27 @@ export async function cancelChallenge(id: string): Promise<void> {
   await apiRequest(`/challenges/${id}/cancel`, { method: 'POST', body: '{}' });
 }
 
-export function startChallenge(id: string): Promise<{ startedAt: string; seed: number }> {
-  return apiRequest(`/challenges/${id}/start`, { method: 'POST', body: '{}' });
+export interface StartedChallenge {
+  startedAt: string;
+  seed: number;
+  helpUsed: boolean;
+  /** Durata concessa, compreso l'aiuto. */
+  durationMs: number;
+  /** Tempo che resta, calcolato dal server. */
+  remainingMs: number;
 }
 
-export function submitChallengeResult(id: string, paths: number[][]): Promise<SubmitResultResponse> {
-  return apiRequest(`/challenges/${id}/results`, { method: 'POST', body: JSON.stringify({ paths }) });
+export function startChallenge(id: string, help = false): Promise<StartedChallenge> {
+  return apiRequest(`/challenges/${id}/start`, { method: 'POST', body: JSON.stringify({ help }) });
+}
+
+/** Uscita volontaria dalla partita di una sfida: punteggio zero, non si può rigiocare. */
+export async function abandonChallenge(id: string): Promise<void> {
+  await apiRequest(`/challenges/${id}/abandon`, { method: 'POST', body: '{}' });
+}
+
+export function submitChallengeResult(id: string, words: { path: number[]; atMs: number }[]): Promise<SubmitResultResponse> {
+  return apiRequest(`/challenges/${id}/results`, { method: 'POST', body: JSON.stringify({ words }) });
 }
 
 export const STATUS_LABEL: Record<DuelStatus, string> = {

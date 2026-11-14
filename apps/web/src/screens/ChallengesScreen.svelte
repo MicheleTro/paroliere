@@ -63,6 +63,7 @@
     <p class="empty-text">Nessuna sfida. Sfida un amico per iniziare.</p>
   {/if}
 
+  <div class="lists scroll-box">
   {#each groups as group (group.title)}
     {#if group.items.length > 0}
       <h2>{group.title}</h2>
@@ -87,6 +88,7 @@
       </ul>
     {/if}
   {/each}
+  </div>
 
   <div class="actions">
     <button type="button" class="btn btn-primary btn-block" onclick={onCreate}>+ Sfida un amico</button>
@@ -135,6 +137,7 @@
   }
 
   .actions {
-    margin-top: 8px;
+    flex-shrink: 0;
+    margin-top: 4px;
   }
 </style>

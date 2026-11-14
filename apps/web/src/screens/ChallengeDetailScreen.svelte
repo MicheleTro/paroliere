@@ -9,6 +9,7 @@
     type ChallengeDetail,
   } from '../lib/challenges.js';
   import { formatDuration } from '../lib/format.js';
+  import { getMe } from '../lib/plays.js';
 
   interface Props {
     challengeId: string;
@@ -23,6 +24,8 @@
   let busy = $state(false);
   let error: string | undefined = $state();
   let confirmCancel = $state(false);
+  let helps = $state(0);
+  let useHelp = $state(false);
 
   const opponent = $derived(challenge?.iAmChallenger ? challenge.opponent : challenge?.challenger);
   const opponentName = $derived(opponent?.username ?? 'il tuo amico');
@@ -39,6 +42,9 @@
   }
 
   void load();
+  getMe()
+    .then((me) => (helps = me.helps))
+    .catch(() => {});
 
   async function run(action: () => Promise<void>): Promise<void> {
     busy = true;
@@ -59,8 +65,7 @@
     busy = true;
     error = undefined;
     try {
-      const { startedAt, seed } = await startChallenge(challenge.id);
-      const remainingMs = challenge.config.durationMs - (Date.now() - new Date(startedAt).getTime());
+      const { remainingMs, seed } = await startChallenge(challenge.id, useHelp && !challenge.startedByMe);
       if (remainingMs <= 0) {
         error = 'Il tempo per questa partita è scaduto.';
         await load();
@@ -128,6 +133,12 @@
             challenge.config.durationMs,
           )}); una parola trovata solo da uno dei due vale il doppio.
         </p>
+        {#if helps > 0 && !challenge.startedByMe}
+          <label class="help">
+            <input type="checkbox" bind:checked={useHelp} />
+            Usa un aiuto: +10 secondi ({helps} {helps === 1 ? 'disponibile' : 'disponibili'})
+          </label>
+        {/if}
         <button type="button" class="btn btn-primary btn-block" disabled={busy} onclick={play}>
           {challenge.startedByMe ? 'Riprendi' : 'Gioca'}
         </button>
@@ -206,6 +217,14 @@
   .notice.result {
     font-size: 1.1rem;
     color: var(--color-ink);
+  }
+
+  .help {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.9rem;
+    font-weight: 600;
   }
 
   .actions {

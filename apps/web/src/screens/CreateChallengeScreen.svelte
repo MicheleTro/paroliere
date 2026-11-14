@@ -60,6 +60,7 @@
 <div class="page">
   <h1>Sfida un amico</h1>
 
+  <div class="options scroll-box">
   <div class="section">
     <p class="section-title">Chi sfidi</p>
     {#if loadingFriends}
@@ -71,7 +72,7 @@
         Non hai ancora amici. Aggiungili dal <a href={portalUrl}>portale</a> (sezione Amici), poi torna qui.
       </p>
     {:else}
-      <div class="chip-group">
+      <div class="chip-group friends">
         {#each friends as friend (friend.sub)}
           <button type="button" class="chip" class:selected={opponentId === friend.sub} onclick={() => (opponentId = friend.sub)}>
             {friend.username}
@@ -142,6 +143,7 @@
   </div>
 
   <p class="hint">Nella sfida, una parola trovata solo da uno dei due vale il doppio.</p>
+  </div>
 
   {#if error}
     <p class="error-text">{error}</p>
@@ -159,13 +161,27 @@
   .hint {
     margin: 0;
     font-size: 0.82rem;
-    font-weight: 600;
+    font-weight: 800;
     text-align: center;
-    color: var(--color-ink-faint);
+    color: #fff;
+    text-shadow: 0 2px 0 var(--ink);
+  }
+
+  .friends {
+    max-height: 18dvh;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  .options {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
   }
 
   .actions {
     display: flex;
+    flex-shrink: 0;
     gap: 10px;
     margin-top: 4px;
   }

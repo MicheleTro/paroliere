@@ -169,6 +169,23 @@ export function playGong(): void {
   tone(196 * 2.98, { duration: 0.9, type: 'sine', gain: 0.06, delay: 0.02 });
 }
 
+/** "Pop" morbido a ogni tocco di bottone: una nota che scatta in alto e un tintinnio breve sopra. */
+export function playTap(): void {
+  if (isSoundMuted()) return;
+  tone(587.33, { duration: 0.09, type: 'triangle', gain: 0.1 });
+  tone(880, { duration: 0.12, type: 'sine', gain: 0.07, delay: 0.04 });
+}
+
+/** Una stella del traguardo raggiunta: arpeggio che sale, più alto per la stella più preziosa (0 = bronzo, 2 = oro). */
+export function playStar(tier: number): void {
+  if (isSoundMuted()) return;
+  const base = SCALE_HZ[2]! * 2 ** (tier * 0.25);
+  tone(base, { duration: 0.14, type: 'triangle', gain: 0.13 });
+  tone(base * 1.25, { duration: 0.14, type: 'triangle', gain: 0.13, delay: 0.08 });
+  tone(base * 1.5, { duration: 0.18, type: 'triangle', gain: 0.13, delay: 0.16 });
+  tone(base * 2, { duration: 0.3, type: 'sine', gain: 0.12, delay: 0.24 });
+}
+
 /** Parola già trovata: tono neutro, né premio né errore. */
 export function playAlreadyFound(): void {
   tone(220, { duration: 0.15, type: 'triangle', gain: 0.1 });
