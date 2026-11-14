@@ -16,3 +16,9 @@ apps/web/public/dictionary/
 # Playwright
 test-results/
 playwright-report/
+
+# Variabili locali (mai nel repo) e screenshot delle prove
+.env
+.env.*
+!.env.example
+shot-*.png
