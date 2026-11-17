@@ -1,23 +1,26 @@
 -- Gamification di Paroliere (decisioni whoru #29-#30), in un solo passo: progressione, partite, Settimana,
 -- medaglie, oggetti, impostazioni e dati iniziali. Riunisce le migrazioni di sviluppo 0003-0013, che non sono mai
--- state applicate in produzione. Dalla 0002 il database parte da sfide 1 contro 1 e lascia le vecchie
--- tabelle di storico e statistiche (i dati vecchi si perdono: decisione presa).
+-- state applicate in produzione. Dalla 0002 il database parte da sfide 1 contro 1.
+-- I dati della versione precedente NON si perdono: storico, statistiche e sfide si convertono nelle tabelle nuove
+-- (in fondo al file) e le vecchie tabelle restano come archivio, rinominate legacy_*. Le parole delle vecchie
+-- sfide (solo percorsi) le ricalcola il server all'avvio (src/plays/legacy.ts).
 
--- ===== da 0003_rimuovi_storico_e_statistiche =====
--- Le sfide in corso si chiudono: cambiano struttura (la configurazione passa dentro la sfida) e il progresso riparte da zero (SPEC §11.2).
-DELETE FROM "duels";--> statement-breakpoint
-ALTER TABLE "game_configs" DISABLE ROW LEVEL SECURITY;--> statement-breakpoint
-ALTER TABLE "games" DISABLE ROW LEVEL SECURITY;--> statement-breakpoint
-ALTER TABLE "player_word_stats" DISABLE ROW LEVEL SECURITY;--> statement-breakpoint
-DROP TABLE "game_configs" CASCADE;--> statement-breakpoint
-DROP TABLE "games" CASCADE;--> statement-breakpoint
-DROP TABLE "player_word_stats" CASCADE;--> statement-breakpoint
+-- ===== da 0003_rimuovi_storico_e_statistiche (ora: conserva) =====
+-- La configurazione passa dentro la sfida: si copia da game_configs prima di staccare la colonna.
+ALTER TABLE "duels" ADD COLUMN "config" jsonb;--> statement-breakpoint
+UPDATE "duels" AS d SET "config" = jsonb_build_object(
+  'size', c."size", 'durationMs', c."duration_ms", 'minWordLength', c."min_word_length", 'minWords', c."min_words",
+  'scoring', c."scoring"::text, 'pointMode', c."point_mode"::text, 'positionBonus', c."position_bonus",
+  'dictionaryVersion', c."dictionary_version")
+FROM "game_configs" AS c WHERE c."id" = d."config_id";--> statement-breakpoint
+ALTER TABLE "duels" ALTER COLUMN "config" SET NOT NULL;--> statement-breakpoint
 ALTER TABLE "duels" DROP CONSTRAINT IF EXISTS "duels_config_id_game_configs_id_fk";
 --> statement-breakpoint
 ALTER TABLE "duels" DROP COLUMN "config_id";--> statement-breakpoint
-DROP TYPE "public"."game_source";--> statement-breakpoint
-DROP TYPE "public"."point_mode";--> statement-breakpoint
-DROP TYPE "public"."scoring";
+-- Storico e statistiche restano come archivio (i loro tipi enum restano con loro)
+ALTER TABLE "game_configs" RENAME TO "legacy_game_configs";--> statement-breakpoint
+ALTER TABLE "games" RENAME TO "legacy_games";--> statement-breakpoint
+ALTER TABLE "player_word_stats" RENAME TO "legacy_player_word_stats";
 --> statement-breakpoint
 -- ===== da 0004_progressione_settimana_e_medaglie =====
 CREATE TYPE "public"."found_word_source" AS ENUM('gioca', 'settimana', 'sfida');--> statement-breakpoint
@@ -110,7 +113,6 @@ CREATE TABLE "weekly_grids" (
 --> statement-breakpoint
 ALTER TABLE "duel_results" ADD COLUMN "xp_awarded" integer DEFAULT 0 NOT NULL;--> statement-breakpoint
 ALTER TABLE "duel_starts" ADD COLUMN "help_used" boolean DEFAULT false NOT NULL;--> statement-breakpoint
-ALTER TABLE "duels" ADD COLUMN "config" jsonb NOT NULL;--> statement-breakpoint
 ALTER TABLE "found_words" ADD CONSTRAINT "found_words_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "medals" ADD CONSTRAINT "medals_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "plays" ADD CONSTRAINT "plays_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
@@ -120,8 +122,9 @@ ALTER TABLE "week_plan" ADD CONSTRAINT "week_plan_variant_id_week_variants_id_fk
 ALTER TABLE "weekly_grids" ADD CONSTRAINT "weekly_grids_variant_id_week_variants_id_fk" FOREIGN KEY ("variant_id") REFERENCES "public"."week_variants"("id") ON DELETE no action ON UPDATE no action;
 --> statement-breakpoint
 -- ===== da 0005_rimuovi_tabelle_da_ricreare =====
-DROP TABLE "duel_results" CASCADE;--> statement-breakpoint
-DROP TABLE "duel_starts" CASCADE;--> statement-breakpoint
+-- Risultati e inizi delle sfide restano come archivio: si convertono in partite (plays) in fondo al file
+ALTER TABLE "duel_results" RENAME TO "legacy_duel_results";--> statement-breakpoint
+ALTER TABLE "duel_starts" RENAME TO "legacy_duel_starts";--> statement-breakpoint
 DROP TABLE "found_words" CASCADE;--> statement-breakpoint
 DROP TABLE "plays" CASCADE;--> statement-breakpoint
 DROP TABLE "week_plan" CASCADE;--> statement-breakpoint
@@ -387,3 +390,78 @@ UPDATE "week_plan" SET "preset_id" = (SELECT "id" FROM "game_presets" WHERE "slu
 UPDATE "week_plan" SET "preset_id" = (SELECT "id" FROM "game_presets" WHERE "slug" = 'misto') WHERE "day_index" = 5;
 --> statement-breakpoint
 UPDATE "week_plan" SET "preset_id" = (SELECT "id" FROM "game_presets" WHERE "slug" = 'domenica') WHERE "day_index" = 6;
+--> statement-breakpoint
+-- ===== Conversione dei dati della versione precedente (archivio legacy_*) =====
+-- Le partite dello storico diventano partite di Gioca, con le loro parole. Gli XP sono il punteggio (la regola nuova,
+-- senza il bonus stella che allora non c'era); seed e regole restano quelli della partita.
+INSERT INTO "plays" ("id", "user_id", "mode", "seed", "config", "status", "started_at", "finished_at", "duration_ms", "word_count", "score", "xp_awarded")
+SELECT g."id", g."user_id", 'gioca', g."seed",
+  jsonb_build_object(
+    'seed', g."seed", 'size', c."size", 'durationMs', c."duration_ms", 'minWordLength', c."min_word_length",
+    'minWords', c."min_words", 'scoring', c."scoring"::text, 'pointMode', c."point_mode"::text,
+    'positionBonus', c."position_bonus", 'generatorVersion', c."generator_version", 'dictionaryVersion', c."dictionary_version"),
+  'finished', g."started_at", g."started_at" + c."duration_ms" * interval '1 millisecond', c."duration_ms",
+  (SELECT count(DISTINCT e->>'word') FROM jsonb_array_elements(g."words") AS e WHERE e ? 'word'),
+  g."score", GREATEST(g."score", 0)
+FROM "legacy_games" AS g JOIN "legacy_game_configs" AS c ON c."id" = g."config_id";
+--> statement-breakpoint
+INSERT INTO "play_words" ("play_id", "word", "user_id", "path", "points")
+SELECT DISTINCT ON (g."id", e->>'word') g."id", e->>'word', g."user_id", e->'path', COALESCE((e->>'points')::int, 0)
+FROM "legacy_games" AS g, jsonb_array_elements(g."words") AS e
+WHERE e ? 'word' AND jsonb_typeof(e->'path') = 'array'
+ORDER BY g."id", e->>'word', COALESCE((e->>'points')::int, 0) DESC;
+--> statement-breakpoint
+-- Le vecchie sfide: una partita (modalità sfida) per ogni risultato inviato, con i percorsi grezzi. Le parole le
+-- ricalcola il server all'avvio (segno "legacyRegrade" nella configurazione); il punteggio delle concluse resta quello ufficiale.
+INSERT INTO "plays" ("user_id", "mode", "duel_id", "seed", "config", "status", "started_at", "finished_at", "duration_ms", "submission", "score", "xp_awarded")
+SELECT r."user_id", 'sfida', d."id", d."seed",
+  d."config" || jsonb_build_object('seed', d."seed", 'generatorVersion', 1, 'legacyRegrade', true),
+  'finished', COALESCE(s."started_at", r."submitted_at"), r."submitted_at", (d."config"->>'durationMs')::int,
+  (SELECT COALESCE(jsonb_agg(jsonb_build_object('path', x, 'atMs', 0)), '[]'::jsonb) FROM jsonb_array_elements(r."paths") AS x),
+  COALESCE(r."score", 0),
+  CASE WHEN d."status" = 'completed' THEN GREATEST(COALESCE(r."score", 0), 0) ELSE 0 END
+FROM "legacy_duel_results" AS r
+JOIN "duels" AS d ON d."id" = r."duel_id"
+LEFT JOIN "legacy_duel_starts" AS s ON s."duel_id" = r."duel_id" AND s."user_id" = r."user_id";
+--> statement-breakpoint
+-- Chi aveva iniziato una sfida senza inviarla: partita iniziata (il server la chiude a zero se il tempo è scaduto)
+INSERT INTO "plays" ("user_id", "mode", "duel_id", "seed", "config", "status", "started_at", "duration_ms")
+SELECT s."user_id", 'sfida', d."id", d."seed",
+  d."config" || jsonb_build_object('seed', d."seed", 'generatorVersion', 1),
+  'started', s."started_at", (d."config"->>'durationMs')::int
+FROM "legacy_duel_starts" AS s
+JOIN "duels" AS d ON d."id" = s."duel_id"
+WHERE NOT EXISTS (SELECT 1 FROM "legacy_duel_results" AS r WHERE r."duel_id" = s."duel_id" AND r."user_id" = s."user_id");
+--> statement-breakpoint
+-- Collezione delle parole: ogni parola con la partita in cui è stata trovata la prima volta
+INSERT INTO "found_words" ("user_id", "word", "first_found_at", "first_play_id")
+SELECT DISTINCT ON (w."user_id", w."word") w."user_id", w."word", p."started_at", p."id"
+FROM "play_words" AS w JOIN "plays" AS p ON p."id" = w."play_id"
+ORDER BY w."user_id", w."word", p."started_at", p."id";
+--> statement-breakpoint
+UPDATE "play_words" AS w SET "is_new" = true
+FROM "found_words" AS f
+WHERE f."first_play_id" = w."play_id" AND f."word" = w."word" AND f."user_id" = w."user_id";
+--> statement-breakpoint
+-- Profilo: XP, partite giocate e record dalle partite convertite (le sfide contano quando sono concluse, come ora)
+INSERT INTO "profiles" ("user_id", "total_xp", "games_played", "max_words_in_game")
+SELECT p."user_id", sum(p."xp_awarded"), count(*), max(p."word_count")
+FROM "plays" AS p LEFT JOIN "duels" AS d ON d."id" = p."duel_id"
+WHERE p."mode" = 'gioca' OR (p."mode" = 'sfida' AND d."status" = 'completed' AND p."status" <> 'started')
+GROUP BY p."user_id";
+--> statement-breakpoint
+UPDATE "profiles" AS pr SET "max_words_in_game" = GREATEST(pr."max_words_in_game", s."max_words")
+FROM (SELECT "user_id", max("max_words_in_game") AS "max_words" FROM "legacy_player_word_stats" GROUP BY "user_id") AS s
+WHERE s."user_id" = pr."user_id";
+--> statement-breakpoint
+UPDATE "profiles" AS pr SET "longest_word" = l."word", "longest_word_length" = length(l."word")
+FROM (
+  SELECT DISTINCT ON ("user_id") "user_id", "word"
+  FROM (
+    SELECT "user_id", "word" FROM "play_words"
+    UNION ALL
+    SELECT "user_id", "longest_word" FROM "legacy_player_word_stats" WHERE "longest_word" IS NOT NULL
+  ) AS x
+  ORDER BY "user_id", length("word") DESC, "word"
+) AS l
+WHERE l."user_id" = pr."user_id";
