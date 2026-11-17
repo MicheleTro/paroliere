@@ -2,56 +2,102 @@ import { expect, test, type Browser, type Page } from '@playwright/test';
 
 // Sfida 1 contro 1 tra due amici (utenti di sviluppo: tutti amici tra loro). Richiede l'app avviata con DEV_LOGIN.
 
-async function enter(browser: Browser, user: string): Promise<Page> {
+async function enter(browser: Browser, user: string, admin = false): Promise<Page> {
   const context = await browser.newContext();
   const page = await context.newPage();
-  await page.goto(`/api/auth/dev?user=${user}`);
+  await page.goto(`/api/auth/dev?user=${user}${admin ? '&admin=1' : ''}`);
   // Il dizionario si carica: finché non è pronto il pulsante dell'allenamento è disattivato
   await expect(page.getByRole('button', { name: /Allenamento/ })).toBeEnabled({ timeout: 30_000 });
   return page;
 }
 
-test('sfida un amico: invito, accettazione, partita di entrambi, risultato', async ({ browser }) => {
+/** Traccia sulla griglia le prime quattro caselle della prima riga (quasi sempre una parola che non esiste). */
+async function traceFirstRow(page: Page, size: number): Promise<void> {
+  const box = (await page.locator('.grid').first().boundingBox())!;
+  const cell = box.width / size;
+  const y = box.y + cell / 2;
+  await page.mouse.move(box.x + cell / 2, y);
+  await page.mouse.down();
+  for (let i = 1; i < 4; i++) await page.mouse.move(box.x + cell * i + cell / 2, y, { steps: 4 });
+  await page.mouse.up();
+}
+
+test('sfida: chi lancia gioca subito, aggiornamenti in tempo reale, bilancio, filtri, segnalazione', async ({ browser }) => {
   const suffix = Date.now().toString(36);
   const a = `ale${suffix}`;
   const b = `bea${suffix}`;
-  const pageB0 = await enter(browser, b); // b deve esistere nel gioco prima di poter essere sfidata (amici di sviluppo)
+  const pageB = await enter(browser, b); // b deve esistere nel gioco prima di poter essere sfidata (amici di sviluppo)
   const pageA = await enter(browser, a);
 
-  // A lancia la sfida a B
+  // A lancia la sfida a B (4×4 per poter tracciare una riga)
   await pageA.getByRole('button', { name: /Sfide/ }).click();
   await pageA.getByRole('button', { name: '+ Sfida un amico' }).click();
   await pageA.getByRole('button', { name: b, exact: true }).click();
+  await pageA.getByRole('button', { name: '4×4', exact: true }).click();
   await pageA.getByRole('button', { name: '0:30', exact: true }).click();
   await pageA.getByRole('button', { name: 'Lancia la sfida' }).click();
   await expect(pageA.getByRole('heading', { name: `Sfida con ${b}` })).toBeVisible();
   await expect(pageA.getByText('In attesa di risposta')).toBeVisible();
-  await expect(pageA.getByRole('button', { name: 'Ritira la sfida' })).toBeVisible();
 
-  // B vede l'invito nella home (segnalino) e accetta
-  await pageB0.reload();
-  await expect(pageB0.getByRole('button', { name: /Allenamento/ })).toBeEnabled({ timeout: 30_000 });
-  await expect(pageB0.getByText('1 invito da accettare')).toBeVisible();
-  await pageB0.getByRole('button', { name: /Sfide/ }).click();
-  await pageB0.getByRole('button', { name: new RegExp(`${a} ti ha sfidato`) }).click();
-  await pageB0.getByRole('button', { name: 'Accetta' }).click();
-  await expect(pageB0.getByRole('button', { name: 'Gioca' })).toBeVisible();
+  // B vede l'invito senza ricaricare la pagina (aggiornamento in tempo reale) e l'avviso dentro il gioco
+  await expect(pageB.getByText('1 invito da accettare')).toBeVisible({ timeout: 10_000 });
+  await expect(pageB.getByRole('button', { name: /Nuova sfida/ })).toBeVisible();
 
-  // B gioca (30 secondi) e invia
-  await pageB0.getByRole('button', { name: 'Gioca' }).click();
-  await expect(pageB0.getByRole('heading', { name: 'Partita inviata' })).toBeVisible({ timeout: 60_000 });
-  await expect(pageB0.getByText('quando avrà giocato anche il tuo avversario')).toBeVisible();
-
-  // A gioca e chiude la sfida
-  await pageA.getByRole('button', { name: 'Torna alle sfide' }).click();
-  await pageA.getByRole('button', { name: new RegExp(`Sfida con ${b}`) }).click();
-  await expect(pageA.getByRole('button', { name: 'Gioca' })).toBeVisible();
+  // A gioca subito, prima che B accetti, e traccia una parola che non esiste
   await pageA.getByRole('button', { name: 'Gioca' }).click();
+  await traceFirstRow(pageA, 4);
   await expect(pageA.getByRole('heading', { name: 'Partita inviata' })).toBeVisible({ timeout: 60_000 });
-  await expect(pageA.getByText('La sfida è conclusa')).toBeVisible();
+  await expect(pageA.getByRole('heading', { name: /Trovate/ })).toBeVisible();
+  await expect(pageA.getByRole('heading', { name: /Mancate/ })).toBeVisible();
 
-  // Dettaglio finale: i due punteggi (senza parole inviate: 0 a 0, pareggio)
+  // Segnala: la parola rifiutata compare, si conferma e risulta segnalata
+  const report = pageA.locator('.report');
+  await expect(report.getByRole('heading', { name: /Segnala/ })).toBeVisible();
+  const chip = report.locator('.word-chip').first();
+  if (await chip.count()) {
+    await chip.click();
+    await report.getByRole('button', { name: 'Segnala', exact: true }).click();
+    await expect(report.getByText('segnalata')).toBeVisible();
+  }
+
+  // B apre la sfida, accetta e gioca; A, sul dettaglio, vede il risultato arrivare da solo
   await pageA.getByRole('button', { name: 'Torna alla sfida' }).click();
-  await expect(pageA.getByText('Conclusa')).toBeVisible();
+  await expect(pageA.getByText(/Hai giocato\. Aspetta che/)).toBeVisible();
+  await pageB.getByRole('button', { name: /Sfide/ }).click();
+  await pageB.getByRole('button', { name: new RegExp(`${a} ti ha sfidato`) }).click();
+  await pageB.getByRole('button', { name: 'Accetta' }).click();
+  await pageB.getByRole('button', { name: 'Gioca' }).click();
+  await expect(pageB.getByRole('heading', { name: 'Partita inviata' })).toBeVisible({ timeout: 60_000 });
+  await expect(pageB.getByText('La sfida è conclusa')).toBeVisible();
+
+  await expect(pageA.getByText('Conclusa', { exact: true })).toBeVisible({ timeout: 10_000 });
   await expect(pageA.getByText('Pareggio!')).toBeVisible();
+  await expect(pageA.getByLabel(`Bilancio contro ${b}`)).toContainText('0 perse');
+  await expect(pageA.getByRole('heading', { name: /Mancate da entrambi/ })).toBeVisible();
+
+  // Elenco: filtri per giocatore e risultato
+  await pageA.getByRole('button', { name: 'Torna alle sfide' }).click();
+  await pageA.getByLabel('Filtra per giocatore').selectOption({ label: b });
+  await pageA.getByRole('button', { name: 'Pari', exact: true }).click();
+  await expect(pageA.getByRole('button', { name: new RegExp(`Sfida con ${b}`) })).toBeVisible();
+  await pageA.getByRole('button', { name: 'Vinte', exact: true }).click();
+  await expect(pageA.getByText('Nessuna sfida con questi filtri.')).toBeVisible();
+});
+
+test('admin: approva una parola segnalata, che entra nel dizionario', async ({ browser }) => {
+  const word = `zq${Date.now().toString(36).replace(/[0-9]/g, 'x')}`;
+  const player = await enter(browser, `seg${Date.now().toString(36)}`);
+  const res = await player.request.post('/api/reports/words', { data: { word } });
+  expect(res.status()).toBe(204);
+
+  const admin = await enter(browser, `adm${Date.now().toString(36)}`, true);
+  await admin.getByRole('button', { name: /Amministrazione/ }).click();
+  await admin.getByRole('button', { name: /Gestione parole/ }).click();
+  const row = admin.locator('li', { hasText: word });
+  await expect(row).toBeVisible();
+  await row.getByRole('button', { name: 'Aggiungi al dizionario' }).click();
+  await expect(row).toHaveCount(0);
+
+  const additions = await (await admin.request.get('/api/dictionary/additions')).json();
+  expect(additions.words).toContain(word);
 });
