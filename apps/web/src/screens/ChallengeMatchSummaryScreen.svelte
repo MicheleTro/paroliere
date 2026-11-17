@@ -1,9 +1,8 @@
 <script lang="ts">
   import { classicScoring, type GameSession, type SessionSummary } from '@paroliere/core';
   import ProgressSummary from '../lib/ProgressSummary.svelte';
-  import GridView from '../lib/GridView.svelte';
-  import ReportWords from '../lib/ReportWords.svelte';
-  import WordList from '../lib/WordList.svelte';
+  import ChallengeWordsSheet from '../sheets/ChallengeWordsSheet.svelte';
+  import { auth } from '../lib/auth.svelte.js';
   import type { SubmitResultResponse } from '../lib/challenges.js';
 
   interface Props {
@@ -16,7 +15,7 @@
 
   let { session, summary, result, error, onBack }: Props = $props();
 
-  let selectedPath: number[] = $state([]);
+  let showWords = $state(false);
 
   // Le parole valide le decide il server (può conoscere parole aggiunte al dizionario dopo il caricamento)
   const found = $derived(result?.found ?? summary.foundWords);
@@ -51,25 +50,20 @@
     </p>
   {/if}
 
-  <div class="results scroll-box">
-    <GridView
+  <button type="button" class="btn btn-secondary btn-block" onclick={() => (showWords = true)}>Vedi le parole</button>
+  {#if showWords}
+    <ChallengeWordsSheet
       grid={session.grid}
-      interactive={false}
-      highlightPath={selectedPath}
-      onSubmit={() => {}}
       pointMode={session.config.pointMode}
       positionBonus={session.config.positionBonus}
+      tabs={[
+        { key: 'me', label: auth.user?.username ?? 'Tu', words: found },
+        { key: 'missed', label: 'Mancate', words: missed, missed: true },
+      ]}
+      {rejected}
+      onClose={() => (showWords = false)}
     />
-    <WordList
-      title="✅ Trovate"
-      words={found}
-      tone="found"
-      empty="Nessuna parola trovata."
-      onSelect={(path) => (selectedPath = path)}
-    />
-    <WordList title="✖️ Mancate" words={missed} tone="missed" empty="Le hai trovate tutte!" onSelect={(path) => (selectedPath = path)} />
-    <ReportWords words={rejected} />
-  </div>
+  {/if}
 
   <button type="button" class="btn btn-primary btn-block" onclick={onBack}>Torna alla sfida</button>
 </div>
@@ -93,12 +87,5 @@
   .notice-danger {
     background: var(--color-danger-wash);
     color: var(--color-danger);
-  }
-
-  .results {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    width: 100%;
   }
 </style>

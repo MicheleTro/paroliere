@@ -11,10 +11,9 @@
   import type { Grid } from '@paroliere/core';
   import { untrack } from 'svelte';
   import { formatDuration } from '../lib/format.js';
-  import GridView from '../lib/GridView.svelte';
   import { live } from '../lib/live.svelte.js';
   import { getMe } from '../lib/plays.js';
-  import WordList from '../lib/WordList.svelte';
+  import ChallengeWordsSheet from '../sheets/ChallengeWordsSheet.svelte';
 
   interface Props {
     challengeId: string;
@@ -55,7 +54,7 @@
     });
   });
 
-  let selectedPath: number[] = $state([]);
+  let showWords = $state(false);
   const record = $derived(challenge?.record);
   const recordTotal = $derived(record ? record.won + record.lost + record.draw : 0);
 
@@ -207,36 +206,19 @@
         {/each}
       </ul>
 
-      <div class="results scroll-box">
-        {#if challenge.grid}
-          <GridView
-            grid={challenge.grid as Grid}
-            interactive={false}
-            highlightPath={selectedPath}
-            onSubmit={() => {}}
-            pointMode={challenge.config.pointMode}
-            positionBonus={challenge.config.positionBonus}
-          />
-        {/if}
-        {#each challenge.scores as s (s.userId)}
-          <WordList
-            title="{s.userId === myId ? 'Le tue parole' : `Parole di ${s.username ?? 'giocatore'}`}"
-            words={s.words}
-            tone="found"
-            empty="Nessuna parola."
-            onSelect={(path) => (selectedPath = path)}
-          />
-        {/each}
-        {#if challenge.missed}
-          <WordList
-            title="✖️ Mancate da entrambi"
-            words={challenge.missed}
-            tone="missed"
-            empty="Nessuna: le avete trovate tutte!"
-            onSelect={(path) => (selectedPath = path)}
-          />
-        {/if}
-      </div>
+      <button type="button" class="btn btn-primary btn-block" onclick={() => (showWords = true)}>Vedi le parole</button>
+      {#if showWords && challenge.grid}
+        <ChallengeWordsSheet
+          grid={challenge.grid as Grid}
+          pointMode={challenge.config.pointMode}
+          positionBonus={challenge.config.positionBonus}
+          tabs={[
+            ...challenge.scores.map((s) => ({ key: s.userId, label: s.username ?? 'giocatore', words: s.words })),
+            ...(challenge.missed ? [{ key: 'missed', label: 'Mancate', words: challenge.missed, missed: true }] : []),
+          ]}
+          onClose={() => (showWords = false)}
+        />
+      {/if}
     {:else}
       <p class="notice">Questa sfida è {STATUS_LABEL[challenge.status].toLowerCase()}.</p>
     {/if}
@@ -340,18 +322,6 @@
   .notice.result.loss {
     background: var(--color-danger-wash);
     color: var(--color-danger);
-  }
-
-  .results {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    width: 100%;
-  }
-
-  /* dentro la casella che scorre nulla deve rimpicciolirsi: la griglia restava tagliata */
-  .results > :global(*) {
-    flex-shrink: 0;
   }
 
   .record {
