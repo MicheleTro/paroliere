@@ -349,6 +349,11 @@
     width: 100%;
   }
 
+  /* dentro la casella che scorre nulla deve rimpicciolirsi: la griglia restava tagliata */
+  .results > :global(*) {
+    flex-shrink: 0;
+  }
+
   .record {
     margin: 0;
     text-align: center;
