@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { generateGrid } from './generate.js';
+import { generateGrid, generateGridWithAdditions } from './generate.js';
 import { buildWordIndex } from './word-index.js';
 import type { GameConfig, Grid, Solution } from './types.js';
 
@@ -66,5 +66,27 @@ describe('generateGrid — determinismo e vincoli', () => {
   it('lancia un errore esplicito se non trova una griglia in 1000 tentativi', () => {
     const impossibleConfig: GameConfig = { ...config, minWords: 1_000_000 };
     expect(() => generateGrid(impossibleConfig, smallIndex)).toThrow();
+  });
+});
+
+describe('generateGridWithAdditions', () => {
+  const config = fixtures[0]!.config;
+
+  it('senza aggiunte coincide con generateGrid', () => {
+    expect(generateGridWithAdditions(config, smallIndex)).toEqual(generateGrid(config, smallIndex));
+  });
+
+  it('stessa griglia, soluzioni in più per le parole aggiunte presenti nella griglia', () => {
+    const base = generateGrid(config, smallIndex);
+    const known = new Set(base.solutions.map((s) => s.word));
+    // una parola tracciabile nella griglia ma assente dal dizionario di base: le prime tre caselle in riga
+    const word = [0, 1, 2].map((i) => base.grid.tiles[i]).join('');
+    const additions = buildWordIndex([word, 'zzzzz', ...known]);
+    const result = generateGridWithAdditions({ ...config, minWordLength: 1 }, smallIndex, additions);
+    expect(result.grid).toEqual(generateGrid({ ...config, minWordLength: 1 }, smallIndex).grid);
+    const words = result.solutions.map((s) => s.word);
+    expect(new Set(words).size).toBe(words.length);
+    expect(words).toContain(word);
+    expect(words).not.toContain('zzzzz');
   });
 });
