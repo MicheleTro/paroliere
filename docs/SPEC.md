@@ -486,6 +486,15 @@ Le medaglie legate al punteggio esistono solo per la Settimana (la 14).
 ### 11.8 Impostazioni
 Suoni, vibrazione, tema chiaro o scuro, promemoria.
 
+### 11.8b Parole nascoste (modalità libera)
+Secondo gioco dentro **Gioca**, accanto alla griglia libera 5×5. Per ora libero: niente calendario né classifica, si gioca quando si vuole.
+- Una sola griglia 4×4 contiene 5 parole nascoste. Si cercano una alla volta: per la parola corrente si vede un indizio con alcune lettere svelate (es. `_u__e` per cuore) e la si traccia sulla griglia.
+- 1 minuto e 30 per tutte e 5. Finite le parole o finito il tempo, la partita si chiude; nel riepilogo si vedono anche le parole mancate.
+- Aiuto gratis per ogni parola, disponibile dopo 8 secondi dalla comparsa dell'indizio: illumina la casella da cui parte la parola. Si può passare alla parola successiva e tornare dopo.
+- XP: solo per le parole nascoste trovate, pari al loro valore classico (RF-12). Le altre parole tracciate sulla griglia si ignorano (niente punti, niente collezione). Le parole nascoste trovate entrano nelle parole trovate e la partita conta per la serie.
+- Generazione: le parole vanno scelte fra parole comuni e riconoscibili, non fra le 380.000 forme del dizionario (che include forme rare o tronche). Il generatore sceglie quali lettere svelare in modo che, fra tutte le parole della griglia della stessa lunghezza, l'indizio ne indichi **una sola**. Su griglie reali con due lettere fisse l'indizio è spesso ambiguo (fino a 8 parole compatibili), quindi le posizioni svelate si scelgono parola per parola.
+- Serve un elenco di parole comuni con frequenza d'uso e licenza compatibile: `fixtures/dict-small.txt` (962 parole) basta per il prototipo, non per la produzione. Fonte da scegliere.
+
 ### 11.9 Altre decisioni
 - Le medaglie non danno XP.
 - Le sfide danno XP pari al punteggio Versus ottenuto.

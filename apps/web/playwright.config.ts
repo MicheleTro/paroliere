@@ -7,5 +7,9 @@ export default defineConfig({
   testDir: 'e2e',
   testMatch: '**/*.e2e.ts',
   timeout: 150_000,
-  use: { baseURL: process.env.E2E_URL ?? 'http://localhost:5173' },
+  use: {
+    baseURL: process.env.E2E_URL ?? 'http://localhost:5173',
+    // Browser già installato altrove (es. ambienti cloud): PW_CHROMIUM=/percorso/chrome
+    launchOptions: process.env.PW_CHROMIUM ? { executablePath: process.env.PW_CHROMIUM } : {},
+  },
 });
