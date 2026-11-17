@@ -112,6 +112,7 @@
   class="grid"
   class:n5={grid.size === 5}
   class:n6={grid.size === 6}
+  class:static={!interactive}
   style={`--size: ${grid.size}`}
   role="application"
   aria-label="Griglia di gioco"
@@ -167,6 +168,11 @@
     background: linear-gradient(180deg, #1f3fae, #162f8a);
     border: 4px solid var(--ink);
     box-shadow: 0 7px 0 var(--ink);
+  }
+
+  /* griglia di sola lettura (riepiloghi): non deve bloccare lo scorrimento col dito */
+  .grid.static {
+    touch-action: pan-y;
   }
 
   .grid.n5 {
