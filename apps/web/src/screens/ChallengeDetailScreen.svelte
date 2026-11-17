@@ -8,8 +8,13 @@
     STATUS_LABEL,
     type ChallengeDetail,
   } from '../lib/challenges.js';
+  import type { Grid } from '@paroliere/core';
+  import { untrack } from 'svelte';
   import { formatDuration } from '../lib/format.js';
+  import GridView from '../lib/GridView.svelte';
+  import { live } from '../lib/live.svelte.js';
   import { getMe } from '../lib/plays.js';
+  import WordList from '../lib/WordList.svelte';
 
   interface Props {
     challengeId: string;
@@ -29,6 +34,7 @@
 
   const opponent = $derived(challenge?.iAmChallenger ? challenge.opponent : challenge?.challenger);
   const opponentName = $derived(opponent?.username ?? 'il tuo amico');
+  const myId = $derived(challenge?.iAmChallenger ? challenge.challenger.id : challenge?.opponent.id);
 
   async function load(): Promise<void> {
     try {
@@ -41,7 +47,18 @@
     }
   }
 
-  void load();
+  // Ricarica da sola quando la sfida cambia (accettata, giocata dall'altro, conclusa); non durante un'azione
+  $effect(() => {
+    void live.version;
+    untrack(() => {
+      if (!busy) void load();
+    });
+  });
+
+  let selectedPath: number[] = $state([]);
+  const record = $derived(challenge?.record);
+  const recordTotal = $derived(record ? record.won + record.lost + record.draw : 0);
+
   getMe()
     .then((me) => (helps = me.helps))
     .catch(() => {});
@@ -88,6 +105,15 @@
   });
 </script>
 
+{#snippet helpOption()}
+  {#if helps > 0 && !challenge?.startedByMe}
+    <label class="help">
+      <input type="checkbox" bind:checked={useHelp} />
+      Usa un aiuto: +10 secondi ({helps} {helps === 1 ? 'disponibile' : 'disponibili'})
+    </label>
+  {/if}
+{/snippet}
+
 <div class="page">
   {#if loading}
     <p class="empty-text">Caricamento...</p>
@@ -102,6 +128,15 @@
       {challenge.config.minWordLength} lettere · {pointModeLabel(challenge.config)}
     </div>
 
+    {#if record && recordTotal > 0}
+      <p class="record" aria-label="Bilancio contro {opponentName}">
+        Contro {opponentName}:
+        <span class="won-text">{record.won} {record.won === 1 ? 'vinta' : 'vinte'}</span> ·
+        <span class="lost-text">{record.lost} {record.lost === 1 ? 'persa' : 'perse'}</span> ·
+        {record.draw} pari
+      </p>
+    {/if}
+
     {#if challenge.status === 'invited' && !challenge.iAmChallenger}
       <p class="notice">{opponentName} ti ha sfidato. Vuoi accettare?</p>
       <div class="actions">
@@ -113,7 +148,18 @@
         </button>
       </div>
     {:else if challenge.status === 'invited'}
-      <p class="notice">Aspetta che {opponentName} risponda. L'invito scade dopo 7 giorni.</p>
+      {#if !challenge.submittedByMe}
+        <p class="notice">
+          Puoi giocare subito, senza aspettare: {opponentName} giocherà la stessa griglia dopo aver accettato. Il tempo
+          parte appena premi Gioca ({formatDuration(challenge.config.durationMs)}).
+        </p>
+        {@render helpOption()}
+        <button type="button" class="btn btn-primary btn-block" disabled={busy} onclick={play}>
+          {challenge.startedByMe ? 'Riprendi' : 'Gioca'}
+        </button>
+      {:else}
+        <p class="notice">Hai giocato. Aspetta che {opponentName} accetti e giochi: l'invito scade dopo 7 giorni.</p>
+      {/if}
       {#if confirmCancel}
         <div class="actions">
           <button type="button" class="btn btn-secondary" disabled={busy} onclick={() => (confirmCancel = false)}>Annulla</button>
@@ -133,27 +179,20 @@
             challenge.config.durationMs,
           )}); una parola trovata solo da uno dei due vale il doppio.
         </p>
-        {#if helps > 0 && !challenge.startedByMe}
-          <label class="help">
-            <input type="checkbox" bind:checked={useHelp} />
-            Usa un aiuto: +10 secondi ({helps} {helps === 1 ? 'disponibile' : 'disponibili'})
-          </label>
-        {/if}
+        {@render helpOption()}
         <button type="button" class="btn btn-primary btn-block" disabled={busy} onclick={play}>
           {challenge.startedByMe ? 'Riprendi' : 'Gioca'}
         </button>
       {:else if challenge.opponentSubmitted}
-        <p class="notice">Hanno giocato entrambi: sto calcolando il punteggio. Ricarica tra un attimo.</p>
-        <button type="button" class="btn btn-secondary btn-block" disabled={busy} onclick={() => run(async () => {})}>Aggiorna</button>
+        <p class="notice">Hanno giocato entrambi: sto calcolando il punteggio…</p>
       {:else}
-        <p class="notice">Hai giocato. Il punteggio arriva quando giocherà anche {opponentName}.</p>
-        <button type="button" class="btn btn-secondary btn-block" disabled={busy} onclick={() => run(async () => {})}>Aggiorna</button>
+        <p class="notice">Hai giocato. Il punteggio arriva appena giocherà anche {opponentName}.</p>
       {/if}
     {:else if challenge.status === 'completed' && challenge.scores}
-      <p class="notice result">
+      <p class="notice result" class:win={winnerId === myId} class:loss={!!winnerId && winnerId !== myId}>
         {#if winnerId === null}
           Pareggio!
-        {:else if winnerId === (challenge.iAmChallenger ? challenge.challenger.id : challenge.opponent.id)}
+        {:else if winnerId === myId}
           Hai vinto!
         {:else}
           Ha vinto {opponentName}.
@@ -161,22 +200,43 @@
       </p>
       <ul class="scores">
         {#each challenge.scores as s (s.userId)}
-          <li class="card">
-            <div class="head">
-              <span class="name">{s.username ?? 'giocatore'}</span>
-              <span class="points" class:winner={winnerId === s.userId}>{s.score ?? 0}</span>
-            </div>
-            <details>
-              <summary>{s.words.length} parole</summary>
-              <p class="words">
-                {#each s.words as w (w.word)}
-                  <span class="word">{w.word} <b>{w.points}</b></span>
-                {/each}
-              </p>
-            </details>
+          <li class="card head" class:winner={winnerId === s.userId}>
+            <span class="name">{s.username ?? 'giocatore'}</span>
+            <span class="points">{s.score ?? 0}</span>
           </li>
         {/each}
       </ul>
+
+      <div class="results scroll-box">
+        {#if challenge.grid}
+          <GridView
+            grid={challenge.grid as Grid}
+            interactive={false}
+            highlightPath={selectedPath}
+            onSubmit={() => {}}
+            pointMode={challenge.config.pointMode}
+            positionBonus={challenge.config.positionBonus}
+          />
+        {/if}
+        {#each challenge.scores as s (s.userId)}
+          <WordList
+            title="{s.userId === myId ? 'Le tue parole' : `Parole di ${s.username ?? 'giocatore'}`}"
+            words={s.words}
+            tone="found"
+            empty="Nessuna parola."
+            onSelect={(path) => (selectedPath = path)}
+          />
+        {/each}
+        {#if challenge.missed}
+          <WordList
+            title="✖️ Mancate da entrambi"
+            words={challenge.missed}
+            tone="missed"
+            empty="Nessuna: le avete trovate tutte!"
+            onSelect={(path) => (selectedPath = path)}
+          />
+        {/if}
+      </div>
     {:else}
       <p class="notice">Questa sfida è {STATUS_LABEL[challenge.status].toLowerCase()}.</p>
     {/if}
@@ -260,27 +320,48 @@
     font-weight: 800;
   }
 
-  .points.winner {
+  .head {
+    border-left: 5px solid transparent;
+  }
+
+  .head.winner {
+    border-left-color: var(--color-success);
+  }
+
+  .winner .points {
     color: var(--color-success);
   }
 
-  summary {
-    cursor: pointer;
-    font-size: 0.85rem;
+  .notice.result.win {
+    background: var(--color-success-wash);
+    color: var(--color-success);
+  }
+
+  .notice.result.loss {
+    background: var(--color-danger-wash);
+    color: var(--color-danger);
+  }
+
+  .results {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    width: 100%;
+  }
+
+  .record {
+    margin: 0;
+    text-align: center;
+    font-size: 0.9rem;
+    font-weight: 700;
     color: var(--color-ink-soft);
   }
 
-  .words {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    margin: 8px 0 0;
+  .won-text {
+    color: var(--color-success);
   }
 
-  .word {
-    padding: 2px 8px;
-    border-radius: var(--radius-pill);
-    background: var(--color-surface-alt);
-    font-size: 0.85rem;
+  .lost-text {
+    color: var(--color-danger);
   }
 </style>

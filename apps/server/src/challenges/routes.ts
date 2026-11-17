@@ -1,7 +1,9 @@
 import { randomInt } from 'node:crypto';
 
 import {
+  classicScoring,
   computeVersusScores,
+  generateGridWithAdditions,
   versusWordValue,
   wordGroupCounts,
   type GameConfig,
@@ -15,7 +17,8 @@ import { requireAuth } from '../auth/require-auth.js';
 import { db } from '../db/client.js';
 import { isUniqueViolation } from '../db/errors.js';
 import * as schema from '../db/schema.js';
-import { loadDictionary } from '../dictionary.js';
+import { loadAdditions, loadDictionary } from '../dictionary.js';
+import { publish } from '../events/hub.js';
 import { AIUTO_10S, extraTimeMs, getItemDefinition, NotEnoughItemsError, spendItem } from '../items/service.js';
 import { gradeSubmission } from '../plays/grading.js';
 import { describeSettle, SUBMIT_MARGIN_MS } from '../plays/routes.js';
@@ -32,10 +35,12 @@ import {
 
 // Sfide 1 contro 1 su invito (decisione whoru #28): un solo match, lanciate solo contro un amico del portale.
 // Ogni giocatore ha una riga in `plays` (mode 'sfida'): lì stanno tempi, aiuto, percorsi, parole, punteggio e XP.
+// Chi lancia la sfida può giocare subito, senza aspettare che l'amico accetti; l'amico gioca dopo aver accettato.
 
 const MAX_SEED = 2 ** 31 - 1;
 const DUEL_TTL_MS = 7 * 24 * 60 * 60 * 1000; // senza risposta o senza partite entro 7 giorni la sfida scade
 const MAX_ACTIVE_AS_CHALLENGER = 10;
+const LIST_LIMIT = 200;
 
 const duelConfigInputSchema = z.object({
   size: z.union([z.literal(4), z.literal(5), z.literal(6)]),
@@ -70,6 +75,25 @@ function toGameConfig(config: schema.DuelConfig, seed: number): GameConfig {
 const isParticipant = (duel: DuelRow, userId: string) => duel.challengerId === userId || duel.opponentId === userId;
 const isDone = (play: Pick<PlayRow, 'status'>) => play.status !== 'started';
 
+/** Si gioca a sfida accettata; chi l'ha lanciata può giocare anche prima della risposta. */
+const canPlay = (duel: DuelRow, userId: string) =>
+  duel.status === 'in_progress' || (duel.status === 'invited' && duel.challengerId === userId);
+
+/** Avviso in tempo reale a un giocatore (le schermate aperte si aggiornano; con `notify`, notifica del browser). */
+function notifyUser(userId: string, duelId: string, notify?: { title: string; body: string }): void {
+  publish(userId, { type: 'duel', duelId, notify });
+}
+
+type Outcome = 'won' | 'lost' | 'draw';
+const outcomeOf = (mine: number, theirs: number): Outcome => (mine > theirs ? 'won' : mine < theirs ? 'lost' : 'draw');
+
+/** Griglia della sfida con le soluzioni: dizionario di base più le parole approvate dagli admin. */
+async function solveDuel(duel: DuelRow) {
+  const config = toGameConfig(duel.config, duel.seed);
+  const { grid, solutions } = generateGridWithAdditions(config, loadDictionary().index, (await loadAdditions()).index);
+  return { config, grid, solutions };
+}
+
 async function getDuel(id: string): Promise<DuelRow | undefined> {
   const [row] = await db.select().from(schema.duels).where(eq(schema.duels.id, id)).limit(1);
   return row;
@@ -98,8 +122,31 @@ function scorePlays(duel: DuelRow, plays: PlayRow[], words: PlayWordRow[]) {
   return { wordsByPlay, scoreByUser, counts };
 }
 
-/** Chiude la sfida quando hanno giocato entrambi: punteggi, XP, parole nuove e medaglie di ciascuno. */
+/** Chiude la sfida quando hanno giocato entrambi e avvisa i due giocatori con l'esito. */
 async function trySettle(duel: DuelRow): Promise<Map<string, SettleResult> | undefined> {
+  const results = await settle(duel);
+  if (results) {
+    const names = await usernamesOf([duel.challengerId, duel.opponentId]);
+    const plays = await playsOf([duel.id]);
+    const scoreOf = (userId: string) => plays.find((p) => p.userId === userId)?.score ?? 0;
+    for (const [userId, otherId] of [
+      [duel.challengerId, duel.opponentId],
+      [duel.opponentId, duel.challengerId],
+    ] as const) {
+      const mine = scoreOf(userId);
+      const theirs = scoreOf(otherId);
+      const outcome = { won: 'Hai vinto', lost: 'Hai perso', draw: 'Pareggio' }[outcomeOf(mine, theirs)];
+      notifyUser(userId, duel.id, {
+        title: 'Sfida conclusa',
+        body: `${outcome} contro ${names.get(otherId) ?? 'il tuo amico'}: ${mine} – ${theirs}`,
+      });
+    }
+  }
+  return results;
+}
+
+/** Punteggi, XP, parole nuove e medaglie di ciascuno, quando hanno giocato entrambi. */
+async function settle(duel: DuelRow): Promise<Map<string, SettleResult> | undefined> {
   if (duel.status !== 'in_progress') return undefined;
   const plays = await playsOf([duel.id]);
   const done = plays.filter(isDone);
@@ -147,8 +194,7 @@ async function refreshDuel(duel: DuelRow): Promise<DuelRow> {
       .where(and(eq(schema.duels.id, duel.id), eq(schema.duels.status, duel.status)));
     return { ...duel, status: 'expired' };
   }
-  if (duel.status !== 'in_progress') return duel;
-
+  // Anche quando è ancora un invito: chi l'ha lanciata può aver già iniziato a giocare
   for (const play of await playsOf([duel.id])) {
     if (play.status !== 'started') continue;
     if (Date.now() - play.startedAt.getTime() < play.durationMs + SUBMIT_MARGIN_MS) continue;
@@ -163,6 +209,31 @@ async function refreshDuel(duel: DuelRow): Promise<DuelRow> {
   }
   await trySettle(duel);
   return (await getDuel(duel.id)) ?? duel;
+}
+
+/** Vinte, perse e pareggiate da `me` contro `other`, su tutte le sfide concluse tra i due. */
+async function headToHead(me: string, other: string): Promise<{ won: number; lost: number; draw: number }> {
+  const between = await db
+    .select({ id: schema.duels.id })
+    .from(schema.duels)
+    .where(
+      and(
+        eq(schema.duels.status, 'completed'),
+        or(
+          and(eq(schema.duels.challengerId, me), eq(schema.duels.opponentId, other)),
+          and(eq(schema.duels.challengerId, other), eq(schema.duels.opponentId, me)),
+        ),
+      ),
+    );
+  const record = { won: 0, lost: 0, draw: 0 };
+  if (between.length === 0) return record;
+  const plays = await playsOf(between.map((d) => d.id));
+  for (const { id } of between) {
+    const mine = plays.find((p) => p.duelId === id && p.userId === me)?.score ?? 0;
+    const theirs = plays.find((p) => p.duelId === id && p.userId === other)?.score ?? 0;
+    record[outcomeOf(mine, theirs)]++;
+  }
+  return record;
 }
 
 function startResponse(play: PlayRow) {
@@ -200,9 +271,9 @@ export function registerChallengeRoutes(app: FastifyInstance): void {
     const active = mine.filter((d) => d.status === 'invited' || d.status === 'in_progress');
     const invites = active.filter((d) => d.status === 'invited' && d.opponentId === me).length;
 
-    const inProgress = active.filter((d) => d.status === 'in_progress');
-    const plays = await playsOf(inProgress.map((d) => d.id));
-    const toPlay = inProgress.filter((d) => !plays.some((p) => p.duelId === d.id && p.userId === me && isDone(p))).length;
+    const playable = active.filter((d) => canPlay(d, me));
+    const plays = await playsOf(playable.map((d) => d.id));
+    const toPlay = playable.filter((d) => !plays.some((p) => p.duelId === d.id && p.userId === me && isDone(p))).length;
 
     let friendRequests: number | null = null;
     try {
@@ -256,6 +327,8 @@ export function registerChallengeRoutes(app: FastifyInstance): void {
         .returning();
       return duel!;
     });
+    const myName = (await usernamesOf([me])).get(me);
+    notifyUser(opponentId, created.id, { title: 'Nuova sfida', body: `${myName ?? 'Un amico'} ti ha sfidato` });
     return reply.code(201).send({ id: created.id, status: created.status });
   });
 
@@ -277,6 +350,13 @@ export function registerChallengeRoutes(app: FastifyInstance): void {
       .where(and(eq(schema.duels.id, duel.id), eq(schema.duels.status, 'invited')))
       .returning({ id: schema.duels.id });
     if (updated.length === 0) return reply.code(409).send({ error: 'La sfida non è più in attesa di risposta' });
+    const who = (await usernamesOf([duel.opponentId])).get(duel.opponentId) ?? 'Il tuo amico';
+    notifyUser(duel.challengerId, duel.id, {
+      title: body.data.accept ? 'Sfida accettata' : 'Sfida rifiutata',
+      body: body.data.accept ? `${who} ha accettato la tua sfida` : `${who} ha rifiutato la tua sfida`,
+    });
+    notifyUser(duel.opponentId, duel.id);
+    // Chi ha lanciato può aver gia' giocato: se ora gioca anche l'altro, la sfida si chiude come sempre
     return reply.send({ status });
   });
 
@@ -293,6 +373,8 @@ export function registerChallengeRoutes(app: FastifyInstance): void {
       .where(and(eq(schema.duels.id, duel.id), eq(schema.duels.status, 'invited')))
       .returning({ id: schema.duels.id });
     if (updated.length === 0) return reply.code(409).send({ error: 'Si può ritirare solo una sfida ancora senza risposta' });
+    notifyUser(duel.opponentId, duel.id);
+    notifyUser(duel.challengerId, duel.id);
     return reply.send({ status: 'cancelled' });
   });
 
@@ -304,7 +386,7 @@ export function registerChallengeRoutes(app: FastifyInstance): void {
     const found = await getDuel(params.data.id);
     if (!found || !isParticipant(found, me)) return reply.code(404).send({ error: 'Sfida non trovata' });
     const duel = await refreshDuel(found);
-    if (duel.status !== 'in_progress') return reply.code(409).send({ error: 'La sfida non è giocabile' });
+    if (!canPlay(duel, me)) return reply.code(409).send({ error: 'La sfida non è giocabile' });
 
     const existing = (await playsOf([duel.id])).find((p) => p.userId === me);
     if (existing && isDone(existing)) return reply.code(409).send({ error: 'Hai già giocato questa sfida' });
@@ -350,7 +432,7 @@ export function registerChallengeRoutes(app: FastifyInstance): void {
     const found = await getDuel(params.data.id);
     if (!found || !isParticipant(found, me)) return reply.code(404).send({ error: 'Sfida non trovata' });
     const duel = await refreshDuel(found);
-    if (duel.status !== 'in_progress') return reply.code(409).send({ error: 'La sfida non è giocabile' });
+    if (!canPlay(duel, me)) return reply.code(409).send({ error: 'La sfida non è giocabile' });
 
     const play = (await playsOf([duel.id])).find((p) => p.userId === me);
     if (!play || isDone(play)) return reply.code(409).send({ error: 'Nessuna partita da lasciare' });
@@ -374,7 +456,7 @@ export function registerChallengeRoutes(app: FastifyInstance): void {
     const found = await getDuel(params.data.id);
     if (!found || !isParticipant(found, me)) return reply.code(404).send({ error: 'Sfida non trovata' });
     const duel = await refreshDuel(found);
-    if (duel.status !== 'in_progress') return reply.code(409).send({ error: 'La sfida non è giocabile' });
+    if (!canPlay(duel, me)) return reply.code(409).send({ error: 'La sfida non è giocabile' });
 
     const play = (await playsOf([duel.id])).find((p) => p.userId === me);
     // Si può inviare solo dopo aver iniziato, ed entro la durata + margine
@@ -384,7 +466,7 @@ export function registerChallengeRoutes(app: FastifyInstance): void {
       return reply.code(409).send({ error: 'Tempo scaduto' });
     }
 
-    const words = gradeSubmission(play.config, loadDictionary().index, body.data.words, play.durationMs);
+    const words = gradeSubmission(play.config, loadDictionary().index, body.data.words, play.durationMs, (await loadAdditions()).index);
     const claimed = await db.transaction(async (tx) => {
       const taken = await tx
         .update(schema.plays)
@@ -403,6 +485,17 @@ export function registerChallengeRoutes(app: FastifyInstance): void {
     if (!claimed) return reply.code(409).send({ error: 'Hai già inviato il risultato' });
 
     const settled = await trySettle(duel);
+    if (!settled) {
+      // L'altro non ha ancora giocato: se la sfida è accettata, tocca a lui
+      const other = duel.challengerId === me ? duel.opponentId : duel.challengerId;
+      const myName = (await usernamesOf([me])).get(me) ?? 'Il tuo amico';
+      notifyUser(
+        other,
+        duel.id,
+        duel.status === 'in_progress' ? { title: 'Tocca a te', body: `${myName} ha giocato la sfida: ora tocca a te` } : undefined,
+      );
+      notifyUser(me, duel.id);
+    }
     const mine = settled?.get(me);
     return reply.send({
       found: words.map((w) => ({ word: w.word, path: w.path, points: w.points })),
@@ -425,9 +518,13 @@ export function registerChallengeRoutes(app: FastifyInstance): void {
     const opponentOfMe = duel.challengerId === me ? duel.opponentId : duel.challengerId;
     const theirs = plays.find((p) => p.userId === opponentOfMe);
 
+    type Word = { word: string; points: number; path: number[] };
+    const byPoints = (a: Word, b: Word) => b.points - a.points || b.word.length - a.word.length || a.word.localeCompare(b.word);
     let scores:
-      | { userId: string; username: string | undefined; score: number | null; xp: number; usedHelp: boolean; words: { word: string; points: number }[] }[]
+      | { userId: string; username: string | undefined; score: number | null; xp: number; usedHelp: boolean; words: Word[] }[]
       | undefined;
+    let missed: Word[] | undefined;
+    let grid: { size: number; tiles: string[]; multipliers?: number[] } | undefined;
     if (duel.status === 'completed' && plays.length > 0) {
       const words = await db
         .select()
@@ -441,10 +538,25 @@ export function registerChallengeRoutes(app: FastifyInstance): void {
         xp: p.xpAwarded,
         usedHelp: p.usedItemId !== null,
         words: (wordsByPlay.get(p.id) ?? [])
-          .map((w) => ({ word: w.word, points: counts ? versusWordValue(w.points, counts.get(w.word) ?? 1) : w.points }))
-          .sort((a, b) => b.word.length - a.word.length || a.word.localeCompare(b.word)),
+          .map((w) => ({ word: w.word, path: w.path, points: counts ? versusWordValue(w.points, counts.get(w.word) ?? 1) : w.points }))
+          .sort(byPoints),
       }));
+      // Le parole della griglia che nessuno dei due ha trovato, col loro valore base
+      const solved = await solveDuel(duel);
+      const foundByAnyone = new Set(words.map((w) => w.word));
+      missed = solved.solutions
+        .filter((s) => !foundByAnyone.has(s.word))
+        .map((s) => ({ word: s.word, path: s.path, points: classicScoring.scoreWord(s.word, s.path, solved.grid, solved.config) }))
+        .sort(byPoints);
+      grid = {
+        size: solved.grid.size,
+        tiles: [...solved.grid.tiles],
+        ...(solved.grid.multipliers ? { multipliers: [...solved.grid.multipliers] } : {}),
+      };
     }
+
+    // Bilancio contro questo amico: tutte le sfide concluse tra i due
+    const record = await headToHead(me, opponentOfMe);
 
     return reply.header('Cache-Control', 'no-store').send({
       id: duel.id,
@@ -454,13 +566,16 @@ export function registerChallengeRoutes(app: FastifyInstance): void {
       opponent: { id: duel.opponentId, username: names.get(duel.opponentId) },
       iAmChallenger: duel.challengerId === me,
       config: duel.config,
-      // Il seed si dà solo quando la sfida è giocabile (prima dell'accettazione nessuno può studiare la griglia)
-      seed: duel.status === 'in_progress' ? duel.seed : undefined,
+      // Il seed si dà solo a chi può giocare (prima di accettare, l'amico non può studiare la griglia)
+      seed: canPlay(duel, me) ? duel.seed : undefined,
       startedByMe: mine?.startedAt ?? null,
       helpUsedByMe: mine?.usedItemId != null,
       submittedByMe: mine !== undefined && isDone(mine),
       opponentSubmitted: theirs !== undefined && isDone(theirs),
       scores,
+      missed,
+      grid,
+      record,
     });
   });
 
@@ -472,7 +587,7 @@ export function registerChallengeRoutes(app: FastifyInstance): void {
       .from(schema.duels)
       .where(or(eq(schema.duels.challengerId, me), eq(schema.duels.opponentId, me)))
       .orderBy(desc(schema.duels.createdAt))
-      .limit(50);
+      .limit(LIST_LIMIT);
     const duels = await Promise.all(rows.map(refreshDuel));
     // Una sfida ricevuta prima di sbloccare le sfide resta in attesa e compare quando si arriva al livello 5
     const visible = duels.filter((d) => d.status !== 'cancelled' && (unlocked || d.challengerId === me));
@@ -504,6 +619,7 @@ export function registerChallengeRoutes(app: FastifyInstance): void {
           // Il punteggio si mostra solo a sfida conclusa
           myScore: d.status === 'completed' ? (mine?.score ?? null) : null,
           opponentScore: d.status === 'completed' ? (theirs?.score ?? null) : null,
+          outcome: d.status === 'completed' ? outcomeOf(mine?.score ?? 0, theirs?.score ?? 0) : null,
         };
       }),
     );

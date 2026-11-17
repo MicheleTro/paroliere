@@ -2,7 +2,7 @@ import {
   classicScoring,
   comboBonus,
   comboLevel,
-  generateGrid,
+  generateGridWithAdditions,
   neighbors,
   type GameConfig,
   type Grid,
@@ -64,13 +64,18 @@ export function gradeOnGrid(
   return [...found.values()];
 }
 
-/** Come `gradeOnGrid`, ma rigenera la griglia dal seed con il dizionario del server (Gioca e sfide). */
+/**
+ * Come `gradeOnGrid`, ma rigenera la griglia dal seed con il dizionario del server (Gioca e sfide). Con
+ * `additions` valgono anche le parole approvate dagli admin dopo la pubblicazione del dizionario: la griglia
+ * resta quella del dizionario di base, le aggiunte entrano solo tra le soluzioni (`generateGridWithAdditions`).
+ */
 export function gradeSubmission(
   config: GameConfig,
   index: WordIndex,
   submitted: readonly SubmittedWord[],
   maxAtMs: number = config.durationMs,
+  additions?: WordIndex,
 ): ScoredWord[] {
-  const { grid, solutions } = generateGrid(config, index);
+  const { grid, solutions } = generateGridWithAdditions(config, index, additions);
   return gradeOnGrid(config, grid, new Set(solutions.map((s) => s.word)), submitted, maxAtMs);
 }

@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { GameSession, SessionSummary } from '@paroliere/core';
   import ModalSheet from '../lib/ModalSheet.svelte';
+  import ReportWords from '../lib/ReportWords.svelte';
   import Svg from '../lib/Svg.svelte';
   import { ICONS } from '../lib/icons.js';
   import { medalClass, medalGlyph } from '../lib/medal-style.js';
@@ -34,6 +35,9 @@
   const STAR_COLORS = { bronzo: '#d98a45', argento: '#c9d2e4', oro: '#ffc53d' } as const;
 
   let showWords = $state(false);
+  let showReport = $state(false);
+  // Parole rifiutate perché assenti dal dizionario: si possono segnalare agli admin
+  const rejected = $derived([...new Set(session.rejectedWords.map((r) => r.word))]);
 
   // Dopo il riepilogo arrivano, uno alla volta, il passaggio di livello, il regalo e le medaglie
   type Modal = { kind: 'level' } | { kind: 'gift' } | { kind: 'medal'; id: string; name: string; description: string };
@@ -108,6 +112,9 @@
 
   <div class="row buttons">
     <button type="button" class="btn btn-block" onclick={() => (showWords = true)}><Svg svg={ICONS.book} /> Parole</button>
+    {#if rejected.length > 0}
+      <button type="button" class="btn btn-block" onclick={() => (showReport = true)}>🚩 Segnala ({rejected.length})</button>
+    {/if}
     {#if mode === 'gioca'}
       <button type="button" class="btn btn-blue btn-block" onclick={onNewGame}>Ancora</button>
     {/if}
@@ -115,7 +122,11 @@
   <button type="button" class="btn btn-gold btn-big btn-block" onclick={onHome}>Home</button>
 </div>
 
-{#if showWords}
+{#if showReport}
+  <ModalSheet title="Segnala parole" action="Chiudi" onClose={() => (showReport = false)}>
+    <ReportWords words={rejected} />
+  </ModalSheet>
+{:else if showWords}
   <SumWordsSheet {session} {summary} {newWords} showMissed={mode === 'gioca'} onClose={() => (showWords = false)} />
 {:else if current?.kind === 'level' && level}
   <ModalSheet title="Livello {level.level}!" onClose={nextModal}>

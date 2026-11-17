@@ -27,6 +27,7 @@
   import { abandonChallenge, submitChallengeResult, type ChallengeDetail, type SubmitResultResponse } from './lib/challenges.js';
   import type { WordPopupData } from './lib/word-popup.js';
   import { setDisplayForms } from './lib/display.js';
+  import { connectLive, dismissNotice, live } from './lib/live.svelte.js';
   import type { NewGameConfig, WorkerResponse } from './worker/dictionary-worker.js';
 
   const POPUP_DURATION_MS = 1500;
@@ -225,8 +226,13 @@
     stopTimerLoop();
     if (!session) return;
     summary = summarize(session);
-    // Percorsi e momenti: il server rivaluta tutto, il client non dichiara punteggi (RF-22)
-    const words = session.foundWords.map((f) => ({ path: f.path, atMs: Math.round(f.atMs) }));
+    // Percorsi e momenti: il server rivaluta tutto, il client non dichiara punteggi (RF-22). Anche le parole
+    // rifiutate: il server può conoscere parole aggiunte al dizionario dopo il caricamento della pagina (in coda,
+    // all'ultimo istante: non danno combo).
+    const words = [
+      ...session.foundWords.map((f) => ({ path: f.path, atMs: Math.round(f.atMs) })),
+      ...session.rejectedWords.map((r) => ({ path: r.path, atMs: session!.config.durationMs })),
+    ];
 
     if (challengeMatchContext) {
       const { challengeId } = challengeMatchContext;
@@ -336,9 +342,34 @@
     if (auth.status === 'authenticated') void settings.load();
   });
   watchPortalSession(() => screen === 'playing');
+
+  // Aggiornamenti in tempo reale e notifiche, appena la sessione è verificata. Un tocco su una notifica apre
+  // la sfida (mai durante una partita in corso).
+  function openDuelFromNotice(duelId: string): void {
+    dismissNotice();
+    if (screen === 'playing') return;
+    adminAuth.open = false;
+    openChallenge(duelId);
+  }
+  $effect(() => {
+    if (auth.status === 'authenticated') connectLive(openDuelFromNotice);
+  });
+
+  // Aperto da una notifica a gioco chiuso: /?sfida=<id>
+  const linkedDuel = new URLSearchParams(window.location.search).get('sfida');
+  if (linkedDuel) {
+    history.replaceState(null, '', window.location.pathname);
+    openChallenge(linkedDuel);
+  }
 </script>
 
 <main class="app-root">
+  {#if live.notice && screen !== 'playing' && auth.status === 'authenticated'}
+    <button type="button" class="live-notice" onclick={() => openDuelFromNotice(live.notice!.duelId)}>
+      <b>{live.notice.title}</b>
+      <span>{live.notice.body}</span>
+    </button>
+  {/if}
   {#if auth.status === 'checking'}
     <div class="screen pattern"><p class="status outline-text">Caricamento…</p></div>
   {:else if auth.status === 'unauthenticated'}
@@ -410,6 +441,32 @@
 </main>
 
 <style>
+  .live-notice {
+    position: fixed;
+    top: calc(12px + var(--safe-top, 0px));
+    left: 50%;
+    z-index: 50;
+    transform: translateX(-50%);
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    width: min(92vw, 420px);
+    padding: 12px 16px;
+    border: 3px solid var(--ink);
+    border-radius: var(--radius-md);
+    background: var(--paper);
+    color: var(--ink);
+    box-shadow: var(--shadow-pop);
+    text-align: left;
+    font-family: var(--f-body);
+    font-size: 0.95rem;
+    cursor: pointer;
+  }
+
+  .live-notice b {
+    font-family: var(--f-display);
+  }
+
   .status {
     margin: auto;
     font-family: var(--f-display);

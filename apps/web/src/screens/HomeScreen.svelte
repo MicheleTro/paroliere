@@ -1,7 +1,9 @@
 <script lang="ts">
+  import { untrack } from 'svelte';
   import Svg from '../lib/Svg.svelte';
   import { getNotifications, type Notifications } from '../lib/challenges.js';
   import { ICONS } from '../lib/icons.js';
+  import { live } from '../lib/live.svelte.js';
   import { buildNews, type NewsAction } from '../lib/news.js';
   import { getMe, type Me } from '../lib/plays.js';
   import { presetColor, presetGlyph } from '../lib/preset-style.js';
@@ -46,6 +48,21 @@
       .catch(() => {});
   }
   refresh();
+
+  // Inviti e partite da giocare si aggiornano da soli quando una sfida cambia (tempo reale)
+  let firstLive = true;
+  $effect(() => {
+    void live.version;
+    untrack(() => {
+      if (firstLive) {
+        firstLive = false;
+        return;
+      }
+      getNotifications()
+        .then((result) => (notifications = result))
+        .catch(() => {});
+    });
+  });
 
   type Sheet = { kind: 'day'; day: number } | { kind: 'rank' } | { kind: 'streak' } | { kind: 'news' } | { kind: 'words' } | { kind: 'info'; topic: string };
   let sheet: Sheet | undefined = $state();

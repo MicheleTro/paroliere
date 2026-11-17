@@ -137,3 +137,13 @@ I test, le fixture e le verifiche del Passo 1 continuano a usare
 `fixtures/dict-small.txt` (dizionario piccolo indipendente, ~962 parole) per
 restare deterministici e non dipendere dal file Morph-it! locale. Il
 dizionario reale è usato solo per il build/benchmark manuale documentato qui.
+
+## Parole aggiunte dagli admin (segnalazioni)
+
+Le parole segnalate dai giocatori e approvate dagli admin non modificano il file del dizionario né la sua
+versione: stanno nel database del server (`reported_words` con stato `approved`) e valgono subito, sia per il
+server sia per il browser (`GET /api/dictionary/additions`). La griglia di una partita si sceglie sempre col
+solo dizionario di base, così lo stesso seed dà la stessa griglia; le aggiunte entrano solo tra le soluzioni.
+Per farle entrare stabilmente nel dizionario alla prossima ricostruzione, copiarle in
+`tools/dict-builder/overrides/add.txt`.
+

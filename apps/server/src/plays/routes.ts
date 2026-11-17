@@ -8,7 +8,7 @@ import { z } from 'zod';
 import { requireAuth } from '../auth/require-auth.js';
 import { db } from '../db/client.js';
 import * as schema from '../db/schema.js';
-import { loadDictionary } from '../dictionary.js';
+import { loadAdditions, loadDictionary } from '../dictionary.js';
 import { AIUTO_10S, getInventory, itemQuantity } from '../items/service.js';
 import { awardPlay, duelsAvailable, recordPlayStarted, savePlayResult, type PlayRow, type SettleResult, type Tx } from '../progress/service.js';
 import { frozenGrid } from '../week/service.js';
@@ -142,7 +142,7 @@ export function registerPlayRoutes(app: FastifyInstance): void {
       const { grid, solutions } = frozenGrid(gridRow);
       words = gradeOnGrid(play.config, grid, new Set(solutions.map((s) => s.word)), body.data.words, play.durationMs);
     } else {
-      words = gradeSubmission(play.config, loadDictionary().index, body.data.words, play.durationMs);
+      words = gradeSubmission(play.config, loadDictionary().index, body.data.words, play.durationMs, (await loadAdditions()).index);
     }
     const score = words.reduce((sum, w) => sum + w.points, 0);
 
