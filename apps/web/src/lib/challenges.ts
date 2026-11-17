@@ -32,6 +32,16 @@ export interface ChallengeSummary {
   opponentSubmitted: boolean;
   myScore: number | null;
   opponentScore: number | null;
+  /** Solo a sfida conclusa. */
+  outcome: Outcome | null;
+}
+
+export type Outcome = 'won' | 'lost' | 'draw';
+
+export interface HeadToHead {
+  won: number;
+  lost: number;
+  draw: number;
 }
 
 export interface ChallengeConfig extends ChallengeConfigInput {
@@ -43,6 +53,7 @@ export interface ChallengeConfig extends ChallengeConfigInput {
 export interface ChallengeWord {
   word: string;
   points: number;
+  path: number[];
 }
 
 export interface ChallengeScore {
@@ -60,12 +71,17 @@ export interface ChallengeDetail {
   opponent: Person;
   iAmChallenger: boolean;
   config: ChallengeConfig;
-  /** Solo quando la sfida è giocabile. */
+  /** Solo a chi può giocare (chi lancia la sfida può giocare prima che l'amico accetti). */
   seed?: number;
   startedByMe: string | null;
   submittedByMe: boolean;
   opponentSubmitted: boolean;
   scores?: ChallengeScore[];
+  /** A sfida conclusa: le parole della griglia che nessuno dei due ha trovato, per punteggio. */
+  missed?: ChallengeWord[];
+  grid?: { size: 4 | 5 | 6; tiles: string[] };
+  /** Vinte/perse/pari contro questo amico, su tutte le sfide concluse. */
+  record: HeadToHead;
 }
 
 export interface Friend {

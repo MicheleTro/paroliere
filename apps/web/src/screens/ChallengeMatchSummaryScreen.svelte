@@ -1,7 +1,9 @@
 <script lang="ts">
-  import type { GameSession, SessionSummary } from '@paroliere/core';
+  import { classicScoring, type GameSession, type SessionSummary } from '@paroliere/core';
   import GameStatsSummary from '../lib/GameStatsSummary.svelte';
   import GridView from '../lib/GridView.svelte';
+  import ReportWords from '../lib/ReportWords.svelte';
+  import WordList from '../lib/WordList.svelte';
   import type { SubmitResultResponse } from '../lib/challenges.js';
   import type { WordStats } from '../lib/stats.js';
 
@@ -15,23 +17,26 @@
   }
 
   let { session, summary, typeStats, result, error, onBack }: Props = $props();
+
+  let selectedPath: number[] = $state([]);
+
+  // Le parole valide le decide il server (può conoscere parole aggiunte al dizionario dopo il caricamento)
+  const found = $derived(result?.found ?? summary.foundWords);
+  const foundSet = $derived(new Set(found.map((w) => w.word)));
+  const missed = $derived(
+    summary.missedWords
+      .filter((s) => !foundSet.has(s.word))
+      .map((s) => ({ ...s, points: classicScoring.scoreWord(s.word, s.path, session.grid, session.config) })),
+  );
+  const rejected = $derived(session.rejectedWords.map((r) => r.word).filter((w) => !foundSet.has(w)));
 </script>
 
 <div class="page">
   <h1>{error ? 'Invio non riuscito' : 'Partita inviata'}</h1>
 
   <GameStatsSummary
-    wordsFound={{ found: summary.foundWords.length, total: summary.totalWords, percentage: summary.foundPercentage }}
+    wordsFound={{ found: found.length, total: summary.totalWords, percentage: summary.totalWords ? (found.length / summary.totalWords) * 100 : 0 }}
     {typeStats}
-  />
-
-  <GridView
-    grid={session.grid}
-    interactive={false}
-    highlightPath={[]}
-    onSubmit={() => {}}
-    pointMode={session.config.pointMode}
-    positionBonus={session.config.positionBonus}
   />
 
   {#if error}
@@ -45,6 +50,27 @@
   {/if}
 
   <button type="button" class="btn btn-primary btn-block" onclick={onBack}>Torna alla sfida</button>
+
+  <GridView
+    grid={session.grid}
+    interactive={false}
+    highlightPath={selectedPath}
+    onSubmit={() => {}}
+    pointMode={session.config.pointMode}
+    positionBonus={session.config.positionBonus}
+  />
+
+  <div class="word-lists">
+    <WordList
+      title="✅ Trovate"
+      words={found}
+      tone="found"
+      empty="Nessuna parola trovata."
+      onSelect={(path) => (selectedPath = path)}
+    />
+    <WordList title="✖️ Mancate" words={missed} tone="missed" empty="Le hai trovate tutte!" onSelect={(path) => (selectedPath = path)} />
+    <ReportWords words={rejected} />
+  </div>
 </div>
 
 <style>
@@ -66,5 +92,12 @@
   .notice-danger {
     background: var(--color-danger-wash);
     color: var(--color-danger);
+  }
+
+  .word-lists {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    width: 100%;
   }
 </style>

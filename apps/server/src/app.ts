@@ -8,6 +8,7 @@ import Fastify, { type FastifyInstance } from 'fastify';
 import { registerAdminRoutes } from './admin/routes.js';
 import { registerAuthRoutes } from './auth/routes.js';
 import { registerChallengeRoutes } from './challenges/routes.js';
+import { registerEventRoutes } from './events/hub.js';
 import { registerHistoryRoutes } from './history/routes.js';
 import { registerReportRoutes } from './reports/routes.js';
 import { registerStatsRoutes } from './stats/routes.js';
@@ -71,6 +72,7 @@ export function buildApp(): FastifyInstance {
     async (api) => {
       registerAuthRoutes(api);
       registerChallengeRoutes(api);
+      registerEventRoutes(api);
       registerHistoryRoutes(api);
       registerStatsRoutes(api);
       registerReportRoutes(api);

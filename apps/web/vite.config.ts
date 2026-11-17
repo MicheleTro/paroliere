@@ -25,6 +25,8 @@ export default defineConfig({
         // al server: senza questa esclusione il service worker risponderebbe con index.html e il login non
         // si completerebbe mai.
         navigateFallbackDenylist: [/^\/api\//],
+        // Tocco sulle notifiche delle sfide (public/sw-notifications.js)
+        importScripts: ['/sw-notifications.js'],
         // Il file del dizionario ha un nome versionato: cache-first, non cambia mai
         // contenuto. Il suo manifest.json va invece riverificato in rete a ogni
         // avvio per scoprire una nuova versione (RF-18).

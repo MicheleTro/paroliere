@@ -1,5 +1,8 @@
 <script lang="ts">
+  import { untrack } from 'svelte';
   import { getNotifications, type Notifications } from '../lib/challenges.js';
+  import { live } from '../lib/live.svelte.js';
+  import NotificationsToggle from '../lib/NotificationsToggle.svelte';
 
   interface Props {
     portalUrl?: string;
@@ -14,9 +17,15 @@
 
   // Da fare: inviti, partite da giocare, richieste di amicizia. Se il server non risponde, nessun avviso.
   let notifications: Notifications | undefined = $state();
-  getNotifications()
-    .then((result) => (notifications = result))
-    .catch(() => {});
+  // Si aggiorna da solo quando arriva un invito o cambia una sfida
+  $effect(() => {
+    void live.version;
+    untrack(() => {
+      getNotifications()
+        .then((result) => (notifications = result))
+        .catch(() => {});
+    });
+  });
   const toDo = $derived((notifications?.invites ?? 0) + (notifications?.toPlay ?? 0));
   const friendRequests = $derived(notifications?.friendRequests ?? 0);
 </script>
@@ -42,6 +51,7 @@
         {/if}
       </span>
     </button>
+    <NotificationsToggle />
     {#if friendRequests > 0 && portalUrl}
       <a class="friend-requests" href={portalUrl}>
         {friendRequests} {friendRequests === 1 ? 'richiesta di amicizia' : 'richieste di amicizia'} nel portale

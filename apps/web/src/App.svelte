@@ -28,6 +28,7 @@
   import { submitChallengeResult, type ChallengeDetail, type SubmitResultResponse } from './lib/challenges.js';
   import type { WordPopupData } from './lib/word-popup.js';
   import { setDisplayForms } from './lib/display.js';
+  import { connectLive, dismissNotice, live } from './lib/live.svelte.js';
   import type { NewGameConfig, WorkerResponse } from './worker/dictionary-worker.js';
 
   const POPUP_DURATION_MS = 1500;
@@ -186,7 +187,8 @@
 
     if (challengeMatchContext) {
       const { challengeId } = challengeMatchContext;
-      const paths = session.foundWords.map((f) => f.path);
+      // Anche le parole rifiutate: il server può conoscere parole aggiunte al dizionario dopo il caricamento
+      const paths = [...session.foundWords.map((f) => f.path), ...session.rejectedWords.map((r) => r.path)];
       challengeResult = undefined;
       challengeSubmitError = undefined;
       submitChallengeResult(challengeId, paths)
@@ -278,6 +280,25 @@
 
   navigator.storage?.persist?.().catch(() => {});
   void checkSession();
+
+  // Aggiornamenti in tempo reale e notifiche, appena la sessione è verificata. Un tocco su una notifica apre
+  // la sfida (mai durante una partita in corso).
+  function openDuelFromNotice(duelId: string): void {
+    dismissNotice();
+    if (screen === 'playing') return;
+    adminAuth.open = false;
+    openChallenge(duelId);
+  }
+  $effect(() => {
+    if (auth.status === 'authenticated') connectLive(openDuelFromNotice);
+  });
+
+  // Aperto da una notifica a gioco chiuso: /?sfida=<id>
+  const linkedDuel = new URLSearchParams(window.location.search).get('sfida');
+  if (linkedDuel) {
+    history.replaceState(null, '', window.location.pathname);
+    openChallenge(linkedDuel);
+  }
   watchPortalSession(() => screen === 'playing');
 </script>
 
@@ -291,6 +312,12 @@
   {:else if screen === 'playing' && session}
     <PlayScreen {session} {now} {popup} onSubmit={handleSubmit} />
   {:else}
+    {#if live.notice}
+      <button type="button" class="live-notice" onclick={() => openDuelFromNotice(live.notice!.duelId)}>
+        <b>{live.notice.title}</b>
+        <span>{live.notice.body}</span>
+      </button>
+    {/if}
     <AppShell
       username={auth.user?.username ?? ''}
       showHome={screen !== 'home'}
@@ -340,6 +367,28 @@
     width: 100%;
     min-height: 100vh;
     padding: calc(16px + env(safe-area-inset-top, 0px)) 16px calc(16px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .live-notice {
+    position: fixed;
+    top: calc(12px + env(safe-area-inset-top, 0px));
+    left: 50%;
+    z-index: 50;
+    transform: translateX(-50%);
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    width: min(92vw, 420px);
+    padding: 12px 16px;
+    border: none;
+    border-radius: var(--radius-md);
+    background: var(--color-ink);
+    color: #fff;
+    box-shadow: var(--shadow-card);
+    text-align: left;
+    font: inherit;
+    font-size: 0.9rem;
+    cursor: pointer;
   }
 
   main.play-mode {
