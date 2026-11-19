@@ -17,6 +17,7 @@ import { and, asc, count, countDistinct, eq, inArray, ne } from 'drizzle-orm';
 import { db } from '../db/client.js';
 import * as schema from '../db/schema.js';
 import { AIUTO_10S, grantItem } from '../items/service.js';
+import { isPresetConfig, presetById } from '../plays/presets.js';
 
 export type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 export type PlayRow = typeof schema.plays.$inferSelect;
@@ -188,7 +189,9 @@ export async function awardPlay(tx: Tx, playId: string): Promise<SettleResult> {
 
   // Solo in Gioca: la stella raggiunta moltiplica l'XP (nelle sfide e nella Settimana i punti sono XP e basta)
   const baseXp = Math.max(0, Math.floor(play.score));
-  const bonus = play.mode === 'gioca' ? starBonus(baseXp) : null;
+  // ...e solo nel formato standard di Gioca: le soglie delle stelle sono tarate su quello
+  const preset = play.mode === 'gioca' && play.presetId ? await presetById(tx, play.presetId) : undefined;
+  const bonus = preset && isPresetConfig(play.config, preset) ? starBonus(baseXp) : null;
   const xpAwarded = baseXp + (bonus?.xp ?? 0);
   const totalXp = profile.totalXp + xpAwarded;
   const levelBefore = levelFromXp(profile.totalXp).level;

@@ -13,13 +13,21 @@ import { AIUTO_10S, getInventory, itemQuantity } from '../items/service.js';
 import { awardPlay, duelsAvailable, recordPlayStarted, savePlayResult, type PlayRow, type SettleResult, type Tx } from '../progress/service.js';
 import { frozenGrid } from '../week/service.js';
 import { gradeOnGrid, gradeSubmission } from './grading.js';
-import { getPresetBySlug, GIOCA_SLUG, presetToConfig } from './presets.js';
+import { customConfig, getPresetBySlug, GIOCA_SLUG, isPresetConfig, presetToConfig, type PresetRow } from './presets.js';
 
 const MAX_SEED = 2 ** 31 - 1;
 /** Margine oltre la durata concessa, per i ritardi di rete e dell'avvio. */
 export const SUBMIT_MARGIN_MS = 15_000;
 
-const startSchema = z.object({ mode: z.literal('gioca') });
+/** Partita libera personalizzata: stesse scelte e stessi limiti della creazione di una sfida. */
+const customSchema = z.object({
+  size: z.union([z.literal(4), z.literal(5), z.literal(6)]),
+  durationMs: z.number().int().min(30_000).max(10 * 60_000),
+  minWordLength: z.number().int().min(3).max(10),
+  pointMode: z.enum(['standard', 'speciale']),
+  positionBonus: z.boolean(),
+});
+const startSchema = z.object({ mode: z.literal('gioca'), config: customSchema.optional() });
 const finishSchema = z.object({
   words: z.array(z.object({ path: z.array(z.number().int().nonnegative()).max(64), atMs: z.number().min(0).max(3_600_000) })).max(2_000),
 });
@@ -39,8 +47,10 @@ export async function abandonPlay(tx: Tx, play: PlayRow): Promise<void> {
   await savePlayResult(tx, play, { status: 'abandoned', words: [], submission: null, score: 0 });
 }
 
-function publicPlay(play: PlayRow) {
+function publicPlay(play: PlayRow, preset?: PresetRow) {
   return {
+    // Partita libera con un formato diverso dal preset: niente stelle (le soglie valgono per il formato standard)
+    custom: play.mode === 'gioca' && preset !== undefined && !isPresetConfig(play.config, preset),
     id: play.id,
     mode: play.mode,
     seed: play.seed,
@@ -76,8 +86,10 @@ export function describeSettle(settle: SettleResult) {
 export function registerPlayRoutes(app: FastifyInstance): void {
   // Inizia (o riprende) una partita libera. Il seed e l'ora di inizio li decide il server.
   app.post('/plays', { preHandler: requireAuth }, async (request, reply) => {
-    if (!startSchema.safeParse(request.body).success) return reply.code(400).send({ error: 'Richiesta non valida' });
+    const body = startSchema.safeParse(request.body);
+    if (!body.success) return reply.code(400).send({ error: 'Richiesta non valida' });
     const me = request.userId!;
+    const preset = await getPresetBySlug(GIOCA_SLUG);
 
     const open = await db
       .select()
@@ -87,13 +99,15 @@ export function registerPlayRoutes(app: FastifyInstance): void {
       if (isExpired(play)) {
         await db.transaction((tx) => abandonPlay(tx, play));
       } else {
-        return reply.send(publicPlay(play)); // la partita in corso si riprende, non se ne apre un'altra
+        return reply.send(publicPlay(play, preset)); // la partita in corso si riprende, non se ne apre un'altra
       }
     }
 
-    const preset = await getPresetBySlug(GIOCA_SLUG);
     const { dictionaryVersion } = loadDictionary();
-    const config = presetToConfig(preset, randomInt(0, MAX_SEED), dictionaryVersion);
+    const seed = randomInt(0, MAX_SEED);
+    const config = body.data.config
+      ? customConfig(preset, body.data.config, seed, dictionaryVersion)
+      : presetToConfig(preset, seed, dictionaryVersion);
 
     const { play, streak } = await db.transaction(async (tx) => {
       const [row] = await tx
@@ -111,7 +125,7 @@ export function registerPlayRoutes(app: FastifyInstance): void {
       return { play: row!, streak };
     });
     // Se questa partita chiude un ciclo da 10 giorni, il riepilogo mostra il regalo (l'aiuto è già nell'inventario)
-    return reply.code(201).send({ ...publicPlay(play), streakCycleCompleted: streak.cycleCompleted });
+    return reply.code(201).send({ ...publicPlay(play, preset), streakCycleCompleted: streak.cycleCompleted });
   });
 
   // Chiude la partita: il server rivaluta i percorsi, assegna XP, parole nuove e medaglie
