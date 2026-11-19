@@ -10,6 +10,8 @@
   import { buildScene, isNightAt, seasonOf, starSvg, type SceneDay } from '../lib/scene.js';
   import { settings } from '../lib/settings.svelte.js';
   import { DAY_NAMES, DAY_SHORT, getWeek, type DayState, type WeekOverview } from '../lib/week.js';
+  import type { GameOptionValues } from '../lib/GameOptions.svelte';
+  import CustomGameSheet from '../sheets/CustomGameSheet.svelte';
   import DaySheet from '../sheets/DaySheet.svelte';
   import InfoSheet from '../sheets/InfoSheet.svelte';
   import NewsSheet from '../sheets/NewsSheet.svelte';
@@ -21,7 +23,8 @@
   interface Props {
     portalUrl?: string;
     ready: boolean;
-    onNewGame: (guided?: boolean) => void;
+    /** `options`: partita libera personalizzata; senza, il formato standard. */
+    onNewGame: (guided?: boolean, options?: GameOptionValues) => void;
     onPlayDay: (day: number, help: boolean) => Promise<void>;
     onProfile: () => void;
     onChallenges: () => void;
@@ -64,7 +67,7 @@
     });
   });
 
-  type Sheet = { kind: 'day'; day: number } | { kind: 'rank' } | { kind: 'streak' } | { kind: 'news' } | { kind: 'words' } | { kind: 'info'; topic: string };
+  type Sheet = { kind: 'day'; day: number } | { kind: 'rank' } | { kind: 'streak' } | { kind: 'news' } | { kind: 'words' } | { kind: 'info'; topic: string } | { kind: 'custom' };
   let sheet: Sheet | undefined = $state();
   /** Dopo una scheda "i" si torna a quella che l'ha aperta. */
   let infoReturn: Sheet | undefined;
@@ -201,7 +204,9 @@
   </div>
   <div>
     <button type="button" class="btn btn-blue btn-big play" disabled={!ready} onclick={() => onNewGame()}><Svg svg={ICONS.play} /> {ready ? 'Gioca' : '…'}</button>
-    <span class="lab white">5×5 · 1:30</span>
+    <button type="button" class="custom" disabled={!ready} onclick={() => (sheet = { kind: 'custom' })}>
+      <Svg svg={ICONS.gear} /> Personalizza
+    </button>
   </div>
   <div>
     <button
@@ -236,6 +241,14 @@
   <WordsSheet onClose={closeSheet} onInfo={showInfo} />
 {:else if sheet?.kind === 'news'}
   <NewsSheet items={news} {portalUrl} onClose={closeSheet} onGo={goNews} />
+{:else if sheet?.kind === 'custom'}
+  <CustomGameSheet
+    onClose={closeSheet}
+    onPlay={(options) => {
+      closeSheet();
+      onNewGame(false, options);
+    }}
+  />
 {:else if sheet?.kind === 'info'}
   <InfoSheet topic={sheet.topic} onClose={closeSheet} />
 {/if}
@@ -250,6 +263,37 @@
     display: block;
     width: 100%;
     height: 100%;
+  }
+
+  .custom {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    margin: 6px auto 0;
+    padding: 3px 12px;
+    border: 2.5px solid var(--ink);
+    border-radius: 999px;
+    background: #fff;
+    color: var(--ink);
+    box-shadow: 0 3px 0 var(--ink);
+    font-family: var(--f-display);
+    font-size: 0.8rem;
+    cursor: pointer;
+  }
+
+  .custom :global(svg) {
+    width: 14px;
+    height: 14px;
+  }
+
+  .custom:active {
+    transform: translateY(2px);
+    box-shadow: 0 1px 0 var(--ink);
+  }
+
+  .custom:disabled {
+    opacity: 0.6;
   }
 
   .bell {

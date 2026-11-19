@@ -18,7 +18,7 @@
   import ChallengeDetailScreen from './screens/ChallengeDetailScreen.svelte';
   import ChallengeMatchSummaryScreen from './screens/ChallengeMatchSummaryScreen.svelte';
   import Screen from './lib/Screen.svelte';
-  import { abandonPlay, finishPlay, markOnboarded, startPlay, type FinishedPlay } from './lib/plays.js';
+  import { abandonPlay, finishPlay, markOnboarded, startPlay, type CustomPlayOptions, type FinishedPlay } from './lib/plays.js';
   import { settings } from './lib/settings.svelte.js';
   import { startWeekDay, WEEK_NAME } from './lib/week.js';
   import { playAlreadyFound, playRejected, playWordAccepted } from './lib/sound.js';
@@ -51,6 +51,10 @@
   let currentPlayId: string | undefined;
   /** Che partita è in corso o appena finita (cambia riepilogo e uscita). */
   let playKind: 'gioca' | 'settimana' = $state('gioca');
+  /** Gioca con un formato scelto dal giocatore (niente stelle). */
+  let customPlay = $state(false);
+  /** Scelte dell'ultima partita di Gioca: "Gioca ancora" riparte con le stesse. */
+  let lastGiocaOptions: CustomPlayOptions | undefined;
   let starting = $state(false);
   let now = $state(performance.now());
   let popup: WordPopupData | null = $state(null);
@@ -101,12 +105,13 @@
   }
 
   /** Gioca: il server decide seed e inizio (e riprende una partita già iniziata, se c'è). */
-  async function startGioca(wantsGuide = false): Promise<void> {
+  async function startGioca(wantsGuide = false, options?: CustomPlayOptions): Promise<void> {
     if (!ready || starting) return;
     guided = wantsGuide === true;
     starting = true;
     try {
-      const play = await startPlay();
+      const play = await startPlay(options);
+      lastGiocaOptions = options;
       if (play.config.dictionaryVersion !== dictionaryVersion) {
         alert('Il dizionario locale non corrisponde a quello del server: ricarica la pagina e riprova.');
         return;
@@ -114,6 +119,7 @@
       currentPlayId = play.id;
       giftPending = play.streakCycleCompleted === true;
       playKind = 'gioca';
+      customPlay = play.custom === true;
       challengeMatchContext = undefined;
       playResult = undefined;
       playError = undefined;
@@ -385,7 +391,7 @@
       onSubmit={handleSubmit}
       onQuit={quitGame}
       {guide}
-      stars={playKind === 'gioca' && !challengeMatchContext}
+      stars={playKind === 'gioca' && !customPlay && !challengeMatchContext}
       duel={!!challengeMatchContext}
       quitWarning={playKind === 'settimana' && !challengeMatchContext
         ? 'Perderai il punteggio e anche il tentativo: la griglia di ' + WEEK_NAME + ' si gioca una sola volta.'
@@ -418,7 +424,7 @@
           error={playError}
           mode={playKind}
           gift={giftPending}
-          onNewGame={() => startGioca()}
+          onNewGame={() => startGioca(false, lastGiocaOptions)}
           onHome={goHome}
         />
       {:else if screen === 'challenges'}

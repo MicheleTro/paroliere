@@ -13,6 +13,8 @@ export interface StartedPlay {
   /** Tempo che resta, calcolato dal server (vale anche se si riprende una partita già iniziata). */
   remainingMs: number;
   helpUsed: boolean;
+  /** Partita libera con un formato scelto dal giocatore: niente stelle (valgono solo per il formato standard). */
+  custom: boolean;
   /** Questa partita ha chiuso un ciclo da 10 giorni: l'aiuto è già nell'inventario. */
   streakCycleCompleted?: boolean;
 }
@@ -69,8 +71,18 @@ export interface Me extends LevelProgress {
   medals: { id: string; earnedAt: string }[];
 }
 
-export function startPlay(): Promise<StartedPlay> {
-  return apiRequest('/plays', { method: 'POST', body: JSON.stringify({ mode: 'gioca' }) });
+/** Scelte di una partita libera personalizzata (le stesse delle sfide). */
+export interface CustomPlayOptions {
+  size: 4 | 5 | 6;
+  durationMs: number;
+  minWordLength: number;
+  pointMode: 'standard' | 'speciale';
+  positionBonus: boolean;
+}
+
+/** Senza `config`: il formato standard di Gioca (quello con le stelle). */
+export function startPlay(config?: CustomPlayOptions): Promise<StartedPlay> {
+  return apiRequest('/plays', { method: 'POST', body: JSON.stringify({ mode: 'gioca', ...(config ? { config } : {}) }) });
 }
 
 export function finishPlay(id: string, words: { path: number[]; atMs: number }[]): Promise<FinishedPlay> {

@@ -1,8 +1,6 @@
 <script lang="ts">
   import { createChallenge, listFriends, type Friend } from '../lib/challenges.js';
-  import { formatDuration } from '../lib/format.js';
-  import InfoPopover from '../lib/InfoPopover.svelte';
-  import ScoringInfoContent from '../lib/ScoringInfoContent.svelte';
+  import GameOptions, { DEFAULT_OPTIONS, type GameOptionValues } from '../lib/GameOptions.svelte';
 
   interface Props {
     portalUrl: string;
@@ -12,20 +10,12 @@
 
   let { portalUrl, onCreated, onBack }: Props = $props();
 
-  const DURATIONS_MS = [30_000, 60_000, 90_000, 120_000, 150_000];
-  const MIN_WORD_LENGTHS = [3, 4, 5];
-  const SIZES = [4, 5, 6] as const;
-
   let friends: Friend[] = $state([]);
   let loadingFriends = $state(true);
   let friendsError: string | undefined = $state();
   let opponentId: string | undefined = $state();
 
-  let durationMs = $state(90_000);
-  let minWordLength = $state(3);
-  let size: 4 | 5 | 6 = $state(5);
-  let pointMode: 'standard' | 'speciale' = $state('standard');
-  let positionBonus = $state(false);
+  let options: GameOptionValues = $state({ ...DEFAULT_OPTIONS });
 
   let submitting = $state(false);
   let error: string | undefined = $state();
@@ -41,13 +31,9 @@
     error = undefined;
     try {
       const { id } = await createChallenge(opponentId, {
-        size,
-        durationMs,
-        minWordLength,
+        ...options,
         minWords: 50,
         scoring: 'versus',
-        pointMode,
-        positionBonus,
       });
       onCreated(id);
     } catch (err) {
@@ -82,65 +68,7 @@
     {/if}
   </div>
 
-  <div class="section">
-    <p class="section-title">Durata</p>
-    <div class="chip-group">
-      {#each DURATIONS_MS as ms (ms)}
-        <button type="button" class="chip" class:selected={durationMs === ms} onclick={() => (durationMs = ms)}>
-          {formatDuration(ms)}
-        </button>
-      {/each}
-    </div>
-  </div>
-
-  <div class="section">
-    <p class="section-title">Lunghezza minima parola</p>
-    <div class="chip-group">
-      {#each MIN_WORD_LENGTHS as length (length)}
-        <button type="button" class="chip" class:selected={minWordLength === length} onclick={() => (minWordLength = length)}>
-          {length}
-        </button>
-      {/each}
-    </div>
-  </div>
-
-  <div class="section">
-    <p class="section-title">Griglia</p>
-    <div class="chip-group">
-      {#each SIZES as s (s)}
-        <button type="button" class="chip" class:selected={size === s} onclick={() => (size = s)}>{s}×{s}</button>
-      {/each}
-    </div>
-  </div>
-
-  <div class="section">
-    <p class="section-title">Punteggio</p>
-    <div class="chip-group">
-      <span class="chip-with-info">
-        <button type="button" class="chip" class:selected={pointMode === 'standard'} onclick={() => (pointMode = 'standard')}>
-          Standard
-        </button>
-        <InfoPopover label="Punteggio standard"><ScoringInfoContent kind="standard" /></InfoPopover>
-      </span>
-      <span class="chip-with-info">
-        <button type="button" class="chip" class:selected={pointMode === 'speciale'} onclick={() => (pointMode = 'speciale')}>
-          Speciale
-        </button>
-        <InfoPopover label="Punteggio speciale"><ScoringInfoContent kind="speciale" /></InfoPopover>
-      </span>
-    </div>
-  </div>
-
-  <div class="section">
-    <p class="section-title">Bonus posizione</p>
-    <div class="chip-group">
-      <button type="button" class="chip" class:selected={!positionBonus} onclick={() => (positionBonus = false)}>No</button>
-      <span class="chip-with-info">
-        <button type="button" class="chip" class:selected={positionBonus} onclick={() => (positionBonus = true)}>Sì</button>
-        <InfoPopover label="Bonus posizione"><ScoringInfoContent kind="position-bonus" /></InfoPopover>
-      </span>
-    </div>
-  </div>
+  <GameOptions bind:options />
 
   <p class="hint">Nella sfida, una parola trovata solo da uno dei due vale il doppio.</p>
   </div>
